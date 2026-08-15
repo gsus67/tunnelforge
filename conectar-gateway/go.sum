@@ -1,0 +1,6 @@
+github.com/golang/crypto v0.25.0 h1:mfkZnoodj1IL1s9Zbm/eHgSygKZXOE19LCdXnOb7Wv4=
+github.com/golang/crypto v0.25.0/go.mod h1:T+wALwcMOSE0kXgUAnPAHqTLW+XHgcELELW8VaDgm/M=
+github.com/golang/sys v0.22.0 h1:NyJe5QtFMczJ5G0kxP6sYaRB9ziJaRtYA3cETlWWrMk=
+github.com/golang/sys v0.22.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+github.com/golang/term v0.22.0 h1:ueDYDJIDGiqiHZUopI0rBrpJx9+qSCumwlYL4L7HIqw=
+github.com/golang/term v0.22.0/go.mod h1:F3qCibpT5AMpCRfhfT53vVJwhLtIVHhB9XDjfFvnMI4=
