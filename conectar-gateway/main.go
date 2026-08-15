@@ -33,7 +33,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.0.0"
+const version = "2.0.1"
 
 var puertos = []int{8888, 10086, 19999, 6060, 60601}
 
@@ -305,7 +305,7 @@ func main() {
 	}
 	puertoGUI := os.Getenv("CG_PORT")
 	if puertoGUI == "" {
-		puertoGUI = "0"
+		puertoGUI = "8787" // puerto fijo de la interfaz (URL estable)
 	}
 
 	mux := http.NewServeMux()
@@ -455,8 +455,12 @@ func main() {
 
 	escucha, err := net.Listen("tcp", "127.0.0.1:"+puertoGUI)
 	if err != nil {
-		fmt.Println("ERROR: no pude abrir el puerto de la interfaz:", err)
-		os.Exit(1)
+		// puerto fijo ocupado (¿otra instancia?): caer a uno libre al azar
+		escucha, err = net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			fmt.Println("ERROR: no pude abrir el puerto de la interfaz:", err)
+			os.Exit(1)
+		}
 	}
 	url := fmt.Sprintf("http://%s/?t=%s", escucha.Addr().String(), token)
 	fmt.Println("Interfaz en:", url)
