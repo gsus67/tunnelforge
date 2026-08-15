@@ -25,10 +25,12 @@ import (
 	"io"
 	"net"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -571,6 +573,35 @@ func main() {
 		})
 	}))
 
+	// Abre una URL en el navegador POR DEFECTO del sistema.
+	// Solo se permiten URLs locales (los tuneles): nada de destinos externos.
+	mux.HandleFunc("/api/abrir", proteger(func(w http.ResponseWriter, r *http.Request) {
+		var pet struct{ URL string }
+		if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
+			responderError(w, err)
+			return
+		}
+		u, err := neturl.Parse(pet.URL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+			responderError(w, fmt.Errorf("URL no válida"))
+			return
+		}
+		anfitrion := u.Hostname()
+		permitido := anfitrion == "localhost" || anfitrion == "127.0.0.1" || anfitrion == "::1"
+		// ademas, los enlaces de creditos de la propia interfaz
+		for _, d := range []string{"github.com", "pkg.go.dev"} {
+			if anfitrion == d || strings.HasSuffix(anfitrion, "."+d) {
+				permitido = true
+			}
+		}
+		if !permitido {
+			responderError(w, fmt.Errorf("destino no permitido"))
+			return
+		}
+		abrirNavegador(u.String())
+		responder(w, map[string]any{"ok": true})
+	}))
+
 	mux.HandleFunc("/api/salir", proteger(func(w http.ResponseWriter, r *http.Request) {
 		responder(w, map[string]any{"ok": true})
 		go func() {
@@ -624,7 +655,10 @@ func main() {
 func abrirNavegador(url string) {
 	switch runtime.GOOS {
 	case "windows":
-		_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		// "start" respeta el navegador por defecto del usuario
+		if exec.Command("cmd", "/c", "start", "", url).Start() != nil {
+			_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		}
 	case "darwin":
 		_ = exec.Command("open", url).Start()
 	default:

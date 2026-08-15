@@ -360,7 +360,7 @@
           setTimeout(function(){
             api('/api/estado').then(function(e){
               var t = (e.tuneles||[])[0];
-              if (t) window.open('http://localhost:' + t.puerto + (t.ruta||''), '_blank');
+              if (t) abrirFuera('http://localhost:' + t.puerto + (t.ruta||''));
             });
           }, 600);
         }
@@ -505,6 +505,22 @@
       n ? '— ' + n + ' puerto' + (n>1?'s':'') + ': ' + lista.map(function(t){ return t.puerto; }).join(', ')
         : '— ninguno configurado';
   }
+
+  // ── Abrir enlaces en el navegador del sistema ────────────────
+  // Dentro de la ventana nativa, un <a target="_blank"> no sale al
+  // navegador; lo redirigimos por la API para que Windows use el
+  // navegador por defecto del usuario.
+  function abrirFuera(url){
+    api('/api/abrir', {method:'POST', body: JSON.stringify({url: url})})
+      .then(function(r){ if (r && r.error) window.open(url, '_blank'); })
+      .catch(function(){ window.open(url, '_blank'); });
+  }
+  document.addEventListener('click', function(e){
+    var a = e.target.closest ? e.target.closest('a[href^="http"]') : null;
+    if (!a) return;
+    e.preventDefault();
+    abrirFuera(a.href);
+  });
 </script>
 <script src="/static/xterm.js"></script>
 <script src="/static/addon-fit.js"></script>
