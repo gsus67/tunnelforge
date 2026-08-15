@@ -8,6 +8,7 @@
 //     la llave de cifrado vive en secreto.bin junto al ejecutable, 0600)
 //   - Verificación de huella del servidor (TOFU) con confirmación visual
 //   - Túneles: 8888 panel · 10086 WGDashboard · 19999 Netdata · 6060/60601
+//
 // ============================================================================
 package main
 
@@ -67,9 +68,9 @@ func cargar() []Servidor {
 	}
 	return lista
 }
-func guardar(lista []Servidor) {
+func guardar(lista []Servidor) error {
 	datos, _ := json.MarshalIndent(lista, "", "  ")
-	_ = os.WriteFile(rutaJunto("conexiones.json"), datos, 0600)
+	return os.WriteFile(rutaJunto("conexiones.json"), datos, 0600)
 }
 func buscar(lista []Servidor, nombre string) *Servidor {
 	for i := range lista {
@@ -207,7 +208,7 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 		if s.Huella == "" {
 			if aceptarHuella {
 				s.Huella = huellaVista
-				guardar(lista)
+				_ = guardar(lista)
 				return nil
 			}
 			return fmt.Errorf("confirmar-huella")
@@ -295,7 +296,29 @@ func main() {
 		}
 	}
 	exe, _ := os.Executable()
-	baseDir = filepath.Dir(exe)
+	dirExe := filepath.Dir(exe)
+
+	// Datos en el perfil del usuario (sobreviven aunque muevas el .exe).
+	// Modo portable: si existe un archivo "portable" junto al .exe, los
+	// datos viven junto al .exe (util para llevarlo en el NAS/USB).
+	if _, err := os.Stat(filepath.Join(dirExe, "portable")); err == nil {
+		baseDir = dirExe
+	} else if cfg, err := os.UserConfigDir(); err == nil {
+		baseDir = filepath.Join(cfg, "conectar-gateway")
+		_ = os.MkdirAll(baseDir, 0700)
+		// Migracion: si hay datos de versiones viejas junto al .exe, traerlos
+		for _, f := range []string{"conexiones.json", "secreto.bin"} {
+			viejoF := filepath.Join(dirExe, f)
+			nuevoF := filepath.Join(baseDir, f)
+			if _, err := os.Stat(nuevoF); os.IsNotExist(err) {
+				if datos, err := os.ReadFile(viejoF); err == nil {
+					_ = os.WriteFile(nuevoF, datos, 0600)
+				}
+			}
+		}
+	} else {
+		baseDir = dirExe
+	}
 
 	token := os.Getenv("CG_TOKEN")
 	if token == "" {
@@ -376,7 +399,10 @@ func main() {
 			} else if !pet.GuardarPassword {
 				s.PassCifr = ""
 			}
-			guardar(lista)
+			if err := guardar(lista); err != nil {
+				responderError(w, fmt.Errorf("no pude guardar: %v", err))
+				return
+			}
 			responder(w, map[string]any{"ok": true})
 		case "DELETE":
 			nombre := r.URL.Query().Get("nombre")
@@ -387,7 +413,10 @@ func main() {
 					nueva = append(nueva, s)
 				}
 			}
-			guardar(nueva)
+			if err := guardar(nueva); err != nil {
+				responderError(w, fmt.Errorf("no pude guardar: %v", err))
+				return
+			}
 			responder(w, map[string]any{"ok": true})
 		}
 	}))
