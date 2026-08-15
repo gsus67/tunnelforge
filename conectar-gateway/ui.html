@@ -95,6 +95,16 @@
   .tun-cab span:nth-child(3){width:130px}
   .tun-cab span:nth-child(4){width:44px}
   .tun-acciones{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap}
+  /* ---- copia de seguridad ---- */
+  .copia{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px}
+  .copia .col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .copia h4{font-family:'Barlow Condensed';font-weight:600;font-size:16px;letter-spacing:.04em;margin-bottom:8px}
+  .copia .campo{margin-bottom:8px}
+  .copia .campo input[type=password],.copia .campo input[type=file]{width:100%}
+  .copia .check{margin:4px 0}
+  .copia .res{font-size:12px;color:var(--suave);margin-top:8px;line-height:1.5;word-break:break-all}
+  .copia .res b{color:var(--verde)}
+  @media (max-width:640px){ .copia .col{grid-template-columns:1fr} }
   /* ---- terminal integrado ---- */
   .term-velo{position:fixed;inset:0;background:rgba(6,13,17,.96);display:none;flex-direction:column;z-index:20}
   .term-velo.abierto{display:flex}
@@ -167,6 +177,47 @@
       <button type="button" class="principal" id="btn-guardar">Guardar servidor</button>
     </div>
   </form>
+
+  <div class="seccion desplegable" id="copia-cabecera">
+    <span class="flecha">▶</span>
+    <span>Copia de seguridad</span>
+    <span class="cuenta">— exportar / importar servidores, túneles y claves</span>
+  </div>
+  <div class="copia plegable" id="copia-caja">
+    <div class="col">
+      <div>
+        <h4>Exportar</h4>
+        <div class="campo">
+          <label>Contraseña para proteger la copia (mín. 8)</label>
+          <input type="password" id="exp-pass" placeholder="la necesitarás para importar">
+        </div>
+        <div class="check"><input type="checkbox" id="exp-claves" checked>
+          <label for="exp-claves" style="margin:0">Incluir contraseñas guardadas</label></div>
+        <div class="check"><input type="checkbox" id="exp-keys" checked>
+          <label for="exp-keys" style="margin:0">Incluir claves SSH privadas</label></div>
+        <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar</button>
+        <div class="res" id="exp-res"></div>
+      </div>
+      <div>
+        <h4>Importar</h4>
+        <div class="campo">
+          <label>Archivo de copia (.cgw)</label>
+          <input type="file" id="imp-archivo" accept=".cgw,application/json">
+        </div>
+        <div class="campo">
+          <label>Contraseña de la copia</label>
+          <input type="password" id="imp-pass" placeholder="la que usaste al exportar">
+        </div>
+        <div class="check"><input type="checkbox" id="imp-reemplazar">
+          <label for="imp-reemplazar" style="margin:0">Reemplazar todo (por defecto: fusionar)</label></div>
+        <button class="principal" id="btn-importar" style="margin-top:8px">Importar</button>
+        <div class="res" id="imp-res"></div>
+      </div>
+    </div>
+    <div class="nota" style="margin-top:12px">La copia va cifrada con tu contraseña
+    (no con la llave de este equipo), así que se puede llevar a otra PC. Sin esa
+    contraseña el archivo es ilegible: <b>guárdala bien, no hay forma de recuperarla</b>.</div>
+  </div>
 
   <div style="margin-top:28px;text-align:right">
     <button class="peligro" id="btn-salir">Cerrar aplicación</button>
@@ -521,6 +572,59 @@
     e.preventDefault();
     abrirFuera(a.href);
   });
+
+  // ── Copia de seguridad ───────────────────────────────────────
+  document.getElementById('copia-cabecera').onclick = function(){
+    this.classList.toggle('abierta');
+    document.getElementById('copia-caja').classList.toggle('abierto');
+  };
+
+  document.getElementById('btn-exportar').onclick = function(){
+    var pass = document.getElementById('exp-pass').value;
+    if (pass.length < 8){ aviso('La contraseña debe tener al menos 8 caracteres.', false); return; }
+    var b = this; b.disabled = true; b.textContent = 'Exportando…';
+    api('/api/exportar', {method:'POST', body: JSON.stringify({
+      password: pass,
+      incluirClaves: document.getElementById('exp-claves').checked,
+      incluirKeys: document.getElementById('exp-keys').checked
+    })}).then(function(r){
+      var res = document.getElementById('exp-res');
+      if (r.error){ res.textContent = r.error; aviso(r.error, false); return; }
+      res.innerHTML = '<b>Copia creada.</b><br>' + r.servidores + ' servidor(es), ' +
+        r.tuneles + ' túnel(es), ' + r.keys + ' clave(s) SSH.<br>Guardada en: ' + r.ruta;
+      if (r.omitidas && r.omitidas.length)
+        res.innerHTML += '<br>No pude leer: ' + r.omitidas.join(', ');
+      document.getElementById('exp-pass').value = '';
+      aviso('Copia exportada.', true);
+    }).finally(function(){ b.disabled = false; b.textContent = 'Exportar'; });
+  };
+
+  document.getElementById('btn-importar').onclick = function(){
+    var archivo = document.getElementById('imp-archivo').files[0];
+    var pass = document.getElementById('imp-pass').value;
+    if (!archivo){ aviso('Elige el archivo .cgw a importar.', false); return; }
+    if (!pass){ aviso('Escribe la contraseña de la copia.', false); return; }
+    var b = this; b.disabled = true; b.textContent = 'Importando…';
+    var lector = new FileReader();
+    lector.onload = function(){
+      api('/api/importar', {method:'POST', body: JSON.stringify({
+        password: pass, contenido: lector.result,
+        modo: document.getElementById('imp-reemplazar').checked ? 'reemplazar' : 'fusionar'
+      })}).then(function(r){
+        var res = document.getElementById('imp-res');
+        if (r.error){ res.textContent = r.error; aviso(r.error, false); return; }
+        res.innerHTML = '<b>Importado.</b><br>' + r.nuevos + ' nuevo(s), ' +
+          r.actualizados + ' actualizado(s), ' + r.tuneles + ' túnel(es), ' +
+          r.keys + ' clave(s).<br>Copia del ' + (r.creado || '?');
+        document.getElementById('imp-pass').value = '';
+        document.getElementById('imp-archivo').value = '';
+        refrescarLista(); refrescarTuneles();
+        aviso('Configuración importada.', true);
+      }).finally(function(){ b.disabled = false; b.textContent = 'Importar'; });
+    };
+    lector.onerror = function(){ aviso('No pude leer el archivo.', false); b.disabled = false; b.textContent = 'Importar'; };
+    lector.readAsText(archivo);
+  };
 </script>
 <script src="/static/xterm.js"></script>
 <script src="/static/addon-fit.js"></script>

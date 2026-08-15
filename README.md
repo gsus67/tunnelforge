@@ -54,6 +54,21 @@ En Windows se abre en su propia ventana; en Linux, en el navegador
 
 5. **Desconectar** — cierra los túneles. Cerrar la ventana también los cierra.
 
+### Copia de seguridad
+
+La sección **Copia de seguridad** exporta toda tu configuración a un archivo
+`.cgw`: servidores, túneles, y opcionalmente las contraseñas guardadas y el
+contenido de tus claves SSH privadas.
+
+El archivo se cifra con **una contraseña que tú eliges** (scrypt + AES-256-GCM),
+no con la llave de este equipo: por eso se puede llevar a otra PC, a un USB o al
+NAS y seguir siendo seguro. Sin esa contraseña el contenido es irrecuperable.
+
+Al importar en otro equipo, la app restaura los servidores, aplica los túneles,
+guarda las claves SSH en su carpeta de configuración y reapunta las rutas
+automáticamente. Puedes **fusionar** con lo que ya tengas (por defecto, los
+nombres repetidos se actualizan) o **reemplazar todo**.
+
 ### Túneles
 
 Vienen configurados los cinco del gateway WISP, y se pueden quitar, renombrar
@@ -94,8 +109,9 @@ En el perfil del usuario, así sobreviven a mover o actualizar el ejecutable:
 | Windows | `%APPDATA%\conectar-gateway\` |
 | Linux | `~/.config/conectar-gateway/` |
 
-Ahí quedan `conexiones.json` (servidores y huellas) y `secreto.bin` (llave de
-cifrado). Ninguno se sube al repositorio.
+Ahí quedan `conexiones.json` (servidores y huellas), `secreto.bin` (llave de
+cifrado), `ajustes.json` (túneles) y `keys/` (claves SSH importadas de una
+copia). Nada de esto se sube al repositorio.
 
 **Modo portable**: crea un archivo vacío llamado `portable` junto al ejecutable
 y los datos se guardarán a su lado — útil para llevarlo en un USB o un NAS.
@@ -152,6 +168,7 @@ conectar-gateway/
   terminal.go          Terminal SSH sobre WebSocket
   ventana_windows.go   Ventana nativa (Windows)
   ventana_otros.go     Navegador (Linux/macOS)
+  copia.go             Exportar / importar configuración cifrada
   ui.html              Interfaz
   static/              xterm.js embebido
   icono.ico            Icono e identidad del ejecutable
