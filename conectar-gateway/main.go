@@ -34,7 +34,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.2.0"
+const version = "2.2.1"
 
 var puertos = []int{8888, 10086, 19999, 6060, 60601}
 
@@ -486,18 +486,29 @@ func main() {
 			mu.Lock()
 			cerrarActiva()
 			mu.Unlock()
+			_ = os.Remove(filepath.Join(baseDir, "sesion"))
 			os.Exit(0)
 		}()
 	}))
 
 	escucha, err := net.Listen("tcp", "127.0.0.1:"+puertoGUI)
 	if err != nil {
-		// puerto fijo ocupado (¿otra instancia?): caer a uno libre al azar
+		// Puerto fijo ocupado: probablemente ya hay una instancia corriendo.
+		// Reutilizamos su sesion guardada y abrimos su interfaz, en vez de
+		// dejar una segunda copia dando vueltas.
+		if datos, e := os.ReadFile(filepath.Join(baseDir, "sesion")); e == nil && len(datos) > 0 {
+			mostrarVentana(fmt.Sprintf("http://127.0.0.1:%s/?t=%s", puertoGUI, string(datos)))
+			os.Exit(0)
+		}
 		escucha, err = net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			fmt.Println("ERROR: no pude abrir el puerto de la interfaz:", err)
 			os.Exit(1)
 		}
+	} else {
+		// Dejar el token para que una segunda ejecucion abra esta misma sesion
+		_ = os.WriteFile(filepath.Join(baseDir, "sesion"), []byte(token), 0600)
+		defer os.Remove(filepath.Join(baseDir, "sesion"))
 	}
 	url := fmt.Sprintf("http://%s/?t=%s", escucha.Addr().String(), token)
 	fmt.Println("Interfaz en:", url)
@@ -507,10 +518,15 @@ func main() {
 		select {} // modo servicio (pruebas): solo la API
 	}
 	mostrarVentana(url) // ventana nativa en Windows; navegador en otros
-	// Ventana cerrada: cerrar tuneles y salir
+
+	// Ventana cerrada: cerrar tuneles y terminar el proceso de verdad.
+	// Sin el Exit, el servidor HTTP y las goroutines seguirian vivos y
+	// Windows no dejaria borrar/mover/renombrar el ejecutable.
 	mu.Lock()
 	cerrarActiva()
 	mu.Unlock()
+	_ = escucha.Close()
+	os.Exit(0)
 }
 
 func abrirNavegador(url string) {
