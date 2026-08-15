@@ -72,7 +72,29 @@
   .modal p{font-size:13.5px;color:var(--suave);line-height:1.55;margin-bottom:12px}
   .modal .huella{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:10px;word-break:break-all;color:var(--verde);margin-bottom:14px}
   .modal .botones{display:flex;gap:10px;justify-content:flex-end}
+  .pie{max-width:760px;margin:22px auto 0;text-align:center;font-size:11.5px;color:var(--suave);opacity:.75;line-height:1.6}
+  .pie a{color:var(--suave)}
   #aviso{position:fixed;bottom:16px;right:16px;background:var(--panel-alto);border:1px solid var(--linea);border-left:4px solid var(--ambar);border-radius:8px;padding:11px 15px;font-size:13px;max-width:340px;display:none}
+  /* ---- seccion desplegable ---- */
+  .seccion.desplegable{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}
+  .seccion.desplegable:hover{color:var(--texto)}
+  .seccion.desplegable .flecha{display:inline-block;transition:transform .18s;font-size:11px;color:var(--ambar)}
+  .seccion.desplegable.abierta .flecha{transform:rotate(90deg)}
+  .seccion.desplegable .cuenta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--suave);letter-spacing:0;text-transform:none}
+  .plegable{display:none}
+  .plegable.abierto{display:block}
+  /* ---- tuneles configurables ---- */
+  .tuneles{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px}
+  .tun-fila{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+  .tun-fila input.p{width:110px;flex:none}
+  .tun-fila input.n{flex:1}
+  .tun-fila input.r{width:130px;flex:none}
+  .tun-cab{display:flex;gap:10px;font-size:11px;color:var(--suave);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+  .tun-cab span:nth-child(1){width:110px}
+  .tun-cab span:nth-child(2){flex:1}
+  .tun-cab span:nth-child(3){width:130px}
+  .tun-cab span:nth-child(4){width:44px}
+  .tun-acciones{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap}
   /* ---- terminal integrado ---- */
   .term-velo{position:fixed;inset:0;background:rgba(6,13,17,.96);display:none;flex-direction:column;z-index:20}
   .term-velo.abierto{display:flex}
@@ -101,12 +123,24 @@
   </div>
 
   <div class="seccion" id="sec-enlaces" style="display:none">Paneles del servidor</div>
-  <div class="enlaces" id="enlaces" style="display:none">
-    <a href="http://localhost:8888" target="_blank"><b>:8888</b> Panel</a>
-    <a href="http://localhost:10086" target="_blank"><b>:10086</b> WGDashboard</a>
-    <a href="http://localhost:19999" target="_blank"><b>:19999</b> Netdata</a>
-    <a href="http://localhost:6060/metrics" target="_blank"><b>:6060</b> CrowdSec</a>
-    <a href="http://localhost:60601/metrics" target="_blank"><b>:60601</b> Bouncer</a>
+  <div class="enlaces" id="enlaces" style="display:none"></div>
+
+  <div class="seccion desplegable" id="tun-cabecera">
+    <span class="flecha">▶</span>
+    <span>Túneles</span>
+    <span class="cuenta" id="tun-cuenta"></span>
+  </div>
+  <div class="tuneles plegable" id="tun-caja">
+    <div class="tun-cab"><span>Puerto</span><span>Nombre</span><span>Ruta web</span><span></span></div>
+    <div id="tun-lista"></div>
+    <div class="tun-acciones">
+      <div style="display:flex;gap:8px">
+        <button id="tun-agregar">+ Agregar puerto</button>
+        <button id="tun-defecto">Restaurar por defecto</button>
+      </div>
+      <button class="principal" id="tun-guardar">Guardar túneles</button>
+    </div>
+    <div class="nota" style="margin-top:10px">La <b>ruta web</b> es opcional: se agrega al enlace del panel, por ejemplo <b>/metrics</b>. Los cambios aplican en la próxima conexión.</div>
   </div>
 
   <div class="seccion">Servidores guardados</div>
@@ -136,6 +170,14 @@
 
   <div style="margin-top:28px;text-align:right">
     <button class="peligro" id="btn-salir">Cerrar aplicación</button>
+  </div>
+
+  <div class="pie">
+    Conectar Gateway <span id="pie-ver"></span> · © 2026 Gsus<br>
+    Software libre bajo licencia MIT · usa
+    <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a>,
+    <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a> y
+    <a href="https://github.com/webview/webview" target="_blank">webview</a>
   </div>
 </main>
 
@@ -197,6 +239,7 @@
   function pintarEstado(e){
     estadoActual = e;
     $('ver').textContent = 'v' + (e.version||'');
+    var pv = $('pie-ver'); if (pv) pv.textContent = 'v' + (e.version||'');
     var caja = $('estado');
     if (e.conectado){
       caja.classList.add('on');
@@ -204,7 +247,12 @@
       $('estado-puertos').textContent = 'túneles: ' + e.puertos.join(' · ');
       $('btn-desconectar').style.display = 'inline-block';
       $('sec-enlaces').style.display = 'block';
-      $('enlaces').style.display = 'flex';
+      var cont = $('enlaces');
+      cont.style.display = 'flex';
+      cont.innerHTML = (e.tuneles||[]).map(function(t){
+        return '<a href="http://localhost:' + t.puerto + (t.ruta||'') + '" target="_blank">' +
+               '<b>:' + t.puerto + '</b> ' + (t.nombre||'') + '</a>';
+      }).join('');
     } else {
       caja.classList.remove('on');
       $('estado-txt').textContent = 'Desconectado.';
@@ -309,7 +357,12 @@
           var srv = terminalTras; terminalTras = null;
           setTimeout(function(){ abrirTerminal(srv); }, 300);
         } else {
-          setTimeout(function(){ window.open('http://localhost:8888', '_blank'); }, 600);
+          setTimeout(function(){
+            api('/api/estado').then(function(e){
+              var t = (e.tuneles||[])[0];
+              if (t) window.open('http://localhost:' + t.puerto + (t.ruta||''), '_blank');
+            });
+          }, 600);
         }
       }
     }).catch(function(){ aviso('Error de comunicación con la app.', false); });
@@ -393,6 +446,65 @@
     if (wsTerm){ wsTerm.close(); wsTerm = null; }
     if (term){ term.dispose(); term = null; fit = null; }
   };
+
+  // ── Túneles configurables ────────────────────────────────────
+  function filaTunel(t){
+    var d = document.createElement('div');
+    d.className = 'tun-fila';
+    d.innerHTML =
+      '<input class="p" type="number" min="1" max="65535" value="' + (t.puerto||'') + '" placeholder="8888">' +
+      '<input class="n" type="text" value="' + (t.nombre||'').replace(/"/g,'&quot;') + '" placeholder="Nombre del servicio">' +
+      '<input class="r" type="text" value="' + (t.ruta||'') + '" placeholder="/opcional">';
+    var b = document.createElement('button');
+    b.className = 'peligro'; b.textContent = '✕'; b.title = 'Quitar este túnel';
+    b.onclick = function(){ d.remove(); };
+    d.appendChild(b);
+    return d;
+  }
+  function pintarTuneles(lista){
+    resumenTuneles(lista);
+    var cont = document.getElementById('tun-lista');
+    cont.innerHTML = '';
+    (lista||[]).forEach(function(t){ cont.appendChild(filaTunel(t)); });
+  }
+  function leerTuneles(){
+    var salida = [];
+    document.querySelectorAll('#tun-lista .tun-fila').forEach(function(f){
+      var p = parseInt(f.querySelector('.p').value);
+      if (!p) return;
+      salida.push({puerto: p, nombre: f.querySelector('.n').value.trim(), ruta: f.querySelector('.r').value.trim()});
+    });
+    return salida;
+  }
+  function refrescarTuneles(){ api('/api/tuneles').then(pintarTuneles).catch(function(){}); }
+  refrescarTuneles();
+
+  document.getElementById('tun-agregar').onclick = function(){
+    document.getElementById('tun-lista').appendChild(filaTunel({}));
+  };
+  document.getElementById('tun-defecto').onclick = function(){
+    if (!confirm('¿Restaurar los túneles por defecto del gateway?')) return;
+    api('/api/tuneles', {method:'DELETE'}).then(function(l){ pintarTuneles(l); aviso('Túneles restaurados.', true); });
+  };
+  document.getElementById('tun-guardar').onclick = function(){
+    api('/api/tuneles', {method:'POST', body: JSON.stringify(leerTuneles())}).then(function(r){
+      if (r.error){ aviso(r.error, false); return; }
+      aviso(r.aviso ? 'Guardado. Aplica al reconectar.' : 'Túneles guardados.', true);
+      refrescarTuneles();
+    });
+  };
+
+  // ── Plegado de la sección de túneles ─────────────────────────
+  document.getElementById('tun-cabecera').onclick = function(){
+    this.classList.toggle('abierta');
+    document.getElementById('tun-caja').classList.toggle('abierto');
+  };
+  function resumenTuneles(lista){
+    var n = (lista||[]).length;
+    document.getElementById('tun-cuenta').textContent =
+      n ? '— ' + n + ' puerto' + (n>1?'s':'') + ': ' + lista.map(function(t){ return t.puerto; }).join(', ')
+        : '— ninguno configurado';
+  }
 </script>
 <script src="/static/xterm.js"></script>
 <script src="/static/addon-fit.js"></script>

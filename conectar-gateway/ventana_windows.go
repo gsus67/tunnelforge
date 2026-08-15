@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Gsus — Licencia MIT (ver LICENSE)
 //go:build windows
 
 package main

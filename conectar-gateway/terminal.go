@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Gsus — Licencia MIT (ver LICENSE)
+
 package main
 
 // Terminal SSH integrado: abre una sesión interactiva (PTY) sobre la

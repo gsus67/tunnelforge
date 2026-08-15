@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Gsus — Licencia MIT (ver LICENSE)
 // ============================================================================
 // Conectar Gateway v2 — túneles SSH con interfaz gráfica
 // ============================================================================
@@ -34,9 +35,48 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.2.1"
+const version = "2.3.1"
 
-var puertos = []int{8888, 10086, 19999, 6060, 60601}
+// Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
+type Tunel struct {
+	Puerto int    `json:"puerto"`
+	Nombre string `json:"nombre"`
+	Ruta   string `json:"ruta,omitempty"` // ruta para el enlace, ej. "/metrics"
+}
+
+// Tuneles por defecto (los del gateway WISP). Se pueden quitar o agregar
+// desde la interfaz; quedan guardados en ajustes.json.
+func tunelesPorDefecto() []Tunel {
+	return []Tunel{
+		{8888, "Panel", ""},
+		{10086, "WGDashboard", ""},
+		{19999, "Netdata", ""},
+		{6060, "CrowdSec", "/metrics"},
+		{60601, "Bouncer", "/metrics"},
+	}
+}
+
+func cargarTuneles() []Tunel {
+	datos, err := os.ReadFile(rutaJunto("ajustes.json"))
+	if err != nil {
+		return tunelesPorDefecto() // primera vez: los del gateway
+	}
+	var a struct {
+		Tuneles []Tunel `json:"tuneles"`
+	}
+	if json.Unmarshal(datos, &a) != nil || a.Tuneles == nil {
+		return tunelesPorDefecto()
+	}
+	return a.Tuneles // puede estar vacio a proposito: el usuario los quito todos
+}
+
+func guardarTuneles(lista []Tunel) error {
+	if lista == nil {
+		lista = []Tunel{}
+	}
+	datos, _ := json.MarshalIndent(map[string]any{"tuneles": lista}, "", "  ")
+	return os.WriteFile(rutaJunto("ajustes.json"), datos, 0600)
+}
 
 //go:embed ui.html
 var interfaz embed.FS
@@ -233,13 +273,13 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 
 	// ---- túneles locales ----
 	con := &Conexion{cliente: cliente, servidor: s.Nombre, desde: time.Now()}
-	for _, p := range puertos {
-		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", p))
+	for _, t := range cargarTuneles() {
+		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", t.Puerto))
 		if err != nil {
 			continue // puerto local ocupado: se omite ese túnel
 		}
 		con.escuchas = append(con.escuchas, l)
-		con.abiertos = append(con.abiertos, p)
+		con.abiertos = append(con.abiertos, t.Puerto)
 		go func(l net.Listener, puerto int) {
 			for {
 				c, err := l.Accept()
@@ -248,11 +288,11 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 				}
 				go puente(c, cliente, puerto)
 			}
-		}(l, p)
+		}(l, t.Puerto)
 	}
 	if len(con.escuchas) == 0 {
 		cliente.Close()
-		return nil, fmt.Errorf("ningún túnel pudo abrirse (¿puertos locales ocupados?)")
+		return nil, fmt.Errorf("ningún túnel pudo abrirse (¿puertos locales ocupados, o no hay túneles configurados?)")
 	}
 
 	go func() { // keepalive
@@ -429,6 +469,47 @@ func main() {
 		}
 	}))
 
+	mux.HandleFunc("/api/tuneles", proteger(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		switch r.Method {
+		case "GET":
+			responder(w, cargarTuneles())
+		case "POST":
+			var lista []Tunel
+			if err := json.NewDecoder(r.Body).Decode(&lista); err != nil {
+				responderError(w, err)
+				return
+			}
+			vistos := map[int]bool{}
+			for i := range lista {
+				if lista[i].Puerto < 1 || lista[i].Puerto > 65535 {
+					responderError(w, fmt.Errorf("puerto inválido: %d", lista[i].Puerto))
+					return
+				}
+				if vistos[lista[i].Puerto] {
+					responderError(w, fmt.Errorf("puerto repetido: %d", lista[i].Puerto))
+					return
+				}
+				vistos[lista[i].Puerto] = true
+				if lista[i].Nombre == "" {
+					lista[i].Nombre = fmt.Sprintf("Puerto %d", lista[i].Puerto)
+				}
+			}
+			if err := guardarTuneles(lista); err != nil {
+				responderError(w, fmt.Errorf("no pude guardar: %v", err))
+				return
+			}
+			responder(w, map[string]any{"ok": true, "aviso": activa != nil})
+		case "DELETE": // restaurar los de fábrica
+			if err := guardarTuneles(tunelesPorDefecto()); err != nil {
+				responderError(w, err)
+				return
+			}
+			responder(w, cargarTuneles())
+		}
+	}))
+
 	mux.HandleFunc("/api/conectar", proteger(func(w http.ResponseWriter, r *http.Request) {
 		var pet struct {
 			Nombre, Password string
@@ -472,10 +553,21 @@ func main() {
 			responder(w, map[string]any{"conectado": false, "version": version})
 			return
 		}
+		// enlaces: solo los tuneles que realmente se abrieron
+		abiertos := map[int]bool{}
+		for _, p := range activa.abiertos {
+			abiertos[p] = true
+		}
+		var activos []Tunel
+		for _, t := range cargarTuneles() {
+			if abiertos[t.Puerto] {
+				activos = append(activos, t)
+			}
+		}
 		responder(w, map[string]any{
 			"conectado": true, "servidor": activa.servidor,
-			"puertos": activa.abiertos, "desde": activa.desde.Format("15:04:05"),
-			"version": version,
+			"puertos": activa.abiertos, "tuneles": activos,
+			"desde": activa.desde.Format("15:04:05"), "version": version,
 		})
 	}))
 

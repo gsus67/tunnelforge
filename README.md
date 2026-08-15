@@ -16,9 +16,10 @@ navegador. En Linux abre en el navegador (http://127.0.0.1:8787).
 **Qué hace:**
 - Guarda tus servidores con **key SSH o contraseña** (la contraseña se
   cifra con AES-256-GCM; la llave vive en `secreto.bin` junto al ejecutable)
-- Un clic en *Conectar* abre los túneles a los paneles del gateway
-  (8888 panel, 10086 WGDashboard, 19999 Netdata, 6060/60601 métricas)
-  y muestra accesos directos a cada uno
+- Un clic en *Conectar* abre los túneles y muestra accesos directos a cada uno
+- **Túneles configurables**: los cinco del gateway vienen por defecto
+  (8888 panel, 10086 WGDashboard, 19999 Netdata, 6060/60601 métricas) y
+  puedes quitarlos, renombrarlos o agregar los tuyos (con ruta web opcional)
 - Verificación de huella del servidor (TOFU) con confirmación visual:
   si la huella cambia un día, se niega a conectar (anti-suplantación)
 - **Terminal SSH integrado**: botón `>_` en cada servidor abre una shell
@@ -59,3 +60,8 @@ GitHub Actions compila y adjunta los binarios al Release automáticamente
 - **menor** (2.**2**.0): funcionalidad nueva compatible
 - **MAYOR** (**3**.0.0): cambio estructural o que rompe compatibilidad
 - Proyectos nuevos arrancan en **0.1.0**; el 1.0.0 se gana con estabilidad.
+
+## Licencia
+
+Copyright (c) 2026 Gsus — Licencia MIT (ver [LICENSE](LICENSE)).
+Librerías de terceros y sus licencias en [TERCEROS.md](TERCEROS.md).
