@@ -21,6 +21,9 @@ navegador. En Linux abre en el navegador (http://127.0.0.1:8787).
   y muestra accesos directos a cada uno
 - Verificación de huella del servidor (TOFU) con confirmación visual:
   si la huella cambia un día, se niega a conectar (anti-suplantación)
+- **Terminal SSH integrado**: botón `>_` en cada servidor abre una shell
+  interactiva completa dentro de la app ([xterm.js](https://github.com/xtermjs/xterm.js)
+  embebido, el mismo terminal de VS Code) sobre el motor SSH propio
 - La interfaz solo escucha en 127.0.0.1 con token de sesión aleatorio
 
 **Archivos que crea junto al ejecutable** (ninguno se sube al repo):

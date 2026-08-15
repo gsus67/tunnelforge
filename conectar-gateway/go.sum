@@ -1,3 +1,5 @@
+github.com/coder/websocket v1.8.12 h1:5bUXkEPPIbewrnkU8LTCLVaxi4N4J8ahufH2vlo4NAo=
+github.com/coder/websocket v1.8.12/go.mod h1:LNVeNrXQZfe5qhS9ALED3uA+l5pPqvwXg3CKoDBB2gs=
 github.com/golang/crypto v0.25.0 h1:mfkZnoodj1IL1s9Zbm/eHgSygKZXOE19LCdXnOb7Wv4=
 github.com/golang/crypto v0.25.0/go.mod h1:T+wALwcMOSE0kXgUAnPAHqTLW+XHgcELELW8VaDgm/M=
 github.com/golang/sys v0.22.0 h1:NyJe5QtFMczJ5G0kxP6sYaRB9ziJaRtYA3cETlWWrMk=

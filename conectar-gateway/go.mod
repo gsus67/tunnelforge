@@ -7,7 +7,10 @@ require (
 	golang.org/x/crypto v0.25.0
 )
 
-require golang.org/x/sys v0.22.0 // indirect
+require (
+	github.com/coder/websocket v1.8.12
+	golang.org/x/sys v0.22.0 // indirect
+)
 
 replace (
 	golang.org/x/crypto => github.com/golang/crypto v0.25.0

@@ -21,7 +21,8 @@ func mostrarVentana(url string) {
 	}
 	defer w.Destroy()
 	w.SetTitle("Conectar Gateway WISP")
-	w.SetSize(1020, 760, webview.HintNone)
+	w.SetSize(1060, 940, webview.HintNone) // cabe todo el contenido sin estirar
+	w.SetSize(880, 680, webview.HintMin)   // minimo razonable
 	w.Navigate(url)
 	w.Run() // bloquea; al cerrar la ventana, retorna y la app termina
 }

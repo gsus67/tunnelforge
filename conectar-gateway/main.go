@@ -34,12 +34,15 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.1.0"
+const version = "2.2.0"
 
 var puertos = []int{8888, 10086, 19999, 6060, 60601}
 
 //go:embed ui.html
 var interfaz embed.FS
+
+//go:embed static
+var estaticos embed.FS
 
 // ---------------------------------------------------------------------------
 // Modelo y almacenamiento
@@ -347,6 +350,11 @@ func main() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(datos)
 	}))
+
+	// Recursos estaticos del terminal (xterm.js) — sin token: solo assets
+	mux.Handle("/static/", http.FileServer(http.FS(estaticos)))
+	// Terminal SSH integrado (WebSocket, protegido por token)
+	mux.HandleFunc("/ws/terminal", proteger(manejarTerminal))
 
 	mux.HandleFunc("/api/servidores", proteger(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()

@@ -7,14 +7,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/xterm.css">
 <style>
   :root{
     --fondo:#0D1A22; --panel:#132630; --panel-alto:#17303C; --linea:#1F3B49;
     --texto:#D8E4EA; --suave:#7C97A6; --ambar:#E8A33D; --verde:#3DC97C; --rojo:#E05C4B;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--fondo);color:var(--texto);font-family:system-ui,'Segoe UI',sans-serif;min-height:100vh;padding:0 18px 40px}
-  header{max-width:760px;margin:0 auto;padding:24px 0 14px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ambar)}
+  body{background:var(--fondo);color:var(--texto);font-family:system-ui,'Segoe UI',sans-serif;min-height:100vh;padding:0 18px 26px}
+  header{max-width:760px;margin:0 auto;padding:18px 0 12px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ambar)}
   .titulo{font-family:'Barlow Condensed';font-weight:700;font-size:clamp(24px,4vw,34px);letter-spacing:.06em;text-transform:uppercase}
   .titulo span{color:var(--ambar)}
   .ver{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--suave)}
@@ -72,6 +73,15 @@
   .modal .huella{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:10px;word-break:break-all;color:var(--verde);margin-bottom:14px}
   .modal .botones{display:flex;gap:10px;justify-content:flex-end}
   #aviso{position:fixed;bottom:16px;right:16px;background:var(--panel-alto);border:1px solid var(--linea);border-left:4px solid var(--ambar);border-radius:8px;padding:11px 15px;font-size:13px;max-width:340px;display:none}
+  /* ---- terminal integrado ---- */
+  .term-velo{position:fixed;inset:0;background:rgba(6,13,17,.96);display:none;flex-direction:column;z-index:20}
+  .term-velo.abierto{display:flex}
+  .term-barra{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:2px solid var(--ambar);flex:none}
+  .term-barra .t{font-family:'Barlow Condensed';font-weight:600;font-size:17px;letter-spacing:.06em;text-transform:uppercase}
+  .term-barra .t b{color:var(--ambar)}
+  .term-barra .sep{flex:1}
+  #term{flex:1;padding:8px 4px 4px 10px;min-height:0}
+  button.icono{padding:7px 11px;font-size:15px;line-height:1}
 </style>
 </head>
 <body>
@@ -129,6 +139,16 @@
   </div>
 </main>
 
+<!-- Terminal SSH integrado -->
+<div class="term-velo" id="term-velo">
+  <div class="term-barra">
+    <span class="t">Terminal — <b id="term-srv"></b></span>
+    <span class="sep"></span>
+    <button id="term-cerrar">Cerrar terminal</button>
+  </div>
+  <div id="term"></div>
+</div>
+
 <!-- Modal: confirmar huella -->
 <div class="velo" id="m-huella">
   <div class="modal">
@@ -175,6 +195,7 @@
 
   // ---------- estado ----------
   function pintarEstado(e){
+    estadoActual = e;
     $('ver').textContent = 'v' + (e.version||'');
     var caja = $('estado');
     if (e.conectado){
@@ -215,6 +236,9 @@
         '<span class="metodo">' + metodo + (s.confiado ? ' · huella ✓' : '') + '</span>';
       var bC = document.createElement('button'); bC.className = 'principal'; bC.textContent = 'Conectar';
       bC.onclick = function(){ conectar(s.nombre, '', false); };
+      var bT = document.createElement('button'); bT.className = 'icono'; bT.innerHTML = '&gt;_';
+      bT.title = 'Abrir terminal SSH';
+      bT.onclick = function(){ pedirTerminal(s.nombre); };
       var bE = document.createElement('button'); bE.textContent = 'Editar';
       bE.onclick = function(){ cargarEnForm(s); };
       var bB = document.createElement('button'); bB.className = 'peligro'; bB.textContent = '✕';
@@ -223,7 +247,7 @@
         if (confirm('¿Borrar "' + s.nombre + '"?'))
           api('/api/servidores?nombre=' + encodeURIComponent(s.nombre), {method:'DELETE'}).then(refrescarLista);
       };
-      div.appendChild(bC); div.appendChild(bE); div.appendChild(bB);
+      div.appendChild(bC); div.appendChild(bT); div.appendChild(bE); div.appendChild(bB);
       cont.appendChild(div);
     });
   }
@@ -281,7 +305,12 @@
       if (r.ok){
         aviso('Conectado. Túneles: ' + r.puertos.join(', '), true);
         refrescarEstado();
-        setTimeout(function(){ window.open('http://localhost:8888', '_blank'); }, 600);
+        if (terminalTras){
+          var srv = terminalTras; terminalTras = null;
+          setTimeout(function(){ abrirTerminal(srv); }, 300);
+        } else {
+          setTimeout(function(){ window.open('http://localhost:8888', '_blank'); }, 600);
+        }
       }
     }).catch(function(){ aviso('Error de comunicación con la app.', false); });
   }
@@ -306,6 +335,66 @@
       document.body.innerHTML = '<div style="padding:60px;text-align:center;color:var(--suave)">Aplicación cerrada. Puedes cerrar esta pestaña.</div>';
     });
   };
+
+  // ── Terminal SSH integrado ───────────────────────────────────
+  var estadoActual = {conectado:false};
+  var terminalTras = null;   // abrir terminal tras conectar
+  var term = null, fit = null, wsTerm = null;
+
+  function pedirTerminal(nombre){
+    if (estadoActual.conectado && estadoActual.servidor === nombre){
+      abrirTerminal(nombre); return;
+    }
+    if (estadoActual.conectado){
+      aviso('Conectado a otro servidor (' + estadoActual.servidor + '). Desconecta primero.', false);
+      return;
+    }
+    terminalTras = nombre;
+    conectar(nombre, '', false);   // el flujo normal (huella/contraseña) y al final abre el terminal
+  }
+
+  function abrirTerminal(nombre){
+    document.getElementById('term-srv').textContent = nombre;
+    document.getElementById('term-velo').classList.add('abierto');
+    term = new Terminal({
+      cursorBlink: true, fontSize: 14,
+      fontFamily: "'JetBrains Mono', Consolas, monospace",
+      theme: { background: '#060D11', foreground: '#D8E4EA',
+               cursor: '#E8A33D', selectionBackground: '#1F3B49' }
+    });
+    fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.open(document.getElementById('term'));
+    fit.fit(); term.focus();
+
+    var proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    wsTerm = new WebSocket(proto + location.host + '/ws/terminal?t=' + TOKEN);
+    wsTerm.binaryType = 'arraybuffer';
+    var codificador = new TextEncoder();
+    wsTerm.onopen = function(){
+      wsTerm.send(JSON.stringify({cols: term.cols, rows: term.rows}));
+    };
+    wsTerm.onmessage = function(e){ term.write(new Uint8Array(e.data)); };
+    wsTerm.onclose = function(){
+      if (term) term.write('\r\n\x1b[33m[sesión terminada]\x1b[0m\r\n');
+    };
+    term.onData(function(d){
+      if (wsTerm && wsTerm.readyState === 1) wsTerm.send(codificador.encode(d));
+    });
+    term.onResize(function(t){
+      if (wsTerm && wsTerm.readyState === 1) wsTerm.send(JSON.stringify({cols:t.cols, rows:t.rows}));
+    });
+    window.addEventListener('resize', ajustarTerm);
+  }
+  function ajustarTerm(){ if (fit) fit.fit(); }
+  document.getElementById('term-cerrar').onclick = function(){
+    document.getElementById('term-velo').classList.remove('abierto');
+    window.removeEventListener('resize', ajustarTerm);
+    if (wsTerm){ wsTerm.close(); wsTerm = null; }
+    if (term){ term.dispose(); term = null; fit = null; }
+  };
 </script>
+<script src="/static/xterm.js"></script>
+<script src="/static/addon-fit.js"></script>
 </body>
 </html>
