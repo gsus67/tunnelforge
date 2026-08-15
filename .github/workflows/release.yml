@@ -17,11 +17,19 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Instalar compilador cruzado de Windows
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+
       - name: Compilar binarios
         working-directory: conectar-gateway
         run: |
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -H windowsgui" -o ../Conectar-Gateway.exe .
-          CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o ../conectar-gateway-linux .
+          CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ \
+            CGO_CXXFLAGS="-I${PWD}/winhdr" GOOS=windows GOARCH=amd64 \
+            go build -trimpath -ldflags "-s -w -H windowsgui" -o ../Conectar-Gateway.exe .
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -trimpath -ldflags "-s -w" -o ../conectar-gateway-linux .
 
       - name: Publicar en el Release
         uses: softprops/action-gh-release@v2

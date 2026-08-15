@@ -5,10 +5,13 @@ Herramientas de acceso y operación para los gateways WISP
 
 ## conectar-gateway — túneles SSH con interfaz gráfica
 
-Aplicación de un solo ejecutable, **sin dependencias**: motor SSH embebido
+Aplicación de un solo ejecutable con **ventana nativa**: motor SSH embebido
 ([`golang.org/x/crypto/ssh`](https://pkg.go.dev/golang.org/x/crypto/ssh),
-la librería oficial del proyecto Go) e interfaz gráfica propia que se abre
-sola en el navegador. No usa PuTTY ni el OpenSSH del sistema.
+la librería oficial del proyecto Go) e interfaz renderizada en ventana propia
+mediante [webview](https://github.com/webview/webview_go) (MIT), usando el
+componente WebView2 que Windows 10/11 ya incluye. No usa PuTTY ni el OpenSSH
+del sistema. Si WebView2 no estuviera disponible, cae automáticamente al
+navegador. En Linux abre en el navegador (http://127.0.0.1:8787).
 
 **Qué hace:**
 - Guarda tus servidores con **key SSH o contraseña** (la contraseña se
@@ -45,3 +48,11 @@ GitHub Actions compila y adjunta los binarios al Release automáticamente
 ## herramientas/
 - `subir-cambios.cmd` / `.sh` — botón de "commit + push" para los repos
   (se coloca junto a la carpeta del repo y pide solo el mensaje).
+
+## Versionado (acuerdo)
+
+`MAYOR.menor.parche` — SemVer:
+- **parche** (2.1.**1**): arreglos, sin nada nuevo
+- **menor** (2.**2**.0): funcionalidad nueva compatible
+- **MAYOR** (**3**.0.0): cambio estructural o que rompe compatibilidad
+- Proyectos nuevos arrancan en **0.1.0**; el 1.0.0 se gana con estabilidad.

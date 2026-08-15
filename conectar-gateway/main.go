@@ -33,7 +33,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.0.1"
+const version = "2.1.0"
 
 var puertos = []int{8888, 10086, 19999, 6060, 60601}
 
@@ -464,10 +464,16 @@ func main() {
 	}
 	url := fmt.Sprintf("http://%s/?t=%s", escucha.Addr().String(), token)
 	fmt.Println("Interfaz en:", url)
-	if os.Getenv("CG_NO_BROWSER") == "" {
-		abrirNavegador(url)
+	go func() { _ = http.Serve(escucha, mux) }()
+
+	if os.Getenv("CG_NO_BROWSER") != "" {
+		select {} // modo servicio (pruebas): solo la API
 	}
-	_ = http.Serve(escucha, mux)
+	mostrarVentana(url) // ventana nativa en Windows; navegador en otros
+	// Ventana cerrada: cerrar tuneles y salir
+	mu.Lock()
+	cerrarActiva()
+	mu.Unlock()
 }
 
 func abrirNavegador(url string) {

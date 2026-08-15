@@ -4,3 +4,5 @@ github.com/golang/sys v0.22.0 h1:NyJe5QtFMczJ5G0kxP6sYaRB9ziJaRtYA3cETlWWrMk=
 github.com/golang/sys v0.22.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
 github.com/golang/term v0.22.0 h1:ueDYDJIDGiqiHZUopI0rBrpJx9+qSCumwlYL4L7HIqw=
 github.com/golang/term v0.22.0/go.mod h1:F3qCibpT5AMpCRfhfT53vVJwhLtIVHhB9XDjfFvnMI4=
+github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6 h1:VQpB2SpK88C6B5lPHTuSZKb2Qee1QWwiFlC5CKY4AW0=
+github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6/go.mod h1:yE65LFCeWf4kyWD5re+h4XNvOHJEXOCOuJZ4v8l5sgk=
