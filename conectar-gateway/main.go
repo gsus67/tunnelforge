@@ -1,171 +1,159 @@
 // ============================================================================
-// Conectar Gateway — túneles SSH a los paneles del gateway WISP
+// Conectar Gateway v2 — túneles SSH con interfaz gráfica
 // ============================================================================
-// Aplicación autocontenida: trae su PROPIO motor SSH (golang.org/x/crypto/ssh,
-// la librería oficial del proyecto Go). No depende de PuTTY, OpenSSH ni nada
-// instalado en el sistema. Un solo ejecutable.
-//
-// Qué hace:
-//   - Guarda tus servidores (IP, puerto, usuario, key o contraseña al vuelo)
-//     en conexiones.json junto al ejecutable.
-//   - Abre los túneles locales: 8888 (panel), 10086 (WGDashboard),
-//     19999 (Netdata), 6060 y 60601 (métricas Prometheus).
-//   - Verifica la huella del servidor (TOFU: primera vez la confirmas tú,
-//     después exige que no cambie — protección contra suplantación).
-//   - Abre el navegador en el panel al conectar.
+// Aplicación autocontenida de un solo ejecutable:
+//   - Motor SSH propio embebido (golang.org/x/crypto/ssh, librería oficial Go)
+//   - Interfaz gráfica servida localmente (se abre sola en el navegador)
+//   - Guarda servidores con key SSH o contraseña (cifrada con AES-256-GCM;
+//     la llave de cifrado vive en secreto.bin junto al ejecutable, 0600)
+//   - Verificación de huella del servidor (TOFU) con confirmación visual
+//   - Túneles: 8888 panel · 10086 WGDashboard · 19999 Netdata · 6060/60601
 // ============================================================================
 package main
 
 import (
-	"bufio"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"embed"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/term"
 )
 
-const version = "1.0.0"
+const version = "2.0.0"
 
 var puertos = []int{8888, 10086, 19999, 6060, 60601}
 
+//go:embed ui.html
+var interfaz embed.FS
+
+// ---------------------------------------------------------------------------
+// Modelo y almacenamiento
+// ---------------------------------------------------------------------------
 type Servidor struct {
-	Nombre  string `json:"nombre"`
-	Host    string `json:"host"`
-	Puerto  int    `json:"puerto"`
-	Usuario string `json:"usuario"`
-	Key     string `json:"key,omitempty"`    // ruta a la clave privada; vacío = contraseña
-	Huella  string `json:"huella,omitempty"` // fingerprint SHA256 del host (TOFU)
+	Nombre   string `json:"nombre"`
+	Host     string `json:"host"`
+	Puerto   int    `json:"puerto"`
+	Usuario  string `json:"usuario"`
+	Key      string `json:"key,omitempty"`
+	PassCifr string `json:"passwordCifrada,omitempty"`
+	Huella   string `json:"huella,omitempty"`
 }
 
-func rutaConfig() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return "conexiones.json"
-	}
-	return filepath.Join(filepath.Dir(exe), "conexiones.json")
-}
+var (
+	mu      sync.Mutex
+	baseDir string
+)
+
+func rutaJunto(nombre string) string { return filepath.Join(baseDir, nombre) }
 
 func cargar() []Servidor {
 	var lista []Servidor
-	datos, err := os.ReadFile(rutaConfig())
-	if err == nil {
+	if datos, err := os.ReadFile(rutaJunto("conexiones.json")); err == nil {
 		_ = json.Unmarshal(datos, &lista)
 	}
 	return lista
 }
-
 func guardar(lista []Servidor) {
 	datos, _ := json.MarshalIndent(lista, "", "  ")
-	_ = os.WriteFile(rutaConfig(), datos, 0600)
+	_ = os.WriteFile(rutaJunto("conexiones.json"), datos, 0600)
+}
+func buscar(lista []Servidor, nombre string) *Servidor {
+	for i := range lista {
+		if lista[i].Nombre == nombre {
+			return &lista[i]
+		}
+	}
+	return nil
 }
 
-var lector = bufio.NewReader(os.Stdin)
+// ---------------------------------------------------------------------------
+// Cifrado de contraseñas guardadas (AES-256-GCM, secreto local)
+// ---------------------------------------------------------------------------
+func secreto() ([]byte, error) {
+	ruta := rutaJunto("secreto.bin")
+	if s, err := os.ReadFile(ruta); err == nil && len(s) == 32 {
+		return s, nil
+	}
+	s := make([]byte, 32)
+	if _, err := rand.Read(s); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(ruta, s, 0600); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
 
-func pregunta(texto string) string {
-	fmt.Print(texto)
-	linea, err := lector.ReadString('\n')
+func cifrar(texto string) (string, error) {
+	clave, err := secreto()
 	if err != nil {
-		fmt.Println()
-		os.Exit(0) // EOF (stdin cerrado): salir limpio
+		return "", err
 	}
-	return strings.TrimSpace(linea)
+	bloque, _ := aes.NewCipher(clave)
+	gcm, _ := cipher.NewGCM(bloque)
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(texto), nil)), nil
 }
 
-func preguntaSecreta(texto string) string {
-	fmt.Print(texto)
-	pass, err := term.ReadPassword(int(os.Stdin.Fd()))
-	fmt.Println()
+func descifrar(cifrado string) (string, error) {
+	clave, err := secreto()
 	if err != nil {
-		// terminal no interactiva: caer a lectura normal
-		return pregunta("")
+		return "", err
 	}
-	return string(pass)
-}
-
-func navegador(url string) {
-	switch runtime.GOOS {
-	case "windows":
-		_ = exec.Command("cmd", "/c", "start", "", url).Start()
-	case "darwin":
-		_ = exec.Command("open", url).Start()
-	default:
-		_ = exec.Command("xdg-open", url).Start()
+	datos, err := base64.StdEncoding.DecodeString(cifrado)
+	if err != nil {
+		return "", err
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Autenticación
-// ---------------------------------------------------------------------------
-func metodosAuth(s *Servidor) ([]ssh.AuthMethod, error) {
-	if s.Key != "" {
-		datos, err := os.ReadFile(s.Key)
-		if err != nil {
-			return nil, fmt.Errorf("no pude leer la key %s: %w", s.Key, err)
-		}
-		firmante, err := ssh.ParsePrivateKey(datos)
-		if err != nil {
-			if _, esCifrada := err.(*ssh.PassphraseMissingError); esCifrada {
-				frase := preguntaSecreta("Passphrase de la key: ")
-				firmante, err = ssh.ParsePrivateKeyWithPassphrase(datos, []byte(frase))
-			}
-			if err != nil {
-				return nil, fmt.Errorf("key inválida: %w", err)
-			}
-		}
-		return []ssh.AuthMethod{ssh.PublicKeys(firmante)}, nil
+	bloque, _ := aes.NewCipher(clave)
+	gcm, _ := cipher.NewGCM(bloque)
+	if len(datos) < gcm.NonceSize() {
+		return "", fmt.Errorf("dato corrupto")
 	}
-	// Sin key: contraseña (se pide al conectar, nunca se guarda en disco)
-	pedir := func() (string, error) {
-		return preguntaSecreta(fmt.Sprintf("Contraseña de %s@%s: ", s.Usuario, s.Host)), nil
-	}
-	return []ssh.AuthMethod{
-		ssh.PasswordCallback(pedir),
-		ssh.KeyboardInteractive(func(_, _ string, preguntas []string, ecos []bool) ([]string, error) {
-			resp := make([]string, len(preguntas))
-			for i, p := range preguntas {
-				if ecos[i] {
-					resp[i] = pregunta(p + " ")
-				} else {
-					resp[i] = preguntaSecreta(p + " ")
-				}
-			}
-			return resp, nil
-		}),
-	}, nil
-}
-
-// Verificación de huella del servidor: primera vez confirmas, después se exige
-func verificarHost(s *Servidor, lista []Servidor) ssh.HostKeyCallback {
-	return func(_ string, _ net.Addr, key ssh.PublicKey) error {
-		huella := ssh.FingerprintSHA256(key)
-		if s.Huella == "" {
-			fmt.Printf("\nPrimera conexión a %s.\nHuella del servidor: %s\n", s.Host, huella)
-			if !strings.HasPrefix(strings.ToLower(pregunta("¿Confiar en este servidor? [s/n]: ")), "s") {
-				return fmt.Errorf("conexión rechazada por el usuario")
-			}
-			s.Huella = huella
-			guardar(lista)
-			return nil
-		}
-		if s.Huella != huella {
-			return fmt.Errorf("¡ALERTA! La huella del servidor CAMBIÓ.\n  Guardada: %s\n  Recibida: %s\nPosible suplantación (MITM). Si reinstalaste el VPS, borra el servidor y agrégalo de nuevo", s.Huella, huella)
-		}
-		return nil
-	}
+	plano, err := gcm.Open(nil, datos[:gcm.NonceSize()], datos[gcm.NonceSize():], nil)
+	return string(plano), err
 }
 
 // ---------------------------------------------------------------------------
-// Túneles
+// Conexión activa y túneles
 // ---------------------------------------------------------------------------
+type Conexion struct {
+	cliente  *ssh.Client
+	escuchas []net.Listener
+	servidor string
+	desde    time.Time
+	abiertos []int
+}
+
+var activa *Conexion
+
+func cerrarActiva() {
+	if activa == nil {
+		return
+	}
+	for _, l := range activa.escuchas {
+		l.Close()
+	}
+	activa.cliente.Close()
+	activa = nil
+}
+
 func puente(local net.Conn, cliente *ssh.Client, puerto int) {
 	remoto, err := cliente.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", puerto))
 	if err != nil {
@@ -177,48 +165,77 @@ func puente(local net.Conn, cliente *ssh.Client, puerto int) {
 	local.Close()
 }
 
-func conectar(s *Servidor, lista []Servidor) {
-	auth, err := metodosAuth(s)
-	if err != nil {
-		fmt.Println("  ERROR:", err)
-		return
-	}
-	config := &ssh.ClientConfig{
-		User:            s.Usuario,
-		Auth:            auth,
-		HostKeyCallback: verificarHost(s, lista),
-		Timeout:         12 * time.Second,
-	}
-	direccion := fmt.Sprintf("%s:%d", s.Host, s.Puerto)
-	fmt.Printf("\nConectando a %s ...\n", direccion)
-
-	cliente, err := ssh.Dial("tcp", direccion, config)
-	if err != nil {
-		fmt.Println("  ERROR de conexión:", err)
-		return
-	}
-	defer cliente.Close()
-
-	// Keepalive para que el túnel no muera por inactividad
-	go func() {
-		t := time.NewTicker(30 * time.Second)
-		defer t.Stop()
-		for range t.C {
-			if _, _, err := cliente.SendRequest("keepalive@openssh.com", true, nil); err != nil {
-				return
+func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool) (map[string]any, error) {
+	// ---- autenticación ----
+	var auth []ssh.AuthMethod
+	if s.Key != "" {
+		datos, err := os.ReadFile(s.Key)
+		if err != nil {
+			return nil, fmt.Errorf("no pude leer la key: %v", err)
+		}
+		firmante, err := ssh.ParsePrivateKey(datos)
+		if err != nil {
+			return nil, fmt.Errorf("key inválida o con passphrase (usa una key sin passphrase, o contraseña): %v", err)
+		}
+		auth = append(auth, ssh.PublicKeys(firmante))
+	} else {
+		pass := password
+		if pass == "" && s.PassCifr != "" {
+			var err error
+			if pass, err = descifrar(s.PassCifr); err != nil {
+				return nil, fmt.Errorf("no pude descifrar la contraseña guardada")
 			}
 		}
-	}()
+		if pass == "" {
+			return map[string]any{"necesitaPassword": true}, nil
+		}
+		auth = append(auth,
+			ssh.Password(pass),
+			ssh.KeyboardInteractive(func(_, _ string, pregs []string, _ []bool) ([]string, error) {
+				r := make([]string, len(pregs))
+				for i := range r {
+					r[i] = pass
+				}
+				return r, nil
+			}))
+	}
 
-	// Levantar los listeners locales
-	var escuchas []net.Listener
+	// ---- verificación de huella (TOFU) ----
+	var huellaVista string
+	callback := func(_ string, _ net.Addr, key ssh.PublicKey) error {
+		huellaVista = ssh.FingerprintSHA256(key)
+		if s.Huella == "" {
+			if aceptarHuella {
+				s.Huella = huellaVista
+				guardar(lista)
+				return nil
+			}
+			return fmt.Errorf("confirmar-huella")
+		}
+		if s.Huella != huellaVista {
+			return fmt.Errorf("¡la huella del servidor CAMBIÓ! Guardada %s, recibida %s. Posible suplantación; si reinstalaste el VPS, borra y re-agrega el servidor", s.Huella, huellaVista)
+		}
+		return nil
+	}
+
+	config := &ssh.ClientConfig{User: s.Usuario, Auth: auth, HostKeyCallback: callback, Timeout: 12 * time.Second}
+	cliente, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", s.Host, s.Puerto), config)
+	if err != nil {
+		if huellaVista != "" && s.Huella == "" && !aceptarHuella {
+			return map[string]any{"confirmarHuella": huellaVista}, nil
+		}
+		return nil, err
+	}
+
+	// ---- túneles locales ----
+	con := &Conexion{cliente: cliente, servidor: s.Nombre, desde: time.Now()}
 	for _, p := range puertos {
 		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", p))
 		if err != nil {
-			fmt.Printf("  AVISO: puerto local %d ocupado (¿otra conexión abierta?). Se omite.\n", p)
-			continue
+			continue // puerto local ocupado: se omite ese túnel
 		}
-		escuchas = append(escuchas, l)
+		con.escuchas = append(con.escuchas, l)
+		con.abiertos = append(con.abiertos, p)
 		go func(l net.Listener, puerto int) {
 			for {
 				c, err := l.Accept()
@@ -229,57 +246,45 @@ func conectar(s *Servidor, lista []Servidor) {
 			}
 		}(l, p)
 	}
-	if len(escuchas) == 0 {
-		fmt.Println("  ERROR: ningún túnel pudo abrirse.")
-		return
+	if len(con.escuchas) == 0 {
+		cliente.Close()
+		return nil, fmt.Errorf("ningún túnel pudo abrirse (¿puertos locales ocupados?)")
 	}
-	defer func() {
-		for _, l := range escuchas {
-			l.Close()
+
+	go func() { // keepalive
+		t := time.NewTicker(30 * time.Second)
+		defer t.Stop()
+		for range t.C {
+			if _, _, err := cliente.SendRequest("keepalive@openssh.com", true, nil); err != nil {
+				return
+			}
 		}
 	}()
+	go func() { // detectar caída de la sesión
+		_ = cliente.Wait()
+		mu.Lock()
+		if activa == con {
+			for _, l := range con.escuchas {
+				l.Close()
+			}
+			activa = nil
+		}
+		mu.Unlock()
+	}()
 
-	fmt.Printf("\n  ✔ CONECTADO — túneles activos: %v\n", puertos)
-	fmt.Println("  Panel:      http://localhost:8888")
-	fmt.Println("  WGDashboard http://localhost:10086   Netdata http://localhost:19999")
-	navegador("http://localhost:8888")
-
-	// Detectar caída de la sesión en segundo plano
-	caida := make(chan struct{})
-	go func() { _ = cliente.Wait(); close(caida) }()
-
-	fin := make(chan struct{})
-	go func() { pregunta("\n[ENTER] para desconectar... "); close(fin) }()
-
-	select {
-	case <-fin:
-		fmt.Println("Desconectado.")
-	case <-caida:
-		fmt.Println("\nLa conexión con el servidor se cayó.")
-	}
+	activa = con
+	return map[string]any{"ok": true, "puertos": con.abiertos}, nil
 }
 
 // ---------------------------------------------------------------------------
-// Menú
+// API HTTP local
 // ---------------------------------------------------------------------------
-func nuevoServidor(lista []Servidor) []Servidor {
-	fmt.Println("\n── Nuevo servidor ──")
-	s := Servidor{Puerto: 22}
-	s.Nombre = pregunta("Nombre (ej. gateway-1): ")
-	s.Host = pregunta("IP o host: ")
-	if p := pregunta("Puerto SSH [22]: "); p != "" {
-		fmt.Sscanf(p, "%d", &s.Puerto)
-	}
-	s.Usuario = pregunta("Usuario: ")
-	s.Key = pregunta("Ruta de la key SSH (vacío = usar contraseña al conectar): ")
-	if s.Nombre == "" || s.Host == "" || s.Usuario == "" {
-		fmt.Println("  Cancelado: nombre, host y usuario son obligatorios.")
-		return lista
-	}
-	lista = append(lista, s)
-	guardar(lista)
-	fmt.Printf("  Guardado '%s'.\n", s.Nombre)
-	return lista
+func responder(w http.ResponseWriter, datos any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(datos)
+}
+func responderError(w http.ResponseWriter, err error) {
+	responder(w, map[string]string{"error": err.Error()})
 }
 
 func main() {
@@ -289,48 +294,185 @@ func main() {
 			return
 		}
 	}
-	fmt.Println("==============================================")
-	fmt.Println(" Conectar Gateway WISP — túneles SSH  v" + version)
-	fmt.Println("==============================================")
+	exe, _ := os.Executable()
+	baseDir = filepath.Dir(exe)
 
-	for {
-		lista := cargar()
-		fmt.Println("\nServidores:")
-		if len(lista) == 0 {
-			fmt.Println("  (ninguno todavía)")
-		}
-		for i, s := range lista {
-			auth := "contraseña"
-			if s.Key != "" {
-				auth = "key"
+	token := os.Getenv("CG_TOKEN")
+	if token == "" {
+		b := make([]byte, 16)
+		_, _ = rand.Read(b)
+		token = hex.EncodeToString(b)
+	}
+	puertoGUI := os.Getenv("CG_PORT")
+	if puertoGUI == "" {
+		puertoGUI = "0"
+	}
+
+	mux := http.NewServeMux()
+	proteger := func(h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("t") != token && r.Header.Get("X-Token") != token {
+				http.Error(w, "no autorizado", 403)
+				return
 			}
-			fmt.Printf("  [%d] %-16s %s@%s:%d  (%s)\n", i+1, s.Nombre, s.Usuario, s.Host, s.Puerto, auth)
+			h(w, r)
 		}
-		fmt.Println("\n  [n] nuevo servidor   [b] borrar   [q] salir")
-		op := strings.ToLower(pregunta("> "))
+	}
 
-		switch {
-		case op == "q" || op == "salir":
+	mux.HandleFunc("/", proteger(func(w http.ResponseWriter, r *http.Request) {
+		datos, _ := interfaz.ReadFile("ui.html")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(datos)
+	}))
+
+	mux.HandleFunc("/api/servidores", proteger(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		switch r.Method {
+		case "GET":
+			lista := cargar()
+			salida := make([]map[string]any, 0, len(lista))
+			for _, s := range lista {
+				salida = append(salida, map[string]any{
+					"nombre": s.Nombre, "host": s.Host, "puerto": s.Puerto,
+					"usuario": s.Usuario, "key": s.Key,
+					"tienePassword": s.PassCifr != "", "confiado": s.Huella != "",
+				})
+			}
+			responder(w, salida)
+		case "POST":
+			var pet struct {
+				Nombre, Host, Usuario, Key, Password string
+				Puerto                               int
+				GuardarPassword                      bool
+			}
+			if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
+				responderError(w, err)
+				return
+			}
+			if pet.Nombre == "" || pet.Host == "" || pet.Usuario == "" {
+				responderError(w, fmt.Errorf("nombre, host y usuario son obligatorios"))
+				return
+			}
+			if pet.Puerto == 0 {
+				pet.Puerto = 22
+			}
+			lista := cargar()
+			s := buscar(lista, pet.Nombre)
+			if s == nil {
+				lista = append(lista, Servidor{Nombre: pet.Nombre})
+				s = &lista[len(lista)-1]
+			}
+			s.Host, s.Puerto, s.Usuario, s.Key = pet.Host, pet.Puerto, pet.Usuario, pet.Key
+			if pet.Key != "" {
+				s.PassCifr = ""
+			} else if pet.GuardarPassword && pet.Password != "" {
+				c, err := cifrar(pet.Password)
+				if err != nil {
+					responderError(w, err)
+					return
+				}
+				s.PassCifr = c
+			} else if !pet.GuardarPassword {
+				s.PassCifr = ""
+			}
+			guardar(lista)
+			responder(w, map[string]any{"ok": true})
+		case "DELETE":
+			nombre := r.URL.Query().Get("nombre")
+			lista := cargar()
+			nueva := lista[:0]
+			for _, s := range lista {
+				if s.Nombre != nombre {
+					nueva = append(nueva, s)
+				}
+			}
+			guardar(nueva)
+			responder(w, map[string]any{"ok": true})
+		}
+	}))
+
+	mux.HandleFunc("/api/conectar", proteger(func(w http.ResponseWriter, r *http.Request) {
+		var pet struct {
+			Nombre, Password string
+			AceptarHuella    bool
+		}
+		if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
+			responderError(w, err)
 			return
-		case op == "n":
-			nuevoServidor(lista)
-		case op == "b":
-			idx := 0
-			fmt.Sscanf(pregunta("Número a borrar: "), "%d", &idx)
-			if idx >= 1 && idx <= len(lista) {
-				nombre := lista[idx-1].Nombre
-				lista = append(lista[:idx-1], lista[idx:]...)
-				guardar(lista)
-				fmt.Printf("  '%s' borrado.\n", nombre)
-			}
-		default:
-			idx := 0
-			fmt.Sscanf(op, "%d", &idx)
-			if idx >= 1 && idx <= len(lista) {
-				conectar(&lista[idx-1], lista)
-			} else if op != "" {
-				fmt.Println("  Opción no válida.")
-			}
 		}
+		mu.Lock()
+		defer mu.Unlock()
+		if activa != nil {
+			responderError(w, fmt.Errorf("ya hay una conexión activa con '%s'; desconecta primero", activa.servidor))
+			return
+		}
+		lista := cargar()
+		s := buscar(lista, pet.Nombre)
+		if s == nil {
+			responderError(w, fmt.Errorf("servidor no encontrado"))
+			return
+		}
+		res, err := conectar(s, lista, pet.Password, pet.AceptarHuella)
+		if err != nil {
+			responderError(w, err)
+			return
+		}
+		responder(w, res)
+	}))
+
+	mux.HandleFunc("/api/desconectar", proteger(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		cerrarActiva()
+		mu.Unlock()
+		responder(w, map[string]any{"ok": true})
+	}))
+
+	mux.HandleFunc("/api/estado", proteger(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if activa == nil {
+			responder(w, map[string]any{"conectado": false, "version": version})
+			return
+		}
+		responder(w, map[string]any{
+			"conectado": true, "servidor": activa.servidor,
+			"puertos": activa.abiertos, "desde": activa.desde.Format("15:04:05"),
+			"version": version,
+		})
+	}))
+
+	mux.HandleFunc("/api/salir", proteger(func(w http.ResponseWriter, r *http.Request) {
+		responder(w, map[string]any{"ok": true})
+		go func() {
+			time.Sleep(300 * time.Millisecond)
+			mu.Lock()
+			cerrarActiva()
+			mu.Unlock()
+			os.Exit(0)
+		}()
+	}))
+
+	escucha, err := net.Listen("tcp", "127.0.0.1:"+puertoGUI)
+	if err != nil {
+		fmt.Println("ERROR: no pude abrir el puerto de la interfaz:", err)
+		os.Exit(1)
+	}
+	url := fmt.Sprintf("http://%s/?t=%s", escucha.Addr().String(), token)
+	fmt.Println("Interfaz en:", url)
+	if os.Getenv("CG_NO_BROWSER") == "" {
+		abrirNavegador(url)
+	}
+	_ = http.Serve(escucha, mux)
+}
+
+func abrirNavegador(url string) {
+	switch runtime.GOOS {
+	case "windows":
+		_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		_ = exec.Command("open", url).Start()
+	default:
+		_ = exec.Command("xdg-open", url).Start()
 	}
 }

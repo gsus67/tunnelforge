@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conectar Gateway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --fondo:#0D1A22; --panel:#132630; --panel-alto:#17303C; --linea:#1F3B49;
+    --texto:#D8E4EA; --suave:#7C97A6; --ambar:#E8A33D; --verde:#3DC97C; --rojo:#E05C4B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--fondo);color:var(--texto);font-family:system-ui,'Segoe UI',sans-serif;min-height:100vh;padding:0 18px 40px}
+  header{max-width:760px;margin:0 auto;padding:24px 0 14px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ambar)}
+  .titulo{font-family:'Barlow Condensed';font-weight:700;font-size:clamp(24px,4vw,34px);letter-spacing:.06em;text-transform:uppercase}
+  .titulo span{color:var(--ambar)}
+  .ver{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--suave)}
+  main{max-width:760px;margin:0 auto}
+  .seccion{font-family:'Barlow Condensed';font-weight:600;font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--suave);margin:26px 0 10px}
+
+  /* barra de estado */
+  .estado{background:var(--panel);border:1px solid var(--linea);border-left:5px solid var(--suave);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .estado.on{border-left-color:var(--verde)}
+  .led{width:10px;height:10px;border-radius:50%;background:var(--suave);opacity:.5;flex:none}
+  .estado.on .led{background:var(--verde);opacity:1;box-shadow:0 0 8px var(--verde)}
+  .estado .txt{flex:1;min-width:180px;font-size:14px}
+  .estado .txt b{font-family:'JetBrains Mono',monospace}
+  .estado .puertos{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--suave)}
+
+  /* tarjetas de servidores */
+  .servidores{display:grid;gap:10px}
+  .srv{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;transition:background .12s}
+  .srv:hover{background:var(--panel-alto)}
+  .srv .franja{width:5px;align-self:stretch;border-radius:3px;background:var(--ambar);flex:none}
+  .srv .info{flex:1;min-width:200px}
+  .srv .nombre{font-family:'Barlow Condensed';font-weight:600;font-size:19px;letter-spacing:.03em}
+  .srv .detalle{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--suave);margin-top:2px}
+  .srv .metodo{font-size:11px;color:var(--suave);background:var(--fondo);border:1px solid var(--linea);border-radius:20px;padding:3px 10px}
+  .vacio{color:var(--suave);font-size:14px;padding:16px;text-align:center;border:1px dashed var(--linea);border-radius:10px}
+
+  /* botones */
+  button{font-family:'Barlow Condensed';font-weight:600;font-size:14px;letter-spacing:.05em;text-transform:uppercase;border:none;border-radius:7px;padding:9px 16px;cursor:pointer;background:var(--panel-alto);color:var(--texto);border:1px solid var(--linea)}
+  button:hover{filter:brightness(1.15)}
+  button.principal{background:var(--ambar);color:#20180A;border:none;font-weight:700}
+  button.peligro{color:var(--rojo)}
+  button:disabled{opacity:.5;cursor:default}
+
+  /* formulario */
+  form{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  form .ancho{grid-column:1/-1}
+  label{font-size:12px;color:var(--suave);display:block;margin-bottom:4px}
+  input[type=text],input[type=password],input[type=number]{width:100%;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;color:var(--texto);padding:9px 11px;font-size:14px;font-family:'JetBrains Mono',monospace}
+  input:focus{outline:1px solid var(--ambar)}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--suave)}
+  .nota{font-size:11.5px;color:var(--suave);line-height:1.5}
+
+  /* enlaces rapidos */
+  .enlaces{display:flex;gap:8px;flex-wrap:wrap}
+  .enlaces a{color:var(--texto);text-decoration:none;font-size:13px;background:var(--panel);border:1px solid var(--linea);border-radius:7px;padding:8px 13px}
+  .enlaces a:hover{background:var(--panel-alto)}
+  .enlaces a b{color:var(--ambar);font-family:'JetBrains Mono',monospace;font-weight:700}
+
+  /* modal */
+  .velo{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px}
+  .velo.abierto{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--linea);border-top:4px solid var(--ambar);border-radius:12px;max-width:440px;width:100%;padding:20px}
+  .modal h3{font-family:'Barlow Condensed';font-weight:600;font-size:19px;margin-bottom:10px}
+  .modal p{font-size:13.5px;color:var(--suave);line-height:1.55;margin-bottom:12px}
+  .modal .huella{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:10px;word-break:break-all;color:var(--verde);margin-bottom:14px}
+  .modal .botones{display:flex;gap:10px;justify-content:flex-end}
+  #aviso{position:fixed;bottom:16px;right:16px;background:var(--panel-alto);border:1px solid var(--linea);border-left:4px solid var(--ambar);border-radius:8px;padding:11px 15px;font-size:13px;max-width:340px;display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="titulo">Conectar <span>Gateway</span></div>
+  <div class="ver" id="ver"></div>
+</header>
+
+<main>
+  <div class="seccion">Estado</div>
+  <div class="estado" id="estado">
+    <span class="led"></span>
+    <div class="txt" id="estado-txt">Desconectado.</div>
+    <div class="puertos" id="estado-puertos"></div>
+    <button id="btn-desconectar" style="display:none">Desconectar</button>
+  </div>
+
+  <div class="seccion" id="sec-enlaces" style="display:none">Paneles del servidor</div>
+  <div class="enlaces" id="enlaces" style="display:none">
+    <a href="http://localhost:8888" target="_blank"><b>:8888</b> Panel</a>
+    <a href="http://localhost:10086" target="_blank"><b>:10086</b> WGDashboard</a>
+    <a href="http://localhost:19999" target="_blank"><b>:19999</b> Netdata</a>
+    <a href="http://localhost:6060/metrics" target="_blank"><b>:6060</b> CrowdSec</a>
+    <a href="http://localhost:60601/metrics" target="_blank"><b>:60601</b> Bouncer</a>
+  </div>
+
+  <div class="seccion">Servidores guardados</div>
+  <div class="servidores" id="lista"></div>
+
+  <div class="seccion">Agregar / editar servidor</div>
+  <form id="form" onsubmit="return false">
+    <div><label>Nombre</label><input type="text" id="f-nombre" placeholder="gateway-1"></div>
+    <div><label>IP o host</label><input type="text" id="f-host" placeholder="203.0.113.10"></div>
+    <div><label>Puerto SSH</label><input type="number" id="f-puerto" value="22"></div>
+    <div><label>Usuario</label><input type="text" id="f-usuario" placeholder="root"></div>
+    <div class="ancho"><label>Key SSH — ruta de la clave privada (vacío = usar contraseña)</label>
+      <input type="text" id="f-key" placeholder="C:\Users\gsusb\.ssh\id_ed25519"></div>
+    <div class="ancho" id="zona-pass">
+      <label>Contraseña</label>
+      <input type="password" id="f-pass" placeholder="se pide al conectar si no la guardas">
+      <div class="check" style="margin-top:8px">
+        <input type="checkbox" id="f-guardar"><label for="f-guardar" style="margin:0">Recordar contraseña en este equipo (cifrada)</label>
+      </div>
+    </div>
+    <div class="ancho nota">Las contraseñas guardadas se cifran (AES-256) con una llave local en <b>secreto.bin</b>. Máxima seguridad: usa key SSH.</div>
+    <div class="ancho" style="display:flex;gap:10px;justify-content:flex-end">
+      <button type="button" id="btn-limpiar">Limpiar</button>
+      <button type="button" class="principal" id="btn-guardar">Guardar servidor</button>
+    </div>
+  </form>
+
+  <div style="margin-top:28px;text-align:right">
+    <button class="peligro" id="btn-salir">Cerrar aplicación</button>
+  </div>
+</main>
+
+<!-- Modal: confirmar huella -->
+<div class="velo" id="m-huella">
+  <div class="modal">
+    <h3>Primera conexión a este servidor</h3>
+    <p>Verifica que esta huella coincide con la del servidor (en el VPS: <span style="font-family:'JetBrains Mono',monospace">ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</span>). Si coincide, confía — quedará guardada y se exigirá siempre.</p>
+    <div class="huella" id="huella-txt"></div>
+    <div class="botones">
+      <button id="huella-no">Cancelar</button>
+      <button class="principal" id="huella-si">Confiar y conectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pedir contraseña -->
+<div class="velo" id="m-pass">
+  <div class="modal">
+    <h3>Contraseña requerida</h3>
+    <p id="pass-para"></p>
+    <input type="password" id="pass-input" placeholder="contraseña" style="margin-bottom:14px">
+    <div class="botones">
+      <button id="pass-no">Cancelar</button>
+      <button class="principal" id="pass-si">Conectar</button>
+    </div>
+  </div>
+</div>
+
+<div id="aviso"></div>
+
+<script>
+  var TOKEN = new URLSearchParams(location.search).get('t') || '';
+  function api(ruta, opciones){
+    opciones = opciones || {};
+    opciones.headers = Object.assign({'X-Token': TOKEN, 'Content-Type':'application/json'}, opciones.headers||{});
+    return fetch(ruta, opciones).then(function(r){ return r.json(); });
+  }
+  function aviso(texto, ok){
+    var a = document.getElementById('aviso');
+    a.textContent = texto;
+    a.style.borderLeftColor = ok ? 'var(--verde)' : 'var(--rojo)';
+    a.style.display = 'block';
+    clearTimeout(a._t); a._t = setTimeout(function(){ a.style.display='none'; }, 4500);
+  }
+  var $ = function(id){ return document.getElementById(id); };
+
+  // ---------- estado ----------
+  function pintarEstado(e){
+    $('ver').textContent = 'v' + (e.version||'');
+    var caja = $('estado');
+    if (e.conectado){
+      caja.classList.add('on');
+      $('estado-txt').innerHTML = 'CONECTADO a <b>' + e.servidor + '</b> desde las ' + e.desde;
+      $('estado-puertos').textContent = 'túneles: ' + e.puertos.join(' · ');
+      $('btn-desconectar').style.display = 'inline-block';
+      $('sec-enlaces').style.display = 'block';
+      $('enlaces').style.display = 'flex';
+    } else {
+      caja.classList.remove('on');
+      $('estado-txt').textContent = 'Desconectado.';
+      $('estado-puertos').textContent = '';
+      $('btn-desconectar').style.display = 'none';
+      $('sec-enlaces').style.display = 'none';
+      $('enlaces').style.display = 'none';
+    }
+  }
+  function refrescarEstado(){ api('/api/estado').then(pintarEstado).catch(function(){}); }
+  setInterval(refrescarEstado, 3000); refrescarEstado();
+
+  // ---------- lista de servidores ----------
+  function pintarLista(lista){
+    var cont = $('lista');
+    if (!lista.length){
+      cont.innerHTML = '<div class="vacio">Ningún servidor todavía — agrega el primero abajo.</div>';
+      return;
+    }
+    cont.innerHTML = '';
+    lista.forEach(function(s){
+      var div = document.createElement('div');
+      div.className = 'srv';
+      var metodo = s.key ? 'key' : (s.tienePassword ? 'contraseña guardada' : 'contraseña al conectar');
+      div.innerHTML =
+        '<div class="franja"></div>' +
+        '<div class="info"><div class="nombre">' + s.nombre + '</div>' +
+        '<div class="detalle">' + s.usuario + '@' + s.host + ':' + s.puerto + '</div></div>' +
+        '<span class="metodo">' + metodo + (s.confiado ? ' · huella ✓' : '') + '</span>';
+      var bC = document.createElement('button'); bC.className = 'principal'; bC.textContent = 'Conectar';
+      bC.onclick = function(){ conectar(s.nombre, '', false); };
+      var bE = document.createElement('button'); bE.textContent = 'Editar';
+      bE.onclick = function(){ cargarEnForm(s); };
+      var bB = document.createElement('button'); bB.className = 'peligro'; bB.textContent = '✕';
+      bB.title = 'Borrar';
+      bB.onclick = function(){
+        if (confirm('¿Borrar "' + s.nombre + '"?'))
+          api('/api/servidores?nombre=' + encodeURIComponent(s.nombre), {method:'DELETE'}).then(refrescarLista);
+      };
+      div.appendChild(bC); div.appendChild(bE); div.appendChild(bB);
+      cont.appendChild(div);
+    });
+  }
+  function refrescarLista(){ api('/api/servidores').then(pintarLista).catch(function(){}); }
+  refrescarLista();
+
+  // ---------- formulario ----------
+  function cargarEnForm(s){
+    $('f-nombre').value = s.nombre; $('f-host').value = s.host;
+    $('f-puerto').value = s.puerto; $('f-usuario').value = s.usuario;
+    $('f-key').value = s.key || ''; $('f-pass').value = '';
+    $('f-guardar').checked = !!s.tienePassword;
+    window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
+  }
+  $('btn-limpiar').onclick = function(){
+    ['f-nombre','f-host','f-usuario','f-key','f-pass'].forEach(function(i){ $(i).value=''; });
+    $('f-puerto').value = 22; $('f-guardar').checked = false;
+  };
+  $('btn-guardar').onclick = function(){
+    api('/api/servidores', {method:'POST', body: JSON.stringify({
+      nombre: $('f-nombre').value.trim(), host: $('f-host').value.trim(),
+      puerto: parseInt($('f-puerto').value)||22, usuario: $('f-usuario').value.trim(),
+      key: $('f-key').value.trim(), password: $('f-pass').value,
+      guardarPassword: $('f-guardar').checked
+    })}).then(function(r){
+      if (r.error){ aviso(r.error, false); return; }
+      aviso('Servidor guardado.', true);
+      $('btn-limpiar').click();
+      refrescarLista();
+    });
+  };
+
+  // ---------- conectar (con flujo de huella y contraseña) ----------
+  var pendiente = null; // {nombre, password}
+  function conectar(nombre, password, aceptarHuella){
+    aviso('Conectando a ' + nombre + '…', true);
+    api('/api/conectar', {method:'POST', body: JSON.stringify({
+      nombre: nombre, password: password, aceptarHuella: aceptarHuella
+    })}).then(function(r){
+      if (r.error){ aviso(r.error, false); return; }
+      if (r.necesitaPassword){
+        pendiente = {nombre: nombre, aceptarHuella: aceptarHuella};
+        $('pass-para').textContent = 'Escribe la contraseña para ' + nombre + ' (no se guardará):';
+        $('pass-input').value = '';
+        $('m-pass').classList.add('abierto');
+        $('pass-input').focus();
+        return;
+      }
+      if (r.confirmarHuella){
+        pendiente = {nombre: nombre, password: password};
+        $('huella-txt').textContent = r.confirmarHuella;
+        $('m-huella').classList.add('abierto');
+        return;
+      }
+      if (r.ok){
+        aviso('Conectado. Túneles: ' + r.puertos.join(', '), true);
+        refrescarEstado();
+        setTimeout(function(){ window.open('http://localhost:8888', '_blank'); }, 600);
+      }
+    }).catch(function(){ aviso('Error de comunicación con la app.', false); });
+  }
+  $('huella-si').onclick = function(){
+    $('m-huella').classList.remove('abierto');
+    conectar(pendiente.nombre, pendiente.password || '', true);
+  };
+  $('huella-no').onclick = function(){ $('m-huella').classList.remove('abierto'); };
+  $('pass-si').onclick = function(){
+    $('m-pass').classList.remove('abierto');
+    conectar(pendiente.nombre, $('pass-input').value, pendiente.aceptarHuella || false);
+  };
+  $('pass-input').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('pass-si').click(); });
+  $('pass-no').onclick = function(){ $('m-pass').classList.remove('abierto'); };
+
+  $('btn-desconectar').onclick = function(){
+    api('/api/desconectar', {method:'POST'}).then(function(){ aviso('Desconectado.', true); refrescarEstado(); });
+  };
+  $('btn-salir').onclick = function(){
+    if (!confirm('¿Cerrar la aplicación? Se cerrarán los túneles.')) return;
+    api('/api/salir', {method:'POST'}).then(function(){
+      document.body.innerHTML = '<div style="padding:60px;text-align:center;color:var(--suave)">Aplicación cerrada. Puedes cerrar esta pestaña.</div>';
+    });
+  };
+</script>
+</body>
+</html>

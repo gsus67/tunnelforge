@@ -3,23 +3,25 @@
 Herramientas de acceso y operación para los gateways WISP
 (compañero de [`gateway-wisp-wireguard`](https://github.com/gsus67/gateway-wisp-wireguard)).
 
-## conectar-gateway — túneles SSH con motor propio
+## conectar-gateway — túneles SSH con interfaz gráfica
 
-Aplicación de un solo ejecutable, **sin dependencias**: trae embebido su
-propio cliente SSH ([`golang.org/x/crypto/ssh`](https://pkg.go.dev/golang.org/x/crypto/ssh),
-la librería oficial del proyecto Go). No usa PuTTY ni el OpenSSH del sistema.
+Aplicación de un solo ejecutable, **sin dependencias**: motor SSH embebido
+([`golang.org/x/crypto/ssh`](https://pkg.go.dev/golang.org/x/crypto/ssh),
+la librería oficial del proyecto Go) e interfaz gráfica propia que se abre
+sola en el navegador. No usa PuTTY ni el OpenSSH del sistema.
 
-**Qué hace:** guarda tus servidores, abre los túneles a los paneles del
-gateway (8888 panel, 10086 WGDashboard, 19999 Netdata, 6060/60601 métricas)
-y lanza el navegador en `http://localhost:8888`.
+**Qué hace:**
+- Guarda tus servidores con **key SSH o contraseña** (la contraseña se
+  cifra con AES-256-GCM; la llave vive en `secreto.bin` junto al ejecutable)
+- Un clic en *Conectar* abre los túneles a los paneles del gateway
+  (8888 panel, 10086 WGDashboard, 19999 Netdata, 6060/60601 métricas)
+  y muestra accesos directos a cada uno
+- Verificación de huella del servidor (TOFU) con confirmación visual:
+  si la huella cambia un día, se niega a conectar (anti-suplantación)
+- La interfaz solo escucha en 127.0.0.1 con token de sesión aleatorio
 
-**Seguridad:**
-- Verificación de huella del servidor (TOFU): la primera conexión la
-  confirmas tú; después, si la huella cambia, la app se niega a conectar
-  (protección contra suplantación/MITM).
-- Las contraseñas se piden al conectar y **nunca se guardan**.
-- Tus servidores quedan en `conexiones.json` junto al ejecutable —
-  ese archivo está en `.gitignore` y jamás se sube.
+**Archivos que crea junto al ejecutable** (ninguno se sube al repo):
+`conexiones.json` (servidores y huellas), `secreto.bin` (llave de cifrado).
 
 ### Descargar
 Baja el ejecutable de la pestaña **Releases** →
