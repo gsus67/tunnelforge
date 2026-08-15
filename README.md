@@ -1,67 +1,179 @@
-# gateway-wisp-access
+# Conectar Gateway
 
-Herramientas de acceso y operación para los gateways WISP
-(compañero de [`gateway-wisp-wireguard`](https://github.com/gsus67/gateway-wisp-wireguard)).
+Cliente SSH de escritorio para administrar gateways: abre los túneles a los
+paneles del servidor de un clic y trae terminal SSH integrado.
 
-## conectar-gateway — túneles SSH con interfaz gráfica
+Un solo ejecutable, **sin dependencias**: trae su propio motor SSH y su propia
+interfaz. No necesita PuTTY, ni el cliente OpenSSH del sistema, ni instalación.
 
-Aplicación de un solo ejecutable con **ventana nativa**: motor SSH embebido
-([`golang.org/x/crypto/ssh`](https://pkg.go.dev/golang.org/x/crypto/ssh),
-la librería oficial del proyecto Go) e interfaz renderizada en ventana propia
-mediante [webview](https://github.com/webview/webview_go) (MIT), usando el
-componente WebView2 que Windows 10/11 ya incluye. No usa PuTTY ni el OpenSSH
-del sistema. Si WebView2 no estuviera disponible, cae automáticamente al
-navegador. En Linux abre en el navegador (http://127.0.0.1:8787).
+Pensado para los gateways de [`gateway-wisp-wireguard`](https://github.com/gsus67/gateway-wisp-wireguard),
+pero sirve para **cualquier servidor SSH**: los túneles son configurables.
 
-**Qué hace:**
-- Guarda tus servidores con **key SSH o contraseña** (la contraseña se
-  cifra con AES-256-GCM; la llave vive en `secreto.bin` junto al ejecutable)
-- Un clic en *Conectar* abre los túneles y muestra accesos directos a cada uno
-- **Túneles configurables**: los cinco del gateway vienen por defecto
-  (8888 panel, 10086 WGDashboard, 19999 Netdata, 6060/60601 métricas) y
-  puedes quitarlos, renombrarlos o agregar los tuyos (con ruta web opcional)
-- Verificación de huella del servidor (TOFU) con confirmación visual:
-  si la huella cambia un día, se niega a conectar (anti-suplantación)
-- **Terminal SSH integrado**: botón `>_` en cada servidor abre una shell
-  interactiva completa dentro de la app ([xterm.js](https://github.com/xtermjs/xterm.js)
-  embebido, el mismo terminal de VS Code) sobre el motor SSH propio
-- La interfaz solo escucha en 127.0.0.1 con token de sesión aleatorio
+---
 
-**Archivos que crea junto al ejecutable** (ninguno se sube al repo):
-`conexiones.json` (servidores y huellas), `secreto.bin` (llave de cifrado).
+## Qué hace
 
-### Descargar
-Baja el ejecutable de la pestaña **Releases** →
-`Conectar-Gateway.exe` (Windows) o `conectar-gateway-linux`.
-Ponlo en cualquier carpeta y ábrelo. Nada que instalar.
+- **Guarda tus servidores** con key SSH o contraseña, y conecta con un clic
+- **Abre todos los túneles a la vez** y muestra accesos directos a cada panel
+- **Terminal SSH integrado**: shell interactiva completa dentro de la app
+- **Verifica la identidad del servidor**: si su huella cambia, se niega a conectar
+- Todo local: la interfaz solo escucha en `127.0.0.1`
 
-### Compilarlo tú mismo
+---
+
+## Instalación
+
+Descarga el ejecutable de la pestaña **[Releases](../../releases)**:
+
+| Archivo | Sistema |
+|---|---|
+| `Conectar-Gateway.exe` | Windows 10/11 (64 bits) |
+| `conectar-gateway-linux` | Linux (64 bits) |
+
+Ponlo donde quieras y ábrelo. **No hay instalador ni dependencias.**
+
+En Windows se abre en su propia ventana; en Linux, en el navegador
+(`http://127.0.0.1:8787`).
+
+---
+
+## Uso
+
+1. **Agregar un servidor** — en el formulario: nombre, IP, puerto SSH, usuario y
+   la ruta de tu key SSH *o* la contraseña. Marca *Recordar contraseña* si
+   quieres guardarla cifrada; si no, se pide al conectar y no queda en disco.
+
+2. **Conectar** — clic en *Conectar*. La primera vez muestra la huella del
+   servidor para que la verifiques; a partir de ahí se exige que no cambie.
+
+3. **Usar los paneles** — con la conexión activa aparecen los accesos directos;
+   se abren en tu navegador por defecto.
+
+4. **Terminal** — el botón `>_` de cada servidor abre una shell interactiva
+   completa (colores, `htop`, `nano`, autocompletado, Ctrl+C).
+
+5. **Desconectar** — cierra los túneles. Cerrar la ventana también los cierra.
+
+### Túneles
+
+Vienen configurados los cinco del gateway WISP, y se pueden quitar, renombrar
+o ampliar desde la sección **Túneles**:
+
+| Puerto | Servicio |
+|---|---|
+| 8888 | Panel del gateway |
+| 10086 | WGDashboard |
+| 19999 | Netdata |
+| 6060 | Métricas de CrowdSec |
+| 60601 | Métricas del bouncer |
+
+Cada túnel admite una **ruta web** opcional (por ejemplo `/metrics`), que se
+añade al enlace. Los cambios aplican en la siguiente conexión.
+
+---
+
+## Seguridad
+
+- **Contraseñas cifradas** con AES-256-GCM. La llave se genera en la primera
+  ejecución y vive en `secreto.bin`, con permisos restringidos. Las contraseñas
+  no guardadas se piden al conectar y nunca tocan el disco.
+- **Verificación de huella (TOFU)**: la primera conexión pide confirmar la
+  huella del servidor; si más tarde cambia, la app se niega a conectar y avisa.
+  Protege contra suplantación del servidor.
+- **Nada expuesto**: la interfaz escucha solo en `127.0.0.1`, protegida por un
+  token de sesión aleatorio.
+- **Enlaces restringidos**: la app solo abre en el navegador direcciones de tus
+  túneles locales; cualquier otro destino se rechaza.
+
+### Dónde se guardan tus datos
+
+En el perfil del usuario, así sobreviven a mover o actualizar el ejecutable:
+
+| Sistema | Ruta |
+|---|---|
+| Windows | `%APPDATA%\conectar-gateway\` |
+| Linux | `~/.config/conectar-gateway/` |
+
+Ahí quedan `conexiones.json` (servidores y huellas) y `secreto.bin` (llave de
+cifrado). Ninguno se sube al repositorio.
+
+**Modo portable**: crea un archivo vacío llamado `portable` junto al ejecutable
+y los datos se guardarán a su lado — útil para llevarlo en un USB o un NAS.
+
+---
+
+## Cómo está hecho
+
+| Pieza | Librería |
+|---|---|
+| Motor SSH: conexión, túneles y terminal | [`golang.org/x/crypto/ssh`](https://pkg.go.dev/golang.org/x/crypto/ssh) |
+| Ventana nativa (usa el WebView2 de Windows) | [webview](https://github.com/webview/webview_go) |
+| Terminal de la interfaz (el mismo de VS Code) | [xterm.js](https://github.com/xtermjs/xterm.js) |
+| Canal del terminal | [coder/websocket](https://github.com/coder/websocket) |
+
+Todo va **embebido en el ejecutable**: no descarga nada en tiempo de ejecución.
+Detalle de licencias en [TERCEROS.md](TERCEROS.md).
+
+Si WebView2 no estuviera disponible, la app cae al navegador en lugar de fallar.
+
+---
+
+## Compilar desde el código
+
+Requiere **Go 1.22+**. Para Windows, además, el compilador cruzado de C/C++
+(la ventana nativa usa CGO):
+
 ```bash
 cd conectar-gateway
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o Conectar-Gateway.exe .
+
+# Windows (ventana nativa, icono y metadatos)
+CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ \
+  CGO_CXXFLAGS="-I$PWD/winhdr" GOOS=windows GOARCH=amd64 \
+  go build -trimpath -ldflags "-s -w -H windowsgui" -o Conectar-Gateway.exe .
+
+# Linux
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+  go build -trimpath -ldflags "-s -w" -o conectar-gateway-linux .
 ```
-Solo necesitas Go 1.22+. El binario resultante es idéntico al de Releases.
 
-### Publicar una versión nueva
-```bash
-git tag v1.0.1 && git push origin v1.0.1
+En Debian/Ubuntu, el compilador cruzado se instala con:
+`sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64`
+
+Los binarios que salen son idénticos a los de Releases: GitHub Actions ejecuta
+estos mismos comandos.
+
+---
+
+## Estructura
+
 ```
-GitHub Actions compila y adjunta los binarios al Release automáticamente
-(`.github/workflows/release.yml`).
+conectar-gateway/
+  main.go              Servidor local, API, conexión SSH y túneles
+  terminal.go          Terminal SSH sobre WebSocket
+  ventana_windows.go   Ventana nativa (Windows)
+  ventana_otros.go     Navegador (Linux/macOS)
+  ui.html              Interfaz
+  static/              xterm.js embebido
+  icono.ico            Icono e identidad del ejecutable
+herramientas/          Scripts de apoyo para trabajar con los repos
+```
 
-## herramientas/
-- `subir-cambios.cmd` / `.sh` — botón de "commit + push" para los repos
-  (se coloca junto a la carpeta del repo y pide solo el mensaje).
+---
 
-## Versionado (acuerdo)
+## Versionado
 
 `MAYOR.menor.parche` — SemVer:
-- **parche** (2.1.**1**): arreglos, sin nada nuevo
-- **menor** (2.**2**.0): funcionalidad nueva compatible
+
+- **parche** (2.3.**1**): correcciones
+- **menor** (2.**3**.0): funcionalidad nueva compatible
 - **MAYOR** (**3**.0.0): cambio estructural o que rompe compatibilidad
-- Proyectos nuevos arrancan en **0.1.0**; el 1.0.0 se gana con estabilidad.
+- Los proyectos nuevos arrancan en **0.1.0**; el 1.0.0 se gana con estabilidad
+
+Publicar una versión: al subir un tag `vX.Y.Z`, GitHub Actions compila y adjunta
+los binarios al Release automáticamente.
+
+---
 
 ## Licencia
 
 Copyright (c) 2026 Gsus — Licencia MIT (ver [LICENSE](LICENSE)).
-Librerías de terceros y sus licencias en [TERCEROS.md](TERCEROS.md).

@@ -6,7 +6,9 @@
 //   - Motor SSH propio embebido (golang.org/x/crypto/ssh, librería oficial Go)
 //   - Interfaz gráfica servida localmente (se abre sola en el navegador)
 //   - Guarda servidores con key SSH o contraseña (cifrada con AES-256-GCM;
-//     la llave de cifrado vive en secreto.bin junto al ejecutable, 0600)
+//     la llave de cifrado vive en secreto.bin, permisos 0600). Los datos van
+//     al perfil del usuario (%APPDATA% / ~/.config), o junto al ejecutable si
+//     existe un archivo "portable" a su lado.
 //   - Verificación de huella del servidor (TOFU) con confirmación visual
 //   - Túneles: 8888 panel · 10086 WGDashboard · 19999 Netdata · 6060/60601
 //
