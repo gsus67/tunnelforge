@@ -16,11 +16,12 @@ import (
 )
 
 func manejarTerminal(w http.ResponseWriter, r *http.Request) {
+	nombre := r.URL.Query().Get("nombre")
 	mu.Lock()
-	con := activa
+	con := conexiones[nombre]
 	mu.Unlock()
 	if con == nil {
-		http.Error(w, "sin conexión activa: conecta a un servidor primero", 400)
+		http.Error(w, "no estás conectado a ese servidor", 400)
 		return
 	}
 

@@ -14,9 +14,18 @@ pero sirve para **cualquier servidor SSH**: los túneles son configurables.
 ## Qué hace
 
 - **Guarda tus servidores** con key SSH o contraseña, y conecta con un clic
+- **Varias conexiones a la vez**: puedes tener dos o más gateways conectados
+  en paralelo (ver [limitación de puertos](#varias-conexiones-a-la-vez) abajo)
 - **Abre todos los túneles a la vez** y muestra accesos directos a cada panel
-- **Terminal SSH integrado**: shell interactiva completa dentro de la app
+- **Tráfico en vivo** por conexión: velocidad de subida/bajada y total transferido
+- **Terminal SSH integrado**, con **historial de comandos** que persiste entre sesiones
+- **Favoritos y orden manual**: marca con ★ o arrastra para reordenar la lista
+- **Buscador** de servidores por nombre, host o usuario
+- **Copia de seguridad** cifrada: exporta e importa toda tu configuración
 - **Verifica la identidad del servidor**: si su huella cambia, se niega a conectar
+- **Avisa si una conexión se cae** sola (sin que la hayas cerrado tú)
+- Atajos: `Esc` cierra modales y terminal, `Ctrl+Enter` guarda el formulario
+  o confirma la contraseña
 - Todo local: la interfaz solo escucha en `127.0.0.1`
 
 ---
@@ -49,8 +58,12 @@ En Windows se abre en su propia ventana; en Linux, en el navegador
 3. **Usar los paneles** — con la conexión activa aparecen los accesos directos;
    se abren en tu navegador por defecto.
 
-4. **Terminal** — el botón `>_` de cada servidor abre una shell interactiva
-   completa (colores, `htop`, `nano`, autocompletado, Ctrl+C).
+4. **Terminal** — el botón `>_` de cada servidor (o de cada conexión activa)
+   abre una shell interactiva completa (colores, `htop`, `nano`,
+   autocompletado, Ctrl+C), con un panel de **historial** al costado: los
+   últimos comandos enviados a ese servidor, clicables para reenviar. Es
+   historial propio de la app, no reemplaza el de la shell remota (las
+   flechas ↑↓ siguen siendo las del `bash` del servidor).
 
 5. **Desconectar** — cierra los túneles. Cerrar la ventana también los cierra.
 
@@ -68,6 +81,20 @@ Al importar en otro equipo, la app restaura los servidores, aplica los túneles,
 guarda las claves SSH en su carpeta de configuración y reapunta las rutas
 automáticamente. Puedes **fusionar** con lo que ya tengas (por defecto, los
 nombres repetidos se actualizan) o **reemplazar todo**.
+
+### Varias conexiones a la vez
+
+Puedes conectar a más de un servidor en paralelo. La limitación real: los
+**túneles usan los mismos puertos locales para todos los servidores** (8888,
+10086...), así que solo la primera conexión puede reservarlos — es exactamente
+igual que si otro programa ya usara ese puerto. Las conexiones siguientes
+quedan activas igual, pero **sin túneles a los paneles**; la app lo indica
+claramente y esa conexión sigue siendo útil para su **terminal**, que no
+necesita ningún puerto local.
+
+Para tener los paneles de dos servidores a la vez, hoy la forma es conectar
+uno, usarlo, desconectarlo y conectar el otro. Túneles con puertos distintos
+por servidor es una mejora posible más adelante.
 
 ### Túneles
 
@@ -100,6 +127,17 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
 - **Enlaces restringidos**: la app solo abre en el navegador direcciones de tus
   túneles locales; cualquier otro destino se rechaza.
 
+### Actualizaciones de la app
+
+El repositorio es **privado**. Revisar versiones nuevas por la API de GitHub
+requeriría un token embebido en el ejecutable — y eso es un riesgo real:
+cualquiera puede extraer texto de un binario distribuido. Por eso la app
+**no lleva ninguna credencial**: el botón *Ver versiones en GitHub* abre la
+pestaña Releases en tu navegador, que ya tiene tu sesión iniciada. Ahí ves si
+hay una versión nueva y **las notas se generan solas** a partir de los
+mensajes de commit desde la versión anterior (activado en el workflow con
+`generate_release_notes: true`).
+
 ### Dónde se guardan tus datos
 
 En el perfil del usuario, así sobreviven a mover o actualizar el ejecutable:
@@ -109,9 +147,10 @@ En el perfil del usuario, así sobreviven a mover o actualizar el ejecutable:
 | Windows | `%APPDATA%\conectar-gateway\` |
 | Linux | `~/.config/conectar-gateway/` |
 
-Ahí quedan `conexiones.json` (servidores y huellas), `secreto.bin` (llave de
-cifrado), `ajustes.json` (túneles) y `keys/` (claves SSH importadas de una
-copia). Nada de esto se sube al repositorio.
+Ahí quedan `conexiones.json` (servidores, huellas y favoritos), `secreto.bin`
+(llave de cifrado), `ajustes.json` (túneles), `historial.json` (últimos
+comandos por servidor) y `keys/` (claves SSH importadas de una copia). Nada
+de esto se sube al repositorio.
 
 **Modo portable**: crea un archivo vacío llamado `portable` junto al ejecutable
 y los datos se guardarán a su lado — útil para llevarlo en un USB o un NAS.
@@ -169,6 +208,8 @@ conectar-gateway/
   ventana_windows.go   Ventana nativa (Windows)
   ventana_otros.go     Navegador (Linux/macOS)
   copia.go             Exportar / importar configuración cifrada
+  historial.go         Historial de comandos del terminal, por servidor
+  version.go           Info de versión para el botón de actualizaciones
   ui.html              Interfaz
   static/              xterm.js embebido
   icono.ico            Icono e identidad del ejecutable

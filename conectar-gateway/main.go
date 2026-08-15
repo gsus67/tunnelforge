@@ -34,12 +34,13 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.4.0"
+const version = "2.5.0"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -99,6 +100,7 @@ type Servidor struct {
 	Key      string `json:"key,omitempty"`
 	PassCifr string `json:"passwordCifrada,omitempty"`
 	Huella   string `json:"huella,omitempty"`
+	Favorito bool   `json:"favorito,omitempty"`
 }
 
 var (
@@ -187,29 +189,55 @@ type Conexion struct {
 	servidor string
 	desde    time.Time
 	abiertos []int
+	rx, tx   int64 // bytes acumulados (atomic)
 }
 
-var activa *Conexion
+// Varias conexiones simultaneas a distintos servidores. Si dos servidores
+// comparten un puerto de tunel, el segundo simplemente omite ese tunel
+// (mismo comportamiento que un puerto local ocupado por cualquier otro programa).
+var (
+	conexiones = map[string]*Conexion{}
+)
 
-func cerrarActiva() {
-	if activa == nil {
+func cerrarConexion(nombre string) {
+	c, ok := conexiones[nombre]
+	if !ok {
 		return
 	}
-	for _, l := range activa.escuchas {
+	for _, l := range c.escuchas {
 		l.Close()
 	}
-	activa.cliente.Close()
-	activa = nil
+	c.cliente.Close()
+	delete(conexiones, nombre)
 }
 
-func puente(local net.Conn, cliente *ssh.Client, puerto int) {
+func cerrarTodas() {
+	for nombre := range conexiones {
+		cerrarConexion(nombre)
+	}
+}
+
+// contador: envoltorio que suma a un contador atomico cada byte que pasa
+type contador struct {
+	io.Writer
+	n *int64
+}
+
+func (c *contador) Write(p []byte) (int, error) {
+	n, err := c.Writer.Write(p)
+	atomic.AddInt64(c.n, int64(n))
+	return n, err
+}
+
+func puente(local net.Conn, cliente *ssh.Client, puerto int, rx, tx *int64) {
 	remoto, err := cliente.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", puerto))
 	if err != nil {
 		local.Close()
 		return
 	}
-	go func() { _, _ = io.Copy(remoto, local); remoto.Close() }()
-	_, _ = io.Copy(local, remoto)
+	// rx = lo que baja el cliente local (viene del servidor); tx = lo que sube
+	go func() { _, _ = io.Copy(&contador{remoto, tx}, local); remoto.Close() }()
+	_, _ = io.Copy(&contador{local, rx}, remoto)
 	local.Close()
 }
 
@@ -277,10 +305,14 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 
 	// ---- túneles locales ----
 	con := &Conexion{cliente: cliente, servidor: s.Nombre, desde: time.Now()}
+	var omitidos []int
 	for _, t := range cargarTuneles() {
 		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", t.Puerto))
 		if err != nil {
-			continue // puerto local ocupado: se omite ese túnel
+			// puerto ocupado (por otro programa, o por OTRA conexion nuestra
+			// ya activa a otro servidor): se omite, no es un error fatal.
+			omitidos = append(omitidos, t.Puerto)
+			continue
 		}
 		con.escuchas = append(con.escuchas, l)
 		con.abiertos = append(con.abiertos, t.Puerto)
@@ -290,14 +322,14 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 				if err != nil {
 					return
 				}
-				go puente(c, cliente, puerto)
+				go puente(c, cliente, puerto, &con.rx, &con.tx)
 			}
 		}(l, t.Puerto)
 	}
-	if len(con.escuchas) == 0 {
-		cliente.Close()
-		return nil, fmt.Errorf("ningún túnel pudo abrirse (¿puertos locales ocupados, o no hay túneles configurados?)")
-	}
+	// Si NINGUN tunel pudo abrirse (puertos ocupados, tipicamente por otra
+	// conexion ya activa a otro servidor) NO cerramos la conexion SSH: sigue
+	// siendo util para el TERMINAL, que no necesita ningun puerto local.
+	sinTuneles := len(con.escuchas) == 0
 
 	go func() { // keepalive
 		t := time.NewTicker(30 * time.Second)
@@ -311,17 +343,21 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 	go func() { // detectar caída de la sesión
 		_ = cliente.Wait()
 		mu.Lock()
-		if activa == con {
+		if conexiones[con.servidor] == con {
 			for _, l := range con.escuchas {
 				l.Close()
 			}
-			activa = nil
+			delete(conexiones, con.servidor)
 		}
 		mu.Unlock()
 	}()
 
-	activa = con
-	return map[string]any{"ok": true, "puertos": con.abiertos}, nil
+	conexiones[con.servidor] = con
+	resultado := map[string]any{"ok": true, "puertos": con.abiertos, "sinTuneles": sinTuneles}
+	if len(omitidos) > 0 {
+		resultado["puertosOmitidos"] = omitidos
+	}
+	return resultado, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -412,6 +448,7 @@ func main() {
 					"nombre": s.Nombre, "host": s.Host, "puerto": s.Puerto,
 					"usuario": s.Usuario, "key": s.Key,
 					"tienePassword": s.PassCifr != "", "confiado": s.Huella != "",
+					"favorito": s.Favorito,
 				})
 			}
 			responder(w, salida)
@@ -420,6 +457,7 @@ func main() {
 				Nombre, Host, Usuario, Key, Password string
 				Puerto                               int
 				GuardarPassword                      bool
+				Favorito                             *bool // puntero: distinguir "no lo mandó" de "false"
 			}
 			if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
 				responderError(w, err)
@@ -439,6 +477,9 @@ func main() {
 				s = &lista[len(lista)-1]
 			}
 			s.Host, s.Puerto, s.Usuario, s.Key = pet.Host, pet.Puerto, pet.Usuario, pet.Key
+			if pet.Favorito != nil {
+				s.Favorito = *pet.Favorito
+			}
 			if pet.Key != "" {
 				s.PassCifr = ""
 			} else if pet.GuardarPassword && pet.Password != "" {
@@ -504,7 +545,7 @@ func main() {
 				responderError(w, fmt.Errorf("no pude guardar: %v", err))
 				return
 			}
-			responder(w, map[string]any{"ok": true, "aviso": activa != nil})
+			responder(w, map[string]any{"ok": true, "aviso": len(conexiones) > 0})
 		case "DELETE": // restaurar los de fábrica
 			if err := guardarTuneles(tunelesPorDefecto()); err != nil {
 				responderError(w, err)
@@ -516,6 +557,44 @@ func main() {
 
 	mux.HandleFunc("/api/exportar", proteger(manejarExportar))
 	mux.HandleFunc("/api/importar", proteger(manejarImportar))
+	mux.HandleFunc("/api/historial", proteger(manejarHistorial))
+	mux.HandleFunc("/api/version", proteger(manejarVersion))
+
+	// Reordenar servidores (arrastrar en la interfaz): recibe la lista de
+	// nombres en el nuevo orden y reescribe el archivo respetando ese orden.
+	mux.HandleFunc("/api/servidores/orden", proteger(func(w http.ResponseWriter, r *http.Request) {
+		var nombres []string
+		if err := json.NewDecoder(r.Body).Decode(&nombres); err != nil {
+			responderError(w, err)
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		actuales := cargar()
+		indice := map[string]Servidor{}
+		for _, s := range actuales {
+			indice[s.Nombre] = s
+		}
+		var reordenados []Servidor
+		vistos := map[string]bool{}
+		for _, n := range nombres {
+			if sv, ok := indice[n]; ok && !vistos[n] {
+				reordenados = append(reordenados, sv)
+				vistos[n] = true
+			}
+		}
+		// cualquier servidor que no vino en la lista (por si acaso) se agrega al final
+		for _, sv := range actuales {
+			if !vistos[sv.Nombre] {
+				reordenados = append(reordenados, sv)
+			}
+		}
+		if err := guardar(reordenados); err != nil {
+			responderError(w, err)
+			return
+		}
+		responder(w, map[string]any{"ok": true})
+	}))
 
 	mux.HandleFunc("/api/conectar", proteger(func(w http.ResponseWriter, r *http.Request) {
 		var pet struct {
@@ -528,8 +607,8 @@ func main() {
 		}
 		mu.Lock()
 		defer mu.Unlock()
-		if activa != nil {
-			responderError(w, fmt.Errorf("ya hay una conexión activa con '%s'; desconecta primero", activa.servidor))
+		if _, ya := conexiones[pet.Nombre]; ya {
+			responderError(w, fmt.Errorf("ya estás conectado a '%s'", pet.Nombre))
 			return
 		}
 		lista := cargar()
@@ -547,8 +626,14 @@ func main() {
 	}))
 
 	mux.HandleFunc("/api/desconectar", proteger(func(w http.ResponseWriter, r *http.Request) {
+		var pet struct{ Nombre string }
+		_ = json.NewDecoder(r.Body).Decode(&pet)
 		mu.Lock()
-		cerrarActiva()
+		if pet.Nombre == "" {
+			cerrarTodas()
+		} else {
+			cerrarConexion(pet.Nombre)
+		}
 		mu.Unlock()
 		responder(w, map[string]any{"ok": true})
 	}))
@@ -556,25 +641,27 @@ func main() {
 	mux.HandleFunc("/api/estado", proteger(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
-		if activa == nil {
-			responder(w, map[string]any{"conectado": false, "version": version})
-			return
-		}
-		// enlaces: solo los tuneles que realmente se abrieron
-		abiertos := map[int]bool{}
-		for _, p := range activa.abiertos {
-			abiertos[p] = true
-		}
-		var activos []Tunel
-		for _, t := range cargarTuneles() {
-			if abiertos[t.Puerto] {
-				activos = append(activos, t)
+		todosTuneles := cargarTuneles()
+		lista := []map[string]any{}
+		for nombre, c := range conexiones {
+			abiertos := map[int]bool{}
+			for _, p := range c.abiertos {
+				abiertos[p] = true
 			}
+			var activos []Tunel
+			for _, t := range todosTuneles {
+				if abiertos[t.Puerto] {
+					activos = append(activos, t)
+				}
+			}
+			lista = append(lista, map[string]any{
+				"servidor": nombre, "puertos": c.abiertos, "tuneles": activos,
+				"desde": c.desde.Format("15:04:05"),
+				"rx":    atomic.LoadInt64(&c.rx), "tx": atomic.LoadInt64(&c.tx),
+			})
 		}
 		responder(w, map[string]any{
-			"conectado": true, "servidor": activa.servidor,
-			"puertos": activa.abiertos, "tuneles": activos,
-			"desde": activa.desde.Format("15:04:05"), "version": version,
+			"conectado": len(lista) > 0, "conexiones": lista, "version": version,
 		})
 	}))
 
@@ -612,7 +699,7 @@ func main() {
 		go func() {
 			time.Sleep(300 * time.Millisecond)
 			mu.Lock()
-			cerrarActiva()
+			cerrarTodas()
 			mu.Unlock()
 			_ = os.Remove(filepath.Join(baseDir, "sesion"))
 			os.Exit(0)
@@ -651,7 +738,7 @@ func main() {
 	// Sin el Exit, el servidor HTTP y las goroutines seguirian vivos y
 	// Windows no dejaria borrar/mover/renombrar el ejecutable.
 	mu.Lock()
-	cerrarActiva()
+	cerrarTodas()
 	mu.Unlock()
 	_ = escucha.Close()
 	os.Exit(0)
