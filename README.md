@@ -9,6 +9,8 @@ interfaz. No necesita PuTTY, ni el cliente OpenSSH del sistema, ni instalación.
 Pensado para los gateways de [`gateway-wisp-wireguard`](https://github.com/gsus67/gateway-wisp-wireguard),
 pero sirve para **cualquier servidor SSH**: los túneles son configurables.
 
+Consulta el historial acumulado de versiones en **[CHANGELOG.md](CHANGELOG.md)**.
+
 ---
 
 ## Qué hace
@@ -60,7 +62,7 @@ En Windows se abre en su propia ventana; en Linux, en el navegador
 3. **Usar los paneles** — con la conexión activa aparecen los accesos directos;
    se abren en tu navegador por defecto.
 
-4. **Terminal** — el botón `>_` de cada servidor (o de cada conexión activa)
+4. **Terminal** — el botón `>_` de cada servidor conectado
    abre una shell interactiva completa (colores, `htop`, `nano`,
    autocompletado, Ctrl+C), con un panel de **historial** al costado: los
    últimos comandos enviados a ese servidor, clicables para reenviar. Es
@@ -86,8 +88,8 @@ nombres repetidos se actualizan) o **reemplazar todo**.
 
 ### Archivos
 
-La sección **Archivos** abre un explorador de dos paneles sobre la conexión
-SSH que ya tienes (no abre una segunda sesión): el servidor a la izquierda y
+El botón **Archivos** de cada servidor conectado abre un explorador de dos paneles
+sobre la conexión SSH que ya tienes (no abre una segunda sesión): el servidor a la izquierda y
 tu equipo a la derecha. Botón **⬆ Subir** en un archivo local para enviarlo a
 la carpeta remota abierta, **⬇ Bajar** en uno remoto para traerlo. También
 crea carpetas, renombra y borra en el servidor.
@@ -109,17 +111,14 @@ desde el Explorador, `~` y variables como `%USERPROFILE%`.
 
 ### Varias conexiones a la vez
 
-Puedes conectar a más de un servidor en paralelo. La limitación real: los
-**túneles usan los mismos puertos locales para todos los servidores** (8888,
-10086...), así que solo la primera conexión puede reservarlos — es exactamente
-igual que si otro programa ya usara ese puerto. Las conexiones siguientes
-quedan activas igual, pero **sin túneles a los paneles**; la app lo indica
-claramente y esa conexión sigue siendo útil para su **terminal**, que no
-necesita ningún puerto local.
+Puedes conectar a más de un servidor en paralelo. Cada perfil tiene ahora
+**sus propios túneles**, pero dos conexiones no pueden reservar el mismo puerto
+local al mismo tiempo. Si dos perfiles usan, por ejemplo, el puerto local 8888,
+el segundo no podrá abrir ese túnel mientras el primero lo tenga ocupado.
 
-Para tener los paneles de dos servidores a la vez, hoy la forma es conectar
-uno, usarlo, desconectarlo y conectar el otro. Túneles con puertos distintos
-por servidor es una mejora posible más adelante.
+Si quieres tener paneles de varios servidores abiertos simultáneamente,
+configura puertos locales distintos en cada perfil. La Terminal y SFTP siguen
+funcionando aunque un túnel concreto no pueda reservar su puerto.
 
 ### Túneles por servidor
 

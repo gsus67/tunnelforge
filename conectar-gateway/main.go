@@ -41,7 +41,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.7.0"
+const version = "2.7.1"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -55,11 +55,11 @@ type Tunel struct {
 // desde la interfaz; quedan guardados en ajustes.json.
 func tunelesPorDefecto() []Tunel {
 	return []Tunel{
-		{8888, "Panel", ""},
-		{10086, "WGDashboard", ""},
-		{19999, "Netdata", ""},
-		{6060, "CrowdSec", "/metrics"},
-		{60601, "Bouncer", "/metrics"},
+		{Puerto: 8888, Nombre: "Panel"},
+		{Puerto: 10086, Nombre: "WGDashboard"},
+		{Puerto: 19999, Nombre: "Netdata"},
+		{Puerto: 6060, Nombre: "CrowdSec", Ruta: "/metrics"},
+		{Puerto: 60601, Nombre: "Bouncer", Ruta: "/metrics"},
 	}
 }
 

@@ -1,17 +1,11 @@
-# v2.7.0 — SSH keys y túneles por servidor
+# v2.7.1 — Fix de compilación de túneles
 
-Esta versión simplifica la administración diaria de gateways WISP. Ahora Gateway puede crear e instalar una clave SSH ED25519 directamente desde la interfaz: introduces la contraseña actual una sola vez, confirmas la huella del servidor y la aplicación instala únicamente la clave pública en `authorized_keys`. La privada permanece local y el perfil queda configurado para usarla automáticamente.
+Corrige el build de la v2.7.0 después de añadir `AbrirWeb` al modelo de túneles. Los cinco túneles predeterminados todavía se inicializaban con literales posicionales de tres campos, por lo que Go devolvía `too few values in struct literal`.
 
-Los túneles pasan a configurarse por servidor. Cada perfil puede tener sus propios puertos, nombres y rutas, además de una casilla **Auto web** para abrir automáticamente el panel correspondiente cuando la conexión se establece y el puerto local quedó disponible.
+Ahora se usan campos nombrados, por ejemplo:
 
-También se elimina el botón **Cerrar aplicación**. En Windows basta cerrar la ventana de Gateway para terminar las conexiones, los túneles y el servidor local.
+```go
+{Puerto: 8888, Nombre: "Panel"}
+```
 
-### Cambios principales
-- Generación ED25519 integrada.
-- Instalación automática de la clave pública por SSH.
-- Confirmación de huella del host durante la instalación.
-- Túneles independientes por servidor.
-- Apertura web automática opcional por túnel.
-- Validación de túneles por perfil al guardar/importar.
-- Eliminación del botón redundante de salida.
-- Mantiene las mejoras de seguridad de 2.6.x.
+Esto corrige el build y hace esos valores más resistentes a futuros cambios en el struct `Tunel`. También se actualizó la metadata de Windows a 2.7.1.
