@@ -3,6 +3,17 @@
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
 A partir de ahora, cada nueva versión se añade al inicio de este mismo archivo en lugar de crear un `RELEASE_NOTES_vX.X.X.md` nuevo.
 
+## v2.8.1
+
+### Terminal SSH
+
+- Corregido un fallo que impedía escribir en la Terminal integrada: `ui.html` cargaba `xterm.css`, pero no estaba cargando los scripts locales `xterm.js` y `addon-fit.js`.
+- La Terminal ahora valida que xterm.js y FitAddon estén disponibles antes de abrirse y muestra un aviso claro si falta algún recurso.
+- Reforzado el foco del teclado al abrir la Terminal, al establecer el WebSocket y al hacer click dentro del área del terminal.
+- Se limpia correctamente el contenedor de xterm al cerrar/reabrir una sesión para evitar restos de instancias anteriores.
+- Añadido un mensaje visible si falla el WebSocket de la Terminal.
+- Sincronizada la versión de aplicación y los metadatos de Windows a **2.8.1**.
+
 ## v2.8.0
 
 ### Asistente de seguridad SSH

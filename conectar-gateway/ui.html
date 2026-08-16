@@ -424,6 +424,8 @@
 
 <div id="aviso"></div>
 
+<script src="/static/xterm.js"></script>
+<script src="/static/addon-fit.js"></script>
 <script>
   var TOKEN = new URLSearchParams(location.search).get('t') || '';
   function api(ruta, opciones){
@@ -822,9 +824,16 @@
   var bufferLinea = '';
 
   function abrirTerminal(nombre){
+    if (typeof Terminal !== 'function' || typeof FitAddon === 'undefined' || typeof FitAddon.FitAddon !== 'function'){
+      aviso('No se pudieron cargar los componentes de la terminal. Reinicia la aplicación o reinstala esta versión.', false);
+      return;
+    }
+    if (term) cerrarTerminalUI();
     servidorTerminal = nombre;
     document.getElementById('term-srv').textContent = nombre;
     document.getElementById('term-velo').classList.add('abierto');
+    var termNodo = document.getElementById('term');
+    vaciar(termNodo);
     term = new Terminal({
       cursorBlink: true, fontSize: 14,
       fontFamily: "'JetBrains Mono', Consolas, monospace",
@@ -833,8 +842,13 @@
     });
     fit = new FitAddon.FitAddon();
     term.loadAddon(fit);
-    term.open(document.getElementById('term'));
-    fit.fit(); term.focus();
+    term.open(termNodo);
+    fit.fit();
+
+    // WebView puede devolver el foco al botón que abrió la terminal.
+    // Reforzamos el foco tras el layout y al hacer click dentro de xterm.
+    setTimeout(function(){ if (term){ fit.fit(); term.focus(); } }, 0);
+    setTimeout(function(){ if (term) term.focus(); }, 80);
 
     cargarHistorialTerminal(nombre);
     bufferLinea = '';
@@ -843,17 +857,22 @@
     wsTerm = new WebSocket(proto + location.host + '/ws/terminal?t=' + TOKEN + '&nombre=' + encodeURIComponent(nombre));
     wsTerm.binaryType = 'arraybuffer';
     var codificador = new TextEncoder();
-    wsTerm.onopen = function(){ wsTerm.send(JSON.stringify({cols: term.cols, rows: term.rows})); };
-    wsTerm.onmessage = function(e){ term.write(new Uint8Array(e.data)); };
-    wsTerm.onclose = function(){ if (term) term.write('\\r\\n\\x1b[33m[sesión terminada]\\x1b[0m\\r\\n'); };
+    wsTerm.onopen = function(){
+      if (!term) return;
+      wsTerm.send(JSON.stringify({cols: term.cols, rows: term.rows}));
+      term.focus();
+    };
+    wsTerm.onmessage = function(e){ if (term) term.write(new Uint8Array(e.data)); };
+    wsTerm.onerror = function(){ if (term) term.write('\r\n\x1b[31m[error en la conexión de terminal]\x1b[0m\r\n'); };
+    wsTerm.onclose = function(){ if (term) term.write('\r\n\x1b[33m[sesión terminada]\x1b[0m\r\n'); };
     term.onData(function(d){
       if (wsTerm && wsTerm.readyState === 1) wsTerm.send(codificador.encode(d));
       // capturar linea completa para el historial (best-effort, ignora control keys)
-      if (d === '\\r' || d === '\\n'){
+      if (d === '\r' || d === '\n'){
         var linea = bufferLinea.trim();
         bufferLinea = '';
         if (linea) guardarComandoHistorial(nombre, linea);
-      } else if (d === '\\x7f'){ // backspace
+      } else if (d === '\x7f'){ // backspace
         bufferLinea = bufferLinea.slice(0, -1);
       } else if (d.length === 1 && d >= ' '){
         bufferLinea += d;
@@ -870,9 +889,13 @@
     window.removeEventListener('resize', ajustarTerm);
     if (wsTerm){ wsTerm.close(); wsTerm = null; }
     if (term){ term.dispose(); term = null; fit = null; }
+    vaciar(document.getElementById('term'));
     servidorTerminal = null;
   }
   document.getElementById('term-cerrar').onclick = cerrarTerminalUI;
+  document.getElementById('term').addEventListener('mousedown', function(){
+    setTimeout(function(){ if (term) term.focus(); }, 0);
+  });
 
   function pintarHistorialTerminal(lista){
     var cont = document.getElementById('term-hist-lista');
