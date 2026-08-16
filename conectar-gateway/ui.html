@@ -462,21 +462,61 @@
   .content-shell{border-radius:0 !important;}
   main{height:calc(100vh - 110px);overflow:auto;padding-right:2px;}
 
+
+  /* v3.1.5 iconos y densidad */
+  .nav-item .ni,.panel-title .ico,.tb-ico,.brand-logo{color:#dce8f3 !important;font-size:0 !important;background:none !important;border:none !important}
+  .nav-item .ni svg,.panel-title .ico svg,.tb-ico svg,.brand-logo svg,.view-switch button svg{display:block;width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .brand-logo{width:42px !important;height:42px !important;padding:8px;border-radius:8px !important;background:linear-gradient(180deg, rgba(12,30,47,.95), rgba(9,22,34,.92)) !important;border:1px solid rgba(57,209,152,.24) !important;box-shadow:none !important;color:#53d9a0 !important}
+  .brand-logo svg{width:24px;height:24px}
+  .brand-text{font-size:14px !important}.brand-text small{font-size:11px !important}
+  .nav-item{padding:9px 11px !important;font-size:13px !important;gap:10px}
+  .nav-item .ni{width:16px !important;height:16px !important;display:inline-block !important;flex:none}
+  .panel-title .ico{width:26px !important;height:26px !important;display:grid !important;place-items:center;color:#dce8f3 !important}
+  .tb-ico{width:15px !important;height:15px !important;display:inline-block !important;flex:none}
+  .top-actions .toolbar-btn{padding:10px 14px !important;font-size:13px !important}
+  .hero-title h1{font-size:28px !important}.hero-title p{font-size:13px !important;max-width:480px !important}
+  .content-shell{padding:14px 16px 18px !important}
+  .topbar{margin-bottom:10px !important}
+  main{height:calc(100vh - 92px) !important;overflow:auto}
+  .dash-grid{grid-template-columns:1.2fr .9fr !important;gap:12px !important}
+  .panel{padding:12px !important}
+  .panel-header{margin-bottom:8px !important}.panel-title h3{font-size:16px !important}.panel-title p{font-size:12px !important}
+  .dashboard-updates .du-main{font-size:20px !important}.dashboard-updates .du-sub{font-size:11.5px !important}
+  .dashboard-updates .du-col label{font-size:11px !important}
+  .dashboard-updates .du-body{padding-top:10px !important}
+  .servidores{grid-template-columns:1fr !important;gap:8px !important;max-height:calc(100vh - 310px) !important}
+  .srv{min-height:72px !important;padding:9px 10px !important;grid-template-columns:14px 3px 16px minmax(0,1fr) auto !important;grid-template-areas:'asa franja fav info acciones' 'asa franja fav etiquetas acciones' !important;gap:4px 8px !important;align-items:center !important}
+  .srv .asa{padding-top:0 !important;font-size:12px !important}
+  .srv .nombre{font-size:16px !important;margin-bottom:2px !important;line-height:1.1}
+  .srv .detalle{font-size:11.5px !important;line-height:1.1}
+  .srv .metodo{display:none !important}
+  .srv-tags{gap:4px !important}.tag{font-size:10px !important;padding:2px 6px !important}
+  .srv .acciones{margin-top:0 !important;gap:6px !important;justify-content:flex-end !important;align-self:center !important}
+  .srv .acciones button{padding:7px 10px !important;font-size:12px !important;line-height:1.15}
+  .srv .acciones .peligro{padding:7px 8px !important}
+  .buscador-row{margin-bottom:8px !important}.buscador input{padding:10px 12px !important;font-size:13px !important}
+  .view-switch{gap:6px !important}.view-switch button{width:34px;min-width:34px;padding:8px !important;display:grid;place-items:center}.view-switch button svg{width:16px;height:16px;color:#dce8f3}
+  .conexiones{gap:8px !important;max-height:calc(100vh - 310px) !important}
+  .cnx{padding:9px 10px !important}.cnx .fila1{gap:6px !important;padding-left:4px !important}.cnx .txt b{font-size:15px !important;margin-bottom:1px !important}.cnx .txt{font-size:12px !important}.cnx .trafico{font-size:10.5px !important}
+  .cnx .fila1 > button{padding:7px 10px !important;font-size:12px !important}
+  .cnx .enlaces{padding-left:12px !important;gap:6px !important;margin-top:7px !important}.cnx .enlaces a{padding:5px 8px !important;font-size:11px !important}
+  @media (max-width:1180px){.dash-grid{grid-template-columns:1fr !important}.servidores,.conexiones{max-height:none !important}.dashboard-updates .du-body{grid-template-columns:1fr 1fr !important}}
+
 </style>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand-card">
-      <div class="brand-logo" aria-hidden="true"></div>
+      <div class="brand-logo" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z'/><path d='M9.25 11.25V9.9a2.75 2.75 0 0 1 5.5 0v1.35'/><rect x='8.4' y='11.2' width='7.2' height='5.5' rx='1.2'/></svg></div>
       <div class="brand-text">Gateway WISP Access<small>SSH · túneles · archivos</small></div>
     </div>
     <nav class="side-nav">
-      <a class="nav-item activo" href="#dashboard" data-nav="dashboard"><span class="ni ico-dashboard" aria-hidden="true"></span><span>Dashboard</span></a>
-      <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni ico-profile" aria-hidden="true"></span><span>Perfiles</span></a>
-      <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni ico-copy" aria-hidden="true"></span><span>Copias</span></a>
-      <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni ico-update" aria-hidden="true"></span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
-      <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni ico-info" aria-hidden="true"></span><span>Info</span></a>
+      <a class="nav-item activo" href="#dashboard" data-nav="dashboard"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='4' y='4' width='6' height='6' rx='1.2'/><rect x='14' y='4' width='6' height='6' rx='1.2'/><rect x='4' y='14' width='6' height='6' rx='1.2'/><rect x='14' y='14' width='6' height='6' rx='1.2'/></svg></span><span>Dashboard</span></a>
+      <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='8.2' r='3.2'/><path d='M5 19a7 7 0 0 1 14 0'/></svg></span><span>Perfiles</span></a>
+      <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='8' y='8' width='10' height='12' rx='2'/><path d='M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1'/></svg></span><span>Copias</span></a>
+      <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M20 11a8 8 0 1 0 2 5.3'/><path d='M20 4v7h-7'/></svg></span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
+      <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M12 10v6'/><path d='M12 7h.01'/></svg></span><span>Info</span></a>
     </nav>
     <div class="side-spacer"></div>
     <div class="side-status">
@@ -505,8 +545,8 @@
         <p id="view-subtitle">Resumen de conexiones y herramientas.</p>
       </div>
       <div class="top-actions">
-        <button class="toolbar-btn" id="btn-import-toolbar"><span class="tb-ico ico-import" aria-hidden="true"></span>Importar servidor</button>
-        <button class="toolbar-btn primary" id="btn-new-toolbar"><span class="tb-ico ico-plus" aria-hidden="true"></span>Nuevo servidor <span class="caret">▾</span></button>
+        <button class="toolbar-btn" id="btn-import-toolbar"><span class="tb-ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 15V4'/><path d='M8 8l4-4 4 4'/><path d='M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4'/></svg></span>Importar servidor</button>
+        <button class="toolbar-btn primary" id="btn-new-toolbar"><span class="tb-ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 5v14M5 12h14'/></svg></span>Nuevo servidor <span class="caret">▾</span></button>
       </div>
     </div>
 
@@ -515,7 +555,7 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              <div class="ico ico-saved" aria-hidden="true"></div>
+              <div class="ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='4' y='5' width='16' height='6' rx='1.4'/><rect x='4' y='13' width='16' height='6' rx='1.4'/><path d='M8 8h.01M8 16h.01M12 8h5M12 16h5'/></svg></div>
               <div>
                 <h3>Servidores guardados</h3>
                 <p>Perfiles de conexión SSH listos para conectar o editar.</p>
@@ -528,8 +568,8 @@
             <div class="buscador-row">
               <div class="buscador"><input type="text" id="buscador" placeholder="Buscar servidores…"></div>
               <div class="view-switch">
-                <button type="button" id="srv-view-grid" title="Vista de tarjetas">▦</button>
-                <button type="button" id="srv-view-list" title="Vista compacta">☰</button>
+                <button type="button" id="srv-view-grid" title="Vista de tarjetas"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='4' y='4' width='6' height='6' rx='1.2'/><rect x='14' y='4' width='6' height='6' rx='1.2'/><rect x='4' y='14' width='6' height='6' rx='1.2'/><rect x='14' y='14' width='6' height='6' rx='1.2'/></svg></button>
+                <button type="button" id="srv-view-list" title="Vista compacta"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M8 7h12M8 12h12M8 17h12'/><circle cx='4' cy='7' r='1'/><circle cx='4' cy='12' r='1'/><circle cx='4' cy='17' r='1'/></svg></button>
               </div>
             </div>
             <div class="servidores" id="lista"></div>
@@ -539,7 +579,7 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              <div class="ico ico-connected" aria-hidden="true"></div>
+              <div class="ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M5 12a7 7 0 0 1 14 0'/><path d='M8 12a4 4 0 0 1 8 0'/><path d='M12 12h.01'/></svg></div>
               <div>
                 <h3>Servidores conectados</h3>
                 <p>Conexiones activas</p>
@@ -555,7 +595,7 @@
         <section class="panel dashboard-updates">
           <div class="du-head">
             <div class="panel-title">
-              <div class="ico ico-update-big" aria-hidden="true"></div>
+              <div class="ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M20 11a8 8 0 1 0 2 5.3'/><path d='M20 4v7h-7'/></svg></div>
               <div>
                 <h3>Actualizaciones de la app</h3>
                 <p>Estado y comprobación rápida</p>
@@ -1099,6 +1139,8 @@
   if ($('srv-view-grid')) $('srv-view-grid').onclick = function(){ $('lista').style.gridTemplateColumns='repeat(2,minmax(0,1fr))'; };
   if ($('srv-view-list')) $('srv-view-list').onclick = function(){ $('lista').style.gridTemplateColumns='1fr'; };
   if ($('dash-upd-search')) $('dash-upd-search').onclick = function(){ updBuscar(false); };
+  if ($('lista')) $('lista').style.gridTemplateColumns='1fr';
+
 
   // Arrastrar para reordenar (HTML5 drag & drop nativo)
   function activarArrastre(cont){

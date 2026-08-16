@@ -1,3 +1,13 @@
+## v3.1.5
+
+### Cambios
+
+- Iconos rehechos con SVG inline visibles y consistentes en sidebar, dashboard y acciones rápidas.
+- Logo lateral corregido con un diseño más limpio y funcional.
+- Vista de servidores guardados más densa y compacta para manejar decenas de perfiles.
+- Tarjetas de servidores conectados compactadas para aprovechar mejor la altura de la ventana.
+- La vista por defecto del listado de servidores pasa a modo compacto de una sola columna.
+
 ## v3.1.4
 
 ### Cambios
