@@ -150,6 +150,15 @@
   .tun-cab span:nth-child(4){width:72px;text-align:center}
   .tun-cab span:nth-child(5){width:44px}
   .tun-acciones{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap}
+  .tun-desplegable{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:12px 14px;color:var(--suave)}
+  .tun-desplegable:hover{color:var(--texto)}
+  .tun-desplegable .flecha{display:inline-block;transition:transform .18s;font-size:11px;color:var(--ambar)}
+  .tun-desplegable.abierta .flecha{transform:rotate(90deg)}
+  .tun-desplegable .cuenta{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--suave)}
+  .tuneles.plegable{margin-top:8px}
+  .seg-lista{background:var(--fondo);border:1px solid var(--linea);border-radius:8px;padding:10px 12px;margin:10px 0 14px}
+  .seg-lista div{font-size:12.5px;color:var(--suave);line-height:1.65}
+  .seg-lista b{color:var(--texto)}
 
   /* copia de seguridad */
   .copia{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px}
@@ -231,14 +240,21 @@
         <input type="checkbox" id="f-guardar"><label for="f-guardar" style="margin:0">Recordar contraseña en este equipo (cifrada)</label>
       </div>
     </div>
-    <div class="ancho tuneles" style="margin-top:4px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-        <b>Túneles de este servidor</b><button type="button" id="tun-defecto">Usar predeterminados</button>
+    <div class="ancho" style="margin-top:4px">
+      <div class="tun-desplegable" id="tun-cabecera-form">
+        <span class="flecha">▶</span>
+        <b>Túneles de este servidor</b>
+        <span class="cuenta" id="tun-cuenta">— plegado</span>
       </div>
-      <div class="tun-cab"><span>Puerto</span><span>Nombre</span><span>Ruta web</span><span>Auto web</span><span></span></div>
-      <div id="tun-lista"></div>
-      <button type="button" id="tun-agregar">+ Agregar puerto</button>
-      <div class="nota" style="margin-top:8px">Marca <b>Auto web</b> para abrir ese panel automáticamente en tu navegador cuando el túnel quede activo.</div>
+      <div class="tuneles plegable" id="tun-caja-form">
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <button type="button" id="tun-defecto">Usar predeterminados</button>
+        </div>
+        <div class="tun-cab"><span>Puerto</span><span>Nombre</span><span>Ruta web</span><span>Auto web</span><span></span></div>
+        <div id="tun-lista"></div>
+        <button type="button" id="tun-agregar">+ Agregar puerto</button>
+        <div class="nota" style="margin-top:8px">Marca <b>Auto web</b> para abrir ese panel automáticamente en tu navegador cuando el túnel quede activo.</div>
+      </div>
     </div>
     <div class="ancho nota">Las contraseñas guardadas se cifran (AES-256) con una llave local en <b>secreto.bin</b>. Máxima seguridad: usa key SSH.
     Atajo: <b>Ctrl+Enter</b> guarda el servidor desde este formulario.</div>
@@ -383,6 +399,25 @@
     <div class="botones">
       <button id="pass-no">Cancelar</button>
       <button class="principal" id="pass-si">Conectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: asegurar SSH después de instalar una key -->
+<div class="velo" id="m-seguridad">
+  <div class="modal">
+    <h3>¿Asegurar SSH ahora?</h3>
+    <p>La nueva key ya fue instalada y comprobada. Gateway puede endurecer el acceso SSH para que el servidor deje de aceptar contraseñas.</p>
+    <div class="seg-lista">
+      <div>✓ <b>PubkeyAuthentication yes</b> — mantiene el acceso por key.</div>
+      <div>✓ <b>PasswordAuthentication no</b> — bloquea login por contraseña.</div>
+      <div>✓ <b>KbdInteractiveAuthentication no</b> — bloquea autenticación interactiva.</div>
+      <div>✓ <b>PermitRootLogin prohibit-password</b> — root queda permitido solo mediante key.</div>
+    </div>
+    <p class="nota">No se desactiva root por completo porque un perfil que use <b>root</b> se bloquearía. Con esta configuración root no puede entrar con contraseña, solo con una key válida. Si la validación o la recarga de SSH falla, Gateway revierte el cambio.</p>
+    <div class="botones">
+      <button id="seg-no">Ahora no</button>
+      <button class="principal" id="seg-si">Sí, asegurar SSH</button>
     </div>
   </div>
 </div>
@@ -650,19 +685,42 @@
   $('btn-guardar').onclick = guardarServidorDesdeForm;
 
   // ── Asistente de clave SSH ─────────────────────────────────
+  var seguridadPendiente = null;
+  function cerrarModalSeguridad(){
+    $('m-seguridad').classList.remove('abierto');
+    seguridadPendiente = null;
+  }
   function crearInstalarKey(aceptarHuella){
     var pet={nombre:$('f-nombre').value.trim(),host:$('f-host').value.trim(),puerto:parseInt($('f-puerto').value)||22,usuario:$('f-usuario').value.trim(),password:$('f-pass').value,aceptarHuella:!!aceptarHuella,tuneles:leerTunelesForm()};
     if(!pet.nombre||!pet.host||!pet.usuario||!pet.password){ aviso('Completa nombre, host, usuario y la contraseña actual del servidor.',false); return; }
+    var passwordActual=pet.password;
     var b=$('btn-crear-key'); b.disabled=true; b.textContent='Instalando…';
     api('/api/crear-instalar-key',{method:'POST',body:JSON.stringify(pet)}).then(function(r){
       if(r.confirmarHuella){ if(confirm('Primera conexión a este servidor. Huella SSH:\n\n'+r.confirmarHuella+'\n\n¿Confiar e instalar la clave?')) crearInstalarKey(true); return; }
       if(r.error){ aviso(r.error,false); return; }
       $('f-key').value=r.key||''; $('f-pass').value=''; $('f-guardar').checked=false;
-      $('key-res').textContent='✓ Key ED25519 creada e instalada. Huella de la key: '+(r.huella||'');
-      aviso('Clave SSH instalada y perfil actualizado. Ya puedes conectar sin contraseña.',true); refrescarLista();
+      $('key-res').textContent='✓ Key ED25519 creada, instalada y comprobada. Huella de la key: '+(r.huella||'');
+      seguridadPendiente={nombre:pet.nombre,password:passwordActual};
+      $('m-seguridad').classList.add('abierto');
+      aviso('Clave SSH instalada y comprobada. Ya puedes conectar sin contraseña.',true);
+      refrescarLista();
     }).catch(function(){ aviso('Error de comunicación al instalar la key.',false); }).finally(function(){ b.disabled=false; b.textContent='🔑 Crear e instalar Key'; });
   }
   $('btn-crear-key').onclick=function(){ crearInstalarKey(false); };
+  $('seg-no').onclick=function(){
+    cerrarModalSeguridad();
+    aviso('La key quedó configurada. SSH conserva la autenticación por contraseña.',true);
+  };
+  $('seg-si').onclick=function(){
+    if(!seguridadPendiente){ cerrarModalSeguridad(); return; }
+    var datos=seguridadPendiente;
+    var b=$('seg-si'); b.disabled=true; b.textContent='Asegurando…';
+    api('/api/asegurar-ssh',{method:'POST',body:JSON.stringify(datos)}).then(function(r){
+      if(r.error){ aviso(r.error,false); return; }
+      cerrarModalSeguridad();
+      aviso('SSH asegurado: contraseñas desactivadas y root permitido solo con key.',true);
+    }).catch(function(){ aviso('Error de comunicación al asegurar SSH.',false); }).finally(function(){ b.disabled=false; b.textContent='Sí, asegurar SSH'; });
+  };
 
   // ── Conectar (con flujo de huella y contraseña) ──────────────
   var pendiente = null;
@@ -743,18 +801,19 @@
     {puerto:19999,nombre:'Netdata',ruta:''}, {puerto:6060,nombre:'CrowdSec',ruta:'/metrics'},
     {puerto:60601,nombre:'Bouncer',ruta:'/metrics'}
   ];
+  function actualizarCuentaTuneles(){ var n=document.querySelectorAll('#tun-lista .tun-fila').length; if($('tun-cuenta')) $('tun-cuenta').textContent='— '+n+' túnel'+(n===1?'':'es'); }
   function filaTunel(t){
     var d=nodo('div','tun-fila');
     var p=nodo('input','p'); p.type='number'; p.min='1'; p.max='65535'; p.value=t.puerto||''; p.placeholder='8888';
     var n=nodo('input','n'); n.type='text'; n.value=t.nombre||''; n.placeholder='Nombre del servicio';
     var r=nodo('input','r'); r.type='text'; r.value=t.ruta||''; r.placeholder='/opcional';
     var aw=nodo('div','aw'); var ch=document.createElement('input'); ch.type='checkbox'; ch.className='auto-web'; ch.checked=!!t.abrirWeb; ch.title='Abrir web al conectar'; aw.appendChild(ch);
-    var b=nodo('button','peligro','✕'); b.type='button'; b.title='Quitar este túnel'; b.onclick=function(){d.remove();};
+    var b=nodo('button','peligro','✕'); b.type='button'; b.title='Quitar este túnel'; b.onclick=function(){d.remove();actualizarCuentaTuneles();};
     d.appendChild(p); d.appendChild(n); d.appendChild(r); d.appendChild(aw); d.appendChild(b); return d;
   }
-  function pintarTunelesForm(lista){ var c=$('tun-lista'); vaciar(c); (lista||[]).forEach(function(t){c.appendChild(filaTunel(t));}); }
+  function pintarTunelesForm(lista){ var c=$('tun-lista'); vaciar(c); var l=lista||[]; l.forEach(function(t){c.appendChild(filaTunel(t));}); actualizarCuentaTuneles(); }
   function leerTunelesForm(){ var out=[]; document.querySelectorAll('#tun-lista .tun-fila').forEach(function(f){ var p=parseInt(f.querySelector('.p').value); if(!p)return; out.push({puerto:p,nombre:f.querySelector('.n').value.trim(),ruta:f.querySelector('.r').value.trim(),abrirWeb:f.querySelector('.auto-web').checked}); }); return out; }
-  $('tun-agregar').onclick=function(){ $('tun-lista').appendChild(filaTunel({})); };
+  $('tun-agregar').onclick=function(){ $('tun-lista').appendChild(filaTunel({})); actualizarCuentaTuneles(); };
   $('tun-defecto').onclick=function(){ pintarTunelesForm(tunelesDefecto); };
   pintarTunelesForm(tunelesDefecto);
 
@@ -913,6 +972,7 @@
       if (document.getElementById('term-velo').classList.contains('abierto')){ cerrarTerminalUI(); return; }
       if (document.getElementById('m-huella').classList.contains('abierto')){ document.getElementById('huella-no').click(); return; }
       if (document.getElementById('m-pass').classList.contains('abierto')){ document.getElementById('pass-no').click(); return; }
+      if (document.getElementById('m-seguridad').classList.contains('abierto')){ document.getElementById('seg-no').click(); return; }
     }
     if (e.ctrlKey && e.key === 'Enter'){
       if (document.getElementById('m-pass').classList.contains('abierto')){ document.getElementById('pass-si').click(); return; }
@@ -930,6 +990,7 @@
   }
   plegar('srv-cabecera','srv-caja');
   plegar('form-cabecera','form');
+  plegar('tun-cabecera-form','tun-caja-form');
 
   function abrirFormulario(){
     document.getElementById('form-cabecera').classList.add('abierta');

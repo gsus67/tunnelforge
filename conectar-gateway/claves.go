@@ -18,6 +18,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"net"
@@ -231,7 +232,7 @@ func manejarCrearInstalarKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ses.Stdin = strings.NewReader(publica + "\n")
-	err = ses.Run(`umask 077; mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh" && touch "$HOME/.ssh/authorized_keys" && chmod 600 "$HOME/.ssh/authorized_keys" && cat >> "$HOME/.ssh/authorized_keys"`)
+	err = ses.Run(`umask 077; mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh" && touch "$HOME/.ssh/authorized_keys" && chmod 600 "$HOME/.ssh/authorized_keys" && IFS= read -r gateway_key && (grep -Fqx "$gateway_key" "$HOME/.ssh/authorized_keys" 2>/dev/null || printf '%s\n' "$gateway_key" >> "$HOME/.ssh/authorized_keys")`)
 	ses.Close()
 	if err != nil {
 		responderError(w, fmt.Errorf("conecté, pero no pude instalar authorized_keys: %v", err))
@@ -257,6 +258,39 @@ func manejarCrearInstalarKey(w http.ResponseWriter, r *http.Request) {
 		responderError(w, err)
 		return
 	}
+
+	// Antes de cambiar el perfil a key, comprobamos una NUEVA conexión SSH
+	// usando exactamente la privada recién creada. Así nunca ofrecemos
+	// endurecer SSH si la key no quedó realmente operativa en el servidor.
+	firmanteNuevo, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		_ = os.Remove(ruta)
+		responderError(w, fmt.Errorf("no pude preparar la key nueva: %v", err))
+		return
+	}
+	cfgKey := &ssh.ClientConfig{
+		User: pet.Usuario,
+		Auth: []ssh.AuthMethod{ssh.PublicKeys(firmanteNuevo)},
+		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
+			vista := ssh.FingerprintSHA256(key)
+			esperada := huellaGuardada
+			if esperada == "" {
+				esperada = huellaVista
+			}
+			if esperada == "" || vista != esperada {
+				return fmt.Errorf("huella SSH inesperada al comprobar la key")
+			}
+			return nil
+		},
+		Timeout: 12 * time.Second,
+	}
+	prueba, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", pet.Host, pet.Puerto), cfgKey)
+	if err != nil {
+		_ = os.Remove(ruta)
+		responderError(w, fmt.Errorf("la clave pública se instaló, pero el servidor no aceptó la nueva key al comprobarla: %v", err))
+		return
+	}
+	_ = prueba.Close()
 
 	mu.Lock()
 	lista = cargar()
@@ -289,4 +323,211 @@ func manejarCrearInstalarKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	responder(w, map[string]any{"ok": true, "key": ruta, "publica": publica, "huella": ssh.FingerprintSHA256(sshPub)})
+}
+
+// ejecutarSesion ejecuta un comando en una conexión SSH ya autenticada.
+func ejecutarSesion(cli *ssh.Client, comando, entrada string) (string, error) {
+	ses, err := cli.NewSession()
+	if err != nil {
+		return "", err
+	}
+	defer ses.Close()
+	if entrada != "" {
+		ses.Stdin = strings.NewReader(entrada)
+	}
+	salida, err := ses.CombinedOutput(comando)
+	texto := strings.TrimSpace(string(salida))
+	if err != nil {
+		if texto != "" {
+			return texto, fmt.Errorf("%v: %s", err, texto)
+		}
+		return texto, err
+	}
+	return texto, nil
+}
+
+// conectarPerfilSoloKey abre una conexión nueva usando la key guardada y
+// exige exactamente la huella TOFU del perfil. Se usa antes y después del
+// endurecimiento para evitar bloquear el acceso al servidor.
+func conectarPerfilSoloKey(s Servidor) (*ssh.Client, error) {
+	if strings.TrimSpace(s.Key) == "" {
+		return nil, fmt.Errorf("el perfil no tiene una key SSH configurada")
+	}
+	if strings.TrimSpace(s.Huella) == "" {
+		return nil, fmt.Errorf("el perfil no tiene una huella SSH verificada")
+	}
+	firmante, necesita, err := cargarFirmante(s.Key, "")
+	if err != nil {
+		return nil, err
+	}
+	if necesita {
+		return nil, fmt.Errorf("la key del perfil tiene passphrase; el asistente de seguridad solo usa la key generada por Gateway")
+	}
+	cfg := &ssh.ClientConfig{
+		User: s.Usuario,
+		Auth: []ssh.AuthMethod{ssh.PublicKeys(firmante)},
+		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
+			vista := ssh.FingerprintSHA256(key)
+			if vista != s.Huella {
+				return fmt.Errorf("la huella SSH cambió: esperada %s, recibida %s", s.Huella, vista)
+			}
+			return nil
+		},
+		Timeout: 12 * time.Second,
+	}
+	return ssh.Dial("tcp", fmt.Sprintf("%s:%d", s.Host, s.Puerto), cfg)
+}
+
+// ejecutarComoRoot ejecuta un script fijo como root. Si el usuario remoto no
+// es root, usa sudo -S con la contraseña que el usuario acaba de utilizar para
+// instalar la key. El script completo viaja codificado en base64 para evitar
+// problemas de comillas o interpolación del shell.
+func ejecutarComoRoot(cli *ssh.Client, password, script string) (string, error) {
+	uid, err := ejecutarSesion(cli, "id -u", "")
+	if err != nil {
+		return "", fmt.Errorf("no pude comprobar los privilegios remotos: %v", err)
+	}
+	codificado := base64.StdEncoding.EncodeToString([]byte(script))
+	base := fmt.Sprintf("sh -c 'printf %%s %s | base64 -d | sh'", codificado)
+	if strings.TrimSpace(uid) == "0" {
+		return ejecutarSesion(cli, base, "")
+	}
+	if password == "" {
+		return "", fmt.Errorf("el usuario remoto no es root y se necesita su contraseña para ejecutar sudo")
+	}
+	cmd := fmt.Sprintf("sudo -S -p '' %s", base)
+	return ejecutarSesion(cli, cmd, password+"\n")
+}
+
+func scriptRecargarSSH() string {
+	return `
+reload_ok=0
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl reload sshd >/dev/null 2>&1 && reload_ok=1 || true
+  if [ "$reload_ok" -eq 0 ]; then systemctl reload ssh >/dev/null 2>&1 && reload_ok=1 || true; fi
+fi
+if [ "$reload_ok" -eq 0 ] && command -v service >/dev/null 2>&1; then
+  service sshd reload >/dev/null 2>&1 && reload_ok=1 || true
+  if [ "$reload_ok" -eq 0 ]; then service ssh reload >/dev/null 2>&1 && reload_ok=1 || true; fi
+fi
+if [ "$reload_ok" -eq 0 ] && command -v pkill >/dev/null 2>&1; then
+  pkill -HUP -x sshd >/dev/null 2>&1 && reload_ok=1 || true
+fi
+[ "$reload_ok" -eq 1 ]
+`
+}
+
+// manejarAsegurarSSH se ofrece únicamente DESPUÉS de que una key nueva haya
+// sido instalada y comprobada. Deshabilita contraseñas e interacción por
+// teclado, mantiene public-key y deja root en modo key-only. No desactiva root
+// por completo porque hacerlo bloquearía perfiles que administran el gateway
+// directamente como root.
+func manejarAsegurarSSH(w http.ResponseWriter, r *http.Request) {
+	var pet struct {
+		Nombre   string `json:"nombre"`
+		Password string `json:"password"`
+	}
+	if err := decodificar(r, &pet); err != nil {
+		responderError(w, err)
+		return
+	}
+	pet.Nombre = strings.TrimSpace(pet.Nombre)
+	if pet.Nombre == "" {
+		responderError(w, fmt.Errorf("falta el nombre del servidor"))
+		return
+	}
+
+	mu.Lock()
+	lista := cargar()
+	p := buscar(lista, pet.Nombre)
+	if p == nil {
+		mu.Unlock()
+		responderError(w, fmt.Errorf("servidor no encontrado"))
+		return
+	}
+	servidor := *p
+	mu.Unlock()
+
+	// Primera comprobación: antes de tocar sshd, la key debe abrir una conexión
+	// nueva por sí sola.
+	cli, err := conectarPerfilSoloKey(servidor)
+	if err != nil {
+		responderError(w, fmt.Errorf("no voy a cerrar contraseñas porque la key no superó la comprobación previa: %v", err))
+		return
+	}
+	defer cli.Close()
+
+	config := `# Gestionado por Gateway WISP Access
+# La key se comprobó antes de aplicar este archivo.
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PermitRootLogin prohibit-password
+`
+	config64 := base64.StdEncoding.EncodeToString([]byte(config))
+	aplicar := fmt.Sprintf(`set -u
+DIR=/etc/ssh/sshd_config.d
+FILE="$DIR/00-gateway-wisp-hardening.conf"
+mkdir -p "$DIR" || exit 30
+printf %%s %s | base64 -d > "$FILE" || exit 31
+chmod 600 "$FILE" || exit 32
+if ! sshd -t; then
+  rm -f "$FILE"
+  echo __GATEWAY_CONFIG_INVALID__
+  exit 40
+fi
+EFF="$(sshd -T 2>/dev/null)"
+echo "$EFF" | grep -q '^pubkeyauthentication yes$' || { rm -f "$FILE"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
+echo "$EFF" | grep -q '^passwordauthentication no$' || { rm -f "$FILE"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
+echo "$EFF" | grep -q '^kbdinteractiveauthentication no$' || { rm -f "$FILE"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
+ROOTMODE="$(echo "$EFF" | awk '$1=="permitrootlogin" {print $2; exit}')"
+case "$ROOTMODE" in
+  prohibit-password|without-password) ;;
+  *) rm -f "$FILE"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41 ;;
+esac
+%s
+if [ "$reload_ok" -ne 1 ]; then
+  rm -f "$FILE"
+  echo __GATEWAY_RELOAD_FAILED__
+  exit 42
+fi
+echo __GATEWAY_OK__
+`, config64, scriptRecargarSSH())
+
+	salida, err := ejecutarComoRoot(cli, pet.Password, aplicar)
+	if err != nil {
+		switch {
+		case strings.Contains(salida, "__GATEWAY_CONFIG_INVALID__"):
+			responderError(w, fmt.Errorf("la configuración SSH no pasó 'sshd -t'; no se aplicó ningún cambio"))
+		case strings.Contains(salida, "__GATEWAY_NOT_EFFECTIVE__"):
+			responderError(w, fmt.Errorf("el servidor tiene otra regla SSH con mayor prioridad; Gateway revirtió el cambio para evitar un bloqueo"))
+		case strings.Contains(salida, "__GATEWAY_RELOAD_FAILED__"):
+			responderError(w, fmt.Errorf("la configuración era válida, pero no pude recargar el servicio SSH; el archivo de endurecimiento fue retirado"))
+		default:
+			responderError(w, fmt.Errorf("no pude asegurar SSH: %v", err))
+		}
+		return
+	}
+
+	// Segunda comprobación: ya con sshd recargado, abrimos otra conexión con la
+	// key. Si algo inesperado falla, revertimos mientras esta sesión sigue viva.
+	prueba, err := conectarPerfilSoloKey(servidor)
+	if err != nil {
+		rollback := fmt.Sprintf(`rm -f /etc/ssh/sshd_config.d/00-gateway-wisp-hardening.conf
+sshd -t || exit 50
+%s
+`, scriptRecargarSSH())
+		_, _ = ejecutarComoRoot(cli, pet.Password, rollback)
+		responderError(w, fmt.Errorf("la key dejó de poder abrir una conexión después del cambio; Gateway intentó revertir el endurecimiento: %v", err))
+		return
+	}
+	_ = prueba.Close()
+
+	responder(w, map[string]any{
+		"ok":                     true,
+		"passwordAuthentication": false,
+		"pubkeyAuthentication":   true,
+		"rootLogin":              "key-only",
+	})
 }

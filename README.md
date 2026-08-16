@@ -122,8 +122,7 @@ funcionando aunque un túnel concreto no pueda reservar su puerto.
 
 ### Túneles por servidor
 
-Vienen configurados los cinco del gateway WISP, y se pueden quitar, renombrar
-o ampliar desde el formulario **Agregar / editar servidor**. Cada perfil mantiene sus propios túneles y puede marcar **Auto web** para abrir un panel al conectar:
+Vienen configurados los cinco del gateway WISP. El bloque **Túneles de este servidor** aparece plegado por defecto dentro de **Agregar / editar servidor**; al abrirlo se pueden quitar, renombrar o ampliar. Cada perfil mantiene sus propios túneles y puede marcar **Auto web** para abrir un panel al conectar:
 
 | Puerto | Servicio |
 |---|---|
@@ -146,6 +145,11 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
 - **Verificación de huella (TOFU)**: la primera conexión pide confirmar la
   huella del servidor; si más tarde cambia, la app se niega a conectar y avisa.
   Protege contra suplantación del servidor.
+- **Endurecimiento SSH opcional**: después de generar e instalar una key, Gateway
+  comprueba que realmente funciona y puede desactivar el login por contraseña.
+  Mantiene `root` únicamente por key (`PermitRootLogin prohibit-password`) para
+  no bloquear perfiles administrativos. Valida con `sshd -t`/`sshd -T`, recarga
+  SSH y vuelve a probar la key; ante un fallo intenta revertir el cambio.
 - **Nada expuesto**: la interfaz escucha solo en `127.0.0.1`, protegida por un
   token de sesión aleatorio.
 - **Enlaces restringidos**: la app solo abre en el navegador direcciones de tus
@@ -270,4 +274,6 @@ Copyright (c) 2026 Gsus — Licencia MIT (ver [LICENSE](LICENSE)).
 
 ### Crear e instalar una Key SSH desde la app
 
-En **Agregar / editar servidor**, completa nombre, host, usuario y la contraseña SSH actual y pulsa **Crear e instalar Key**. Gateway genera una ED25519, instala solo la clave pública en `~/.ssh/authorized_keys`, guarda la privada localmente y actualiza el perfil para usar autenticación por clave.
+En **Agregar / editar servidor**, completa nombre, host, usuario y la contraseña SSH actual y pulsa **Crear e instalar Key**. Gateway genera una ED25519, instala solo la clave pública en `~/.ssh/authorized_keys`, guarda la privada localmente y **comprueba una conexión nueva usando esa key** antes de actualizar el perfil.
+
+Cuando la comprobación termina, Gateway pregunta si quieres **asegurar SSH**. Si aceptas, desactiva la autenticación por contraseña e interactiva, mantiene el acceso por claves y deja `root` en modo **solo key**. No usa `PermitRootLogin no` porque eso bloquearía un perfil que necesite administrar el servidor como root.

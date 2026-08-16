@@ -3,6 +3,25 @@
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
 A partir de ahora, cada nueva versión se añade al inicio de este mismo archivo en lugar de crear un `RELEASE_NOTES_vX.X.X.md` nuevo.
 
+## v2.8.0
+
+### Asistente de seguridad SSH
+
+- Después de **Crear e instalar Key**, Gateway comprueba que la ED25519 nueva puede abrir una conexión SSH independiente antes de cambiar el perfil.
+- Tras verificar la key, la aplicación pregunta **¿Asegurar SSH ahora?**.
+- La opción de endurecimiento mantiene `PubkeyAuthentication yes`, desactiva `PasswordAuthentication` y `KbdInteractiveAuthentication`, y configura `PermitRootLogin prohibit-password`.
+- `root` no se desactiva por completo: queda permitido únicamente mediante key, evitando bloquear perfiles que administran el servidor directamente como root.
+- Antes de tocar `sshd`, Gateway vuelve a comprobar la key; valida la configuración con `sshd -t`, verifica los valores efectivos con `sshd -T` y recarga `ssh`/`sshd`.
+- Después de la recarga se prueba una tercera conexión mediante key. Si esa comprobación falla, Gateway intenta retirar el endurecimiento y recargar SSH mientras la sesión original sigue disponible.
+- Para usuarios no-root se utiliza `sudo` con la contraseña que se acaba de usar para instalar la key.
+- La instalación en `authorized_keys` evita añadir duplicados exactos en reintentos.
+
+### Interfaz y túneles
+
+- **Túneles de este servidor** aparece plegado por defecto dentro de Agregar / editar servidor, igual que el resto de menús desplegables.
+- El encabezado plegado muestra cuántos túneles tiene configurado el perfil.
+- El contador se actualiza al agregar o quitar túneles.
+
 ## v2.7.2
 
 ### Build y Releases
