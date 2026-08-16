@@ -41,13 +41,14 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.6.2"
+const version = "2.7.0"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
-	Puerto int    `json:"puerto"`
-	Nombre string `json:"nombre"`
-	Ruta   string `json:"ruta,omitempty"` // ruta para el enlace, ej. "/metrics"
+	Puerto   int    `json:"puerto"`
+	Nombre   string `json:"nombre"`
+	Ruta     string `json:"ruta,omitempty"`     // ruta para el enlace, ej. "/metrics"
+	AbrirWeb bool   `json:"abrirWeb,omitempty"` // abrir automaticamente al conectar
 }
 
 // Tuneles por defecto (los del gateway WISP). Se pueden quitar o agregar
@@ -120,14 +121,15 @@ var estaticos embed.FS
 // Modelo y almacenamiento
 // ---------------------------------------------------------------------------
 type Servidor struct {
-	Nombre   string `json:"nombre"`
-	Host     string `json:"host"`
-	Puerto   int    `json:"puerto"`
-	Usuario  string `json:"usuario"`
-	Key      string `json:"key,omitempty"`
-	PassCifr string `json:"passwordCifrada,omitempty"`
-	Huella   string `json:"huella,omitempty"`
-	Favorito bool   `json:"favorito,omitempty"`
+	Nombre   string  `json:"nombre"`
+	Host     string  `json:"host"`
+	Puerto   int     `json:"puerto"`
+	Usuario  string  `json:"usuario"`
+	Key      string  `json:"key,omitempty"`
+	PassCifr string  `json:"passwordCifrada,omitempty"`
+	Huella   string  `json:"huella,omitempty"`
+	Favorito bool    `json:"favorito,omitempty"`
+	Tuneles  []Tunel `json:"tuneles"`
 }
 
 var (
@@ -216,6 +218,7 @@ type Conexion struct {
 	servidor string
 	desde    time.Time
 	abiertos []int
+	tuneles  []Tunel
 	rx, tx   int64        // bytes acumulados (atomic)
 	sftp     *sftp.Client // canal SFTP (perezoso: solo si se usa el gestor)
 	sftpMu   sync.Mutex   // evita abrir dos canales SFTP simultáneos
@@ -356,10 +359,13 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 	}
 
 	// ---- túneles locales ----
-	con := &Conexion{cliente: cliente, servidor: s.Nombre, desde: time.Now()}
-	mu.Lock()
-	tuneles := cargarTuneles()
-	mu.Unlock()
+	tuneles := s.Tuneles
+	if tuneles == nil {
+		mu.Lock()
+		tuneles = cargarTuneles() // compatibilidad con perfiles de versiones anteriores
+		mu.Unlock()
+	}
+	con := &Conexion{cliente: cliente, servidor: s.Nombre, desde: time.Now(), tuneles: append([]Tunel(nil), tuneles...)}
 	var omitidos []int
 	for _, t := range tuneles {
 		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", t.Puerto))
@@ -419,6 +425,19 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 	conexiones[con.servidor] = con
 	mu.Unlock()
 	resultado := map[string]any{"ok": true, "puertos": con.abiertos, "sinTuneles": sinTuneles}
+	var abrir []string
+	for _, t := range con.tuneles {
+		if t.AbrirWeb {
+			for _, p := range con.abiertos {
+				if p == t.Puerto {
+					abrir = append(abrir, fmt.Sprintf("http://localhost:%d%s", t.Puerto, t.Ruta))
+				}
+			}
+		}
+	}
+	if len(abrir) > 0 {
+		resultado["abrirWeb"] = abrir
+	}
 	if len(omitidos) > 0 {
 		resultado["puertosOmitidos"] = omitidos
 	}
@@ -517,7 +536,12 @@ func main() {
 					"nombre": s.Nombre, "host": s.Host, "puerto": s.Puerto,
 					"usuario": s.Usuario, "key": s.Key,
 					"tienePassword": s.PassCifr != "", "confiado": s.Huella != "",
-					"favorito": s.Favorito,
+					"favorito": s.Favorito, "tuneles": func() []Tunel {
+						if s.Tuneles != nil {
+							return s.Tuneles
+						}
+						return cargarTuneles()
+					}(),
 				})
 			}
 			responder(w, salida)
@@ -527,6 +551,7 @@ func main() {
 				Puerto                               int
 				GuardarPassword                      bool
 				Favorito                             *bool // puntero: distinguir "no lo mandó" de "false"
+				Tuneles                              *[]Tunel
 			}
 			if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
 				responderError(w, err)
@@ -549,6 +574,14 @@ func main() {
 			s.Key = normalizarRuta(pet.Key)
 			if pet.Favorito != nil {
 				s.Favorito = *pet.Favorito
+			}
+			if pet.Tuneles != nil {
+				validados, err := validarTuneles(*pet.Tuneles)
+				if err != nil {
+					responderError(w, err)
+					return
+				}
+				s.Tuneles = validados
 			}
 			if pet.GuardarPassword && pet.Password != "" {
 				c, err := cifrar(pet.Password)
@@ -618,6 +651,7 @@ func main() {
 	mux.HandleFunc("/api/historial", proteger(manejarHistorial))
 	mux.HandleFunc("/api/version", proteger(manejarVersion))
 	mux.HandleFunc("/api/probar-key", proteger(manejarProbarKey))
+	mux.HandleFunc("/api/crear-instalar-key", proteger(manejarCrearInstalarKey))
 	mux.HandleFunc("/api/archivos", proteger(manejarArchivos))
 	mux.HandleFunc("/api/archivos/descargar", proteger(manejarDescargar))
 	mux.HandleFunc("/api/archivos/subir", proteger(manejarSubir))
@@ -714,7 +748,6 @@ func main() {
 	mux.HandleFunc("/api/estado", proteger(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
-		todosTuneles := cargarTuneles()
 		lista := []map[string]any{}
 		for nombre, c := range conexiones {
 			abiertos := map[int]bool{}
@@ -722,7 +755,7 @@ func main() {
 				abiertos[p] = true
 			}
 			var activos []Tunel
-			for _, t := range todosTuneles {
+			for _, t := range c.tuneles {
 				if abiertos[t.Puerto] {
 					activos = append(activos, t)
 				}
@@ -765,18 +798,6 @@ func main() {
 		}
 		abrirNavegador(u.String())
 		responder(w, map[string]any{"ok": true})
-	}))
-
-	mux.HandleFunc("/api/salir", proteger(func(w http.ResponseWriter, r *http.Request) {
-		responder(w, map[string]any{"ok": true})
-		go func() {
-			time.Sleep(300 * time.Millisecond)
-			mu.Lock()
-			cerrarTodas()
-			mu.Unlock()
-			_ = os.Remove(filepath.Join(baseDir, "sesion"))
-			os.Exit(0)
-		}()
 	}))
 
 	escucha, err := net.Listen("tcp", "127.0.0.1:"+puertoGUI)

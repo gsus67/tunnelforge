@@ -240,6 +240,16 @@ func manejarImportar(w http.ResponseWriter, r *http.Request) {
 		responderError(w, fmt.Errorf("túneles inválidos en la copia: %v", err))
 		return
 	}
+	for i := range p.Servidores {
+		if p.Servidores[i].Tuneles != nil {
+			vt, e := validarTuneles(p.Servidores[i].Tuneles)
+			if e != nil {
+				responderError(w, fmt.Errorf("túneles inválidos en %s: %v", p.Servidores[i].Nombre, e))
+				return
+			}
+			p.Servidores[i].Tuneles = vt
+		}
+	}
 
 	mu.Lock()
 	defer mu.Unlock()

@@ -121,10 +121,10 @@ Para tener los paneles de dos servidores a la vez, hoy la forma es conectar
 uno, usarlo, desconectarlo y conectar el otro. Túneles con puertos distintos
 por servidor es una mejora posible más adelante.
 
-### Túneles
+### Túneles por servidor
 
 Vienen configurados los cinco del gateway WISP, y se pueden quitar, renombrar
-o ampliar desde la sección **Túneles**:
+o ampliar desde el formulario **Agregar / editar servidor**. Cada perfil mantiene sus propios túneles y puede marcar **Auto web** para abrir un panel al conectar:
 
 | Puerto | Servicio |
 |---|---|
@@ -267,3 +267,8 @@ los binarios al Release automáticamente.
 ## Licencia
 
 Copyright (c) 2026 Gsus — Licencia MIT (ver [LICENSE](LICENSE)).
+
+
+### Crear e instalar una Key SSH desde la app
+
+En **Agregar / editar servidor**, completa nombre, host, usuario y la contraseña SSH actual y pulsa **Crear e instalar Key**. Gateway genera una ED25519, instala solo la clave pública en `~/.ssh/authorized_keys`, guarda la privada localmente y actualiza el perfil para usar autenticación por clave.

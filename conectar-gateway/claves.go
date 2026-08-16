@@ -15,11 +15,17 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -131,4 +137,156 @@ func manejarProbarKey(w http.ResponseWriter, r *http.Request) {
 		"huella":    ssh.FingerprintSHA256(firmante.PublicKey()),
 		"rutaFinal": normalizarRuta(pet.Key),
 	})
+}
+
+// manejarCrearInstalarKey crea una ED25519 local, instala solamente la clave
+// publica en authorized_keys usando la contrasena actual y actualiza el perfil.
+func manejarCrearInstalarKey(w http.ResponseWriter, r *http.Request) {
+	var pet struct {
+		Nombre, Host, Usuario, Password string
+		Puerto                          int
+		AceptarHuella                   bool
+		Tuneles                         []Tunel
+	}
+	if err := decodificar(r, &pet); err != nil {
+		responderError(w, err)
+		return
+	}
+	pet.Nombre = strings.TrimSpace(pet.Nombre)
+	pet.Host = strings.TrimSpace(pet.Host)
+	pet.Usuario = strings.TrimSpace(pet.Usuario)
+	if pet.Nombre == "" || pet.Host == "" || pet.Usuario == "" || pet.Password == "" {
+		responderError(w, fmt.Errorf("nombre, host, usuario y contraseña actual son obligatorios"))
+		return
+	}
+	if pet.Puerto == 0 {
+		pet.Puerto = 22
+	}
+
+	mu.Lock()
+	lista := cargar()
+	existente := buscar(lista, pet.Nombre)
+	huellaGuardada := ""
+	if existente != nil {
+		huellaGuardada = existente.Huella
+	}
+	mu.Unlock()
+
+	var huellaVista string
+	cb := func(_ string, _ net.Addr, key ssh.PublicKey) error {
+		huellaVista = ssh.FingerprintSHA256(key)
+		if huellaGuardada == "" {
+			if pet.AceptarHuella {
+				return nil
+			}
+			return fmt.Errorf("confirmar-huella")
+		}
+		if huellaGuardada != huellaVista {
+			return fmt.Errorf("la huella SSH cambió: guardada %s, recibida %s", huellaGuardada, huellaVista)
+		}
+		return nil
+	}
+	cfg := &ssh.ClientConfig{User: pet.Usuario, Auth: []ssh.AuthMethod{
+		ssh.Password(pet.Password),
+		ssh.KeyboardInteractive(func(_, _ string, qs []string, _ []bool) ([]string, error) {
+			a := make([]string, len(qs))
+			for i := range a {
+				a[i] = pet.Password
+			}
+			return a, nil
+		}),
+	}, HostKeyCallback: cb, Timeout: 12 * time.Second}
+	cli, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", pet.Host, pet.Puerto), cfg)
+	if err != nil {
+		if huellaVista != "" && huellaGuardada == "" && !pet.AceptarHuella {
+			responder(w, map[string]any{"confirmarHuella": huellaVista})
+			return
+		}
+		responderError(w, fmt.Errorf("no pude autenticar con la contraseña actual: %v", err))
+		return
+	}
+	defer cli.Close()
+
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	bloque, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	privPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: bloque})
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	publica := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub))) + " gateway-wisp-" + strings.ReplaceAll(pet.Nombre, " ", "-")
+
+	ses, err := cli.NewSession()
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	ses.Stdin = strings.NewReader(publica + "\n")
+	err = ses.Run(`umask 077; mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh" && touch "$HOME/.ssh/authorized_keys" && chmod 600 "$HOME/.ssh/authorized_keys" && cat >> "$HOME/.ssh/authorized_keys"`)
+	ses.Close()
+	if err != nil {
+		responderError(w, fmt.Errorf("conecté, pero no pude instalar authorized_keys: %v", err))
+		return
+	}
+
+	dir := rutaJunto("keys")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		responderError(w, err)
+		return
+	}
+	seguro := strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			return r
+		}
+		return '_'
+	}, pet.Nombre)
+	if seguro == "" {
+		seguro = "servidor"
+	}
+	ruta := filepath.Join(dir, seguro+"_ed25519")
+	if err := os.WriteFile(ruta, privPEM, 0600); err != nil {
+		responderError(w, err)
+		return
+	}
+
+	mu.Lock()
+	lista = cargar()
+	s := buscar(lista, pet.Nombre)
+	if s == nil {
+		lista = append(lista, Servidor{Nombre: pet.Nombre})
+		s = &lista[len(lista)-1]
+	}
+	s.Host = pet.Host
+	s.Puerto = pet.Puerto
+	s.Usuario = pet.Usuario
+	if pet.Tuneles != nil {
+		validados, e := validarTuneles(pet.Tuneles)
+		if e != nil {
+			mu.Unlock()
+			responderError(w, e)
+			return
+		}
+		s.Tuneles = validados
+	}
+	s.Key = ruta
+	s.PassCifr = ""
+	if s.Huella == "" {
+		s.Huella = huellaVista
+	}
+	err = guardar(lista)
+	mu.Unlock()
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	responder(w, map[string]any{"ok": true, "key": ruta, "publica": publica, "huella": ssh.FingerprintSHA256(sshPub)})
 }

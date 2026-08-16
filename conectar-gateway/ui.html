@@ -142,11 +142,13 @@
   .tun-fila input.p{width:110px;flex:none}
   .tun-fila input.n{flex:1}
   .tun-fila input.r{width:130px;flex:none}
+  .tun-fila .aw{width:72px;flex:none;text-align:center}
   .tun-cab{display:flex;gap:10px;font-size:11px;color:var(--suave);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
   .tun-cab span:nth-child(1){width:110px}
   .tun-cab span:nth-child(2){flex:1}
   .tun-cab span:nth-child(3){width:130px}
-  .tun-cab span:nth-child(4){width:44px}
+  .tun-cab span:nth-child(4){width:72px;text-align:center}
+  .tun-cab span:nth-child(5){width:44px}
   .tun-acciones{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap}
 
   /* copia de seguridad */
@@ -194,24 +196,6 @@
     <div class="sin-conexion">Sin conexiones. Elige un servidor abajo y dale a Conectar.</div>
   </div>
 
-  <div class="seccion desplegable" id="tun-cabecera">
-    <span class="flecha">▶</span>
-    <span>Túneles</span>
-    <span class="cuenta" id="tun-cuenta"></span>
-  </div>
-  <div class="tuneles plegable" id="tun-caja">
-    <div class="tun-cab"><span>Puerto</span><span>Nombre</span><span>Ruta web</span><span></span></div>
-    <div id="tun-lista"></div>
-    <div class="tun-acciones">
-      <div style="display:flex;gap:8px">
-        <button id="tun-agregar">+ Agregar puerto</button>
-        <button id="tun-defecto">Restaurar por defecto</button>
-      </div>
-      <button class="principal" id="tun-guardar">Guardar túneles</button>
-    </div>
-    <div class="nota" style="margin-top:10px">La <b>ruta web</b> es opcional: se agrega al enlace del panel, por ejemplo <b>/metrics</b>. Los cambios aplican en la próxima conexión.</div>
-  </div>
-
   <div class="seccion desplegable abierta" id="srv-cabecera">
     <span class="flecha">▶</span>
     <span>Servidores guardados</span>
@@ -237,6 +221,7 @@
         <input type="text" id="f-key" placeholder="C:\Users\gsusb\.ssh\id_ed25519" style="flex:1">
         <button type="button" id="btn-buscar-key">Buscar…</button>
         <button type="button" id="btn-probar-key">Probar</button>
+        <button type="button" class="principal" id="btn-crear-key">🔑 Crear e instalar Key</button>
       </div>
       <div class="nota" id="key-res" style="margin-top:6px"></div></div>
     <div class="ancho" id="zona-pass">
@@ -245,6 +230,15 @@
       <div class="check" style="margin-top:8px">
         <input type="checkbox" id="f-guardar"><label for="f-guardar" style="margin:0">Recordar contraseña en este equipo (cifrada)</label>
       </div>
+    </div>
+    <div class="ancho tuneles" style="margin-top:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <b>Túneles de este servidor</b><button type="button" id="tun-defecto">Usar predeterminados</button>
+      </div>
+      <div class="tun-cab"><span>Puerto</span><span>Nombre</span><span>Ruta web</span><span>Auto web</span><span></span></div>
+      <div id="tun-lista"></div>
+      <button type="button" id="tun-agregar">+ Agregar puerto</button>
+      <div class="nota" style="margin-top:8px">Marca <b>Auto web</b> para abrir ese panel automáticamente en tu navegador cuando el túnel quede activo.</div>
     </div>
     <div class="ancho nota">Las contraseñas guardadas se cifran (AES-256) con una llave local en <b>secreto.bin</b>. Máxima seguridad: usa key SSH.
     Atajo: <b>Ctrl+Enter</b> guarda el servidor desde este formulario.</div>
@@ -302,10 +296,6 @@
     credencial embebida para revisar versiones. El botón abre GitHub en tu
     navegador (ya con tu sesión) — ahí ves si hay una versión nueva y qué trae.</div>
     <button id="btn-releases">Ver versiones en GitHub</button>
-  </div>
-
-  <div style="margin-top:28px;text-align:right">
-    <button class="peligro" id="btn-salir">Cerrar aplicación</button>
   </div>
 
   <div class="pie">
@@ -577,7 +567,7 @@
         ev.stopPropagation();
         api('/api/servidores', {method:'POST', body: JSON.stringify({
           nombre: s.nombre, host: s.host, puerto: s.puerto, usuario: s.usuario,
-          key: s.key, favorito: !s.favorito
+          key: s.key, favorito: !s.favorito, tuneles: s.tuneles || []
         })}).then(refrescarLista);
       };
       div.appendChild(fav);
@@ -633,11 +623,12 @@
     $('f-puerto').value = s.puerto; $('f-usuario').value = s.usuario;
     $('f-key').value = s.key || ''; $('f-pass').value = '';
     $('f-guardar').checked = !!s.tienePassword;
+    pintarTunelesForm(s.tuneles || tunelesDefecto);
     window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
   }
   $('btn-limpiar').onclick = function(){
     ['f-nombre','f-host','f-usuario','f-key','f-pass'].forEach(function(i){ $(i).value=''; });
-    $('f-puerto').value = 22; $('f-guardar').checked = false;
+    $('f-puerto').value = 22; $('f-guardar').checked = false; pintarTunelesForm(tunelesDefecto);
   };
   function guardarServidorDesdeForm(){
     var nombre = $('f-nombre').value.trim();
@@ -647,7 +638,8 @@
       puerto: parseInt($('f-puerto').value)||22, usuario: $('f-usuario').value.trim(),
       key: $('f-key').value.trim(), password: $('f-pass').value,
       guardarPassword: $('f-guardar').checked,
-      favorito: existente ? existente.favorito : false
+      favorito: existente ? existente.favorito : false,
+      tuneles: leerTunelesForm()
     })}).then(function(r){
       if (r.error){ aviso(r.error, false); return; }
       aviso('Servidor guardado.', true);
@@ -656,6 +648,21 @@
     });
   }
   $('btn-guardar').onclick = guardarServidorDesdeForm;
+
+  // ── Asistente de clave SSH ─────────────────────────────────
+  function crearInstalarKey(aceptarHuella){
+    var pet={nombre:$('f-nombre').value.trim(),host:$('f-host').value.trim(),puerto:parseInt($('f-puerto').value)||22,usuario:$('f-usuario').value.trim(),password:$('f-pass').value,aceptarHuella:!!aceptarHuella,tuneles:leerTunelesForm()};
+    if(!pet.nombre||!pet.host||!pet.usuario||!pet.password){ aviso('Completa nombre, host, usuario y la contraseña actual del servidor.',false); return; }
+    var b=$('btn-crear-key'); b.disabled=true; b.textContent='Instalando…';
+    api('/api/crear-instalar-key',{method:'POST',body:JSON.stringify(pet)}).then(function(r){
+      if(r.confirmarHuella){ if(confirm('Primera conexión a este servidor. Huella SSH:\n\n'+r.confirmarHuella+'\n\n¿Confiar e instalar la clave?')) crearInstalarKey(true); return; }
+      if(r.error){ aviso(r.error,false); return; }
+      $('f-key').value=r.key||''; $('f-pass').value=''; $('f-guardar').checked=false;
+      $('key-res').textContent='✓ Key ED25519 creada e instalada. Huella de la key: '+(r.huella||'');
+      aviso('Clave SSH instalada y perfil actualizado. Ya puedes conectar sin contraseña.',true); refrescarLista();
+    }).catch(function(){ aviso('Error de comunicación al instalar la key.',false); }).finally(function(){ b.disabled=false; b.textContent='🔑 Crear e instalar Key'; });
+  }
+  $('btn-crear-key').onclick=function(){ crearInstalarKey(false); };
 
   // ── Conectar (con flujo de huella y contraseña) ──────────────
   var pendiente = null;
@@ -698,6 +705,7 @@
         }
         aviso(msg, true);
         refrescarEstado();
+        (r.abrirWeb || []).forEach(function(url){ abrirFuera(url); });
         if (terminalTras){
           var srv = terminalTras; terminalTras = null;
           setTimeout(function(){ abrirTerminal(srv); }, 300);
@@ -729,59 +737,26 @@
   // Guardar estado por si la API cambia de forma (usado por pedirTerminal)
   api('/api/estado').then(function(e){ estadoActual = e; });
 
-  // ── Túneles ───────────────────────────────────────────────────
-  document.getElementById('tun-cabecera').onclick = function(){
-    this.classList.toggle('abierta');
-    document.getElementById('tun-caja').classList.toggle('abierto');
-  };
+  // ── Túneles por servidor ───────────────────────────────────
+  var tunelesDefecto = [
+    {puerto:8888,nombre:'Panel',ruta:''}, {puerto:10086,nombre:'WGDashboard',ruta:''},
+    {puerto:19999,nombre:'Netdata',ruta:''}, {puerto:6060,nombre:'CrowdSec',ruta:'/metrics'},
+    {puerto:60601,nombre:'Bouncer',ruta:'/metrics'}
+  ];
   function filaTunel(t){
-    var d = nodo('div', 'tun-fila');
-    var p = nodo('input', 'p'); p.type='number'; p.min='1'; p.max='65535'; p.value=t.puerto||''; p.placeholder='8888';
-    var n = nodo('input', 'n'); n.type='text'; n.value=t.nombre||''; n.placeholder='Nombre del servicio';
-    var r = nodo('input', 'r'); r.type='text'; r.value=t.ruta||''; r.placeholder='/opcional';
-    d.appendChild(p); d.appendChild(n); d.appendChild(r);
-    var b = nodo('button', 'peligro', '✕'); b.title = 'Quitar este túnel';
-    b.onclick = function(){ d.remove(); };
-    d.appendChild(b);
-    return d;
+    var d=nodo('div','tun-fila');
+    var p=nodo('input','p'); p.type='number'; p.min='1'; p.max='65535'; p.value=t.puerto||''; p.placeholder='8888';
+    var n=nodo('input','n'); n.type='text'; n.value=t.nombre||''; n.placeholder='Nombre del servicio';
+    var r=nodo('input','r'); r.type='text'; r.value=t.ruta||''; r.placeholder='/opcional';
+    var aw=nodo('div','aw'); var ch=document.createElement('input'); ch.type='checkbox'; ch.className='auto-web'; ch.checked=!!t.abrirWeb; ch.title='Abrir web al conectar'; aw.appendChild(ch);
+    var b=nodo('button','peligro','✕'); b.type='button'; b.title='Quitar este túnel'; b.onclick=function(){d.remove();};
+    d.appendChild(p); d.appendChild(n); d.appendChild(r); d.appendChild(aw); d.appendChild(b); return d;
   }
-  function resumenTuneles(lista){
-    var n = (lista||[]).length;
-    document.getElementById('tun-cuenta').textContent =
-      n ? '— ' + n + ' puerto' + (n>1?'s':'') + ': ' + lista.map(function(t){ return t.puerto; }).join(', ')
-        : '— ninguno configurado';
-  }
-  function pintarTuneles(lista){
-    resumenTuneles(lista);
-    var cont = document.getElementById('tun-lista');
-    vaciar(cont);
-    (lista||[]).forEach(function(t){ cont.appendChild(filaTunel(t)); });
-  }
-  function leerTuneles(){
-    var salida = [];
-    document.querySelectorAll('#tun-lista .tun-fila').forEach(function(f){
-      var p = parseInt(f.querySelector('.p').value);
-      if (!p) return;
-      salida.push({puerto: p, nombre: f.querySelector('.n').value.trim(), ruta: f.querySelector('.r').value.trim()});
-    });
-    return salida;
-  }
-  function refrescarTuneles(){ api('/api/tuneles').then(pintarTuneles).catch(function(){}); }
-  refrescarTuneles();
-  document.getElementById('tun-agregar').onclick = function(){
-    document.getElementById('tun-lista').appendChild(filaTunel({}));
-  };
-  document.getElementById('tun-defecto').onclick = function(){
-    if (!confirm('¿Restaurar los túneles por defecto del gateway?')) return;
-    api('/api/tuneles', {method:'DELETE'}).then(function(l){ pintarTuneles(l); aviso('Túneles restaurados.', true); });
-  };
-  document.getElementById('tun-guardar').onclick = function(){
-    api('/api/tuneles', {method:'POST', body: JSON.stringify(leerTuneles())}).then(function(r){
-      if (r.error){ aviso(r.error, false); return; }
-      aviso(r.aviso ? 'Guardado. Aplica al reconectar.' : 'Túneles guardados.', true);
-      refrescarTuneles();
-    });
-  };
+  function pintarTunelesForm(lista){ var c=$('tun-lista'); vaciar(c); (lista||[]).forEach(function(t){c.appendChild(filaTunel(t));}); }
+  function leerTunelesForm(){ var out=[]; document.querySelectorAll('#tun-lista .tun-fila').forEach(function(f){ var p=parseInt(f.querySelector('.p').value); if(!p)return; out.push({puerto:p,nombre:f.querySelector('.n').value.trim(),ruta:f.querySelector('.r').value.trim(),abrirWeb:f.querySelector('.auto-web').checked}); }); return out; }
+  $('tun-agregar').onclick=function(){ $('tun-lista').appendChild(filaTunel({})); };
+  $('tun-defecto').onclick=function(){ pintarTunelesForm(tunelesDefecto); };
+  pintarTunelesForm(tunelesDefecto);
 
   // ── Terminal SSH integrado (+ historial) ─────────────────────
   var term = null, fit = null, wsTerm = null, servidorTerminal = null;
@@ -910,7 +885,7 @@
           r.keys + ' clave(s). Copia del ' + (r.creado || '?');
         document.getElementById('imp-pass').value = '';
         document.getElementById('imp-archivo').value = '';
-        refrescarLista(); refrescarTuneles();
+        refrescarLista();
         aviso('Configuración importada.', true);
       }).finally(function(){ b.disabled = false; b.textContent = 'Importar'; });
     };
@@ -930,14 +905,6 @@
       .then(function(r){ if (r && r.error) window.open(url, '_blank'); })
       .catch(function(){ window.open(url, '_blank'); });
   }
-
-  // ── Salir ───────────────────────────────────────────────────
-  document.getElementById('btn-salir').onclick = function(){
-    if (!confirm('¿Cerrar la aplicación? Se cerrarán todos los túneles.')) return;
-    api('/api/salir', {method:'POST'}).then(function(){
-      vaciar(document.body); var cerrado=nodo('div','', 'Aplicación cerrada. Puedes cerrar esta pestaña.'); cerrado.style.cssText='padding:60px;text-align:center;color:var(--suave)'; document.body.appendChild(cerrado);
-    });
-  };
 
   // ── Atajos de teclado ──────────────────────────────────────────
   document.addEventListener('keydown', function(e){
