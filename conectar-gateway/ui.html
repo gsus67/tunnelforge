@@ -71,11 +71,18 @@
   .servidores::-webkit-scrollbar-track{background:var(--fondo);border-radius:6px}
   .servidores::-webkit-scrollbar-thumb{background:var(--linea);border-radius:6px}
   .servidores::-webkit-scrollbar-thumb:hover{background:var(--panel-alto)}
-  /* explorador de archivos */
-  .fx{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:12px 14px}
+  /* explorador de archivos a pantalla completa */
+  .fx-velo{position:fixed;inset:0;background:rgba(6,13,17,.96);display:none;flex-direction:column;z-index:21}
+  .fx-velo.abierto{display:flex}
+  .fx-barra-superior{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:2px solid var(--ambar);flex:none}
+  .fx-barra-superior .t{font-family:'Barlow Condensed';font-weight:600;font-size:17px;letter-spacing:.06em;text-transform:uppercase}
+  .fx-barra-superior .t b{color:var(--ambar)}
+  .fx-barra-superior .sep{flex:1}
+  .fx-cuerpo{flex:1;min-height:0;padding:14px 16px;overflow:auto}
+  .fx{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:12px 14px;min-height:100%}
   .fx .barra{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
   .fx .ruta{flex:1;min-width:180px;font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:8px 10px;color:var(--texto)}
-  .fx .items{max-height:300px;overflow-y:auto;border:1px solid var(--linea);border-radius:8px}
+  .fx .items{height:calc(100vh - 230px);min-height:260px;overflow-y:auto;border:1px solid var(--linea);border-radius:8px}
   .fx .items::-webkit-scrollbar{width:10px}
   .fx .items::-webkit-scrollbar-track{background:var(--fondo)}
   .fx .items::-webkit-scrollbar-thumb{background:var(--linea);border-radius:6px}
@@ -88,7 +95,7 @@
   .fx .it button{padding:4px 9px;font-size:11px}
   .fx .vacio-fx{padding:14px;text-align:center;color:var(--suave);font-size:12.5px}
   .fx .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media (max-width:700px){ .fx .cols{grid-template-columns:1fr} }
+  @media (max-width:700px){ .fx .cols{grid-template-columns:1fr}.fx .items{height:320px}.fx-barra-superior{flex-wrap:wrap} }
   .fx h4{font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.04em;margin-bottom:8px;color:var(--suave)}
   /* botones */
   button{font-family:'Barlow Condensed';font-weight:600;font-size:14px;letter-spacing:.05em;text-transform:uppercase;border:none;border-radius:7px;padding:9px 16px;cursor:pointer;background:var(--panel-alto);color:var(--texto);border:1px solid var(--linea)}
@@ -288,41 +295,6 @@
     contraseña el archivo es ilegible: <b>guárdala bien, no hay forma de recuperarla</b>.</div>
   </div>
 
-  <div class="seccion desplegable" id="fx-cabecera">
-    <span class="flecha">▶</span>
-    <span>Archivos</span>
-    <span class="cuenta" id="fx-cuenta">— copiar archivos desde y hacia el servidor</span>
-  </div>
-  <div class="fx plegable" id="fx-caja">
-    <div class="barra">
-      <select id="fx-servidor" style="background:var(--fondo);border:1px solid var(--linea);border-radius:7px;color:var(--texto);padding:8px 10px;font-size:13px"></select>
-      <button id="fx-abrir">Abrir</button>
-    </div>
-    <div class="cols">
-      <div>
-        <h4>Servidor remoto</h4>
-        <div class="barra">
-          <input class="ruta" id="fx-ruta-rem" placeholder="/root">
-          <button id="fx-ir-rem">Ir</button>
-          <button id="fx-arriba-rem" title="Subir un nivel">↑</button>
-          <button id="fx-nueva-carpeta" title="Nueva carpeta">+📁</button>
-        </div>
-        <div class="items" id="fx-lista-rem"><div class="vacio-fx">Elige un servidor conectado y pulsa Abrir.</div></div>
-      </div>
-      <div>
-        <h4>Tu equipo</h4>
-        <div class="barra">
-          <input class="ruta" id="fx-ruta-loc" placeholder="carpeta local">
-          <button id="fx-ir-loc">Ir</button>
-          <button id="fx-arriba-loc" title="Subir un nivel">↑</button>
-        </div>
-        <div class="items" id="fx-lista-loc"><div class="vacio-fx">Cargando…</div></div>
-      </div>
-    </div>
-    <div class="nota" style="margin-top:10px">Usa <b>⬆ Subir</b> en un archivo local para enviarlo a la carpeta remota abierta,
-    y <b>⬇ Bajar</b> en uno remoto para traerlo a la carpeta local abierta. Requiere que el servidor tenga SFTP activo (lo normal en Debian).</div>
-  </div>
-
   <div class="seccion">Actualizaciones de la app</div>
   <div class="updapp">
     <div class="txt">Versión instalada: <b id="app-ver">—</b><br>
@@ -357,6 +329,44 @@
     <div class="term-hist">
       <h5>Historial</h5>
       <div id="term-hist-lista"><div class="vacio-hist">Sin comandos todavía.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Gestor de archivos integrado -->
+<div class="fx-velo" id="fx-velo">
+  <div class="fx-barra-superior">
+    <span class="t">Archivos — <b id="fx-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <select id="fx-servidor" style="background:var(--fondo);border:1px solid var(--linea);border-radius:7px;color:var(--texto);padding:8px 10px;font-size:13px"></select>
+    <button id="fx-abrir">Abrir servidor</button>
+    <button id="fx-cerrar">Cerrar archivos <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="fx-cuerpo">
+    <div class="fx" id="fx-caja">
+      <div class="cols">
+        <div>
+          <h4>Servidor remoto</h4>
+          <div class="barra">
+            <input class="ruta" id="fx-ruta-rem" placeholder="/root">
+            <button id="fx-ir-rem">Ir</button>
+            <button id="fx-arriba-rem" title="Subir un nivel">↑</button>
+            <button id="fx-nueva-carpeta" title="Nueva carpeta">+📁</button>
+          </div>
+          <div class="items" id="fx-lista-rem"><div class="vacio-fx">Selecciona un servidor conectado.</div></div>
+        </div>
+        <div>
+          <h4>Tu equipo</h4>
+          <div class="barra">
+            <input class="ruta" id="fx-ruta-loc" placeholder="carpeta local">
+            <button id="fx-ir-loc">Ir</button>
+            <button id="fx-arriba-loc" title="Subir un nivel">↑</button>
+          </div>
+          <div class="items" id="fx-lista-loc"><div class="vacio-fx">Cargando…</div></div>
+        </div>
+      </div>
+      <div class="nota" style="margin-top:10px">Usa <b>⬆ Subir</b> en un archivo local para enviarlo a la carpeta remota abierta,
+      y <b>⬇ Bajar</b> en uno remoto para traerlo a la carpeta local abierta. Requiere SFTP activo en el servidor.</div>
     </div>
   </div>
 </div>
@@ -485,6 +495,10 @@
       bTerm.title = 'Terminal'; bTerm.style.marginLeft = '8px';
       bTerm.onclick = function(){ abrirTerminal(c.servidor); };
       fila.appendChild(bTerm);
+      var bArch = nodo('button', 'icono', '▤');
+      bArch.title = 'Archivos';
+      bArch.onclick = function(){ abrirArchivos(c.servidor); };
+      fila.appendChild(bArch);
       var bDesc = nodo('button', '', 'Desconectar');
       bDesc.style.marginLeft = '8px';
       bDesc.onclick = function(){
@@ -576,8 +590,6 @@
       var acciones = nodo('div', 'acciones');
       var bC = nodo('button', 'principal', 'Conectar');
       bC.onclick = function(){ conectar(s.nombre, '', false); };
-      var bT = nodo('button', 'icono', '>_');
-      bT.title = 'Abrir terminal SSH'; bT.onclick = function(){ pedirTerminal(s.nombre); };
       var bE = nodo('button', '', 'Editar');
       bE.onclick = function(){ abrirFormulario(); cargarEnForm(s); };
       var bB = nodo('button', 'peligro', '✕');
@@ -586,7 +598,7 @@
         if (confirm('¿Borrar "' + s.nombre + '"?'))
           api('/api/servidores?nombre=' + encodeURIComponent(s.nombre), {method:'DELETE'}).then(refrescarLista);
       };
-      acciones.appendChild(bC); acciones.appendChild(bT); acciones.appendChild(bE); acciones.appendChild(bB);
+      acciones.appendChild(bC); acciones.appendChild(bE); acciones.appendChild(bB);
       div.appendChild(acciones);
       cont.appendChild(div);
     });
@@ -930,6 +942,7 @@
   // ── Atajos de teclado ──────────────────────────────────────────
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape'){
+      if (document.getElementById('fx-velo').classList.contains('abierto')){ cerrarArchivos(); return; }
       if (document.getElementById('term-velo').classList.contains('abierto')){ cerrarTerminalUI(); return; }
       if (document.getElementById('m-huella').classList.contains('abierto')){ document.getElementById('huella-no').click(); return; }
       if (document.getElementById('m-pass').classList.contains('abierto')){ document.getElementById('pass-no').click(); return; }
@@ -950,7 +963,6 @@
   }
   plegar('srv-cabecera','srv-caja');
   plegar('form-cabecera','form');
-  plegar('fx-cabecera','fx-caja');
 
   function abrirFormulario(){
     document.getElementById('form-cabecera').classList.add('abierta');
@@ -961,11 +973,9 @@
   var selectorDestino = null;  // 'key' | 'subir'
   document.getElementById('btn-buscar-key').onclick = function(){
     selectorDestino = 'key';
-    document.getElementById('fx-cabecera').classList.add('abierta');
-    document.getElementById('fx-caja').classList.add('abierto');
+    abrirArchivos('');
     cargarLocal('');
     aviso('Elige tu clave en el panel "Tu equipo" (botón Usar).', true);
-    document.getElementById('fx-caja').scrollIntoView({behavior:'smooth'});
   };
   document.getElementById('btn-probar-key').onclick = function(){
     var key = document.getElementById('f-key').value.trim();
@@ -992,6 +1002,24 @@
 
   // ── Gestor de archivos ───────────────────────────────────────
   var fxServidor = null, fxRutaRem = '', fxRutaLoc = '';
+
+  function abrirArchivos(nombre){
+    refrescarSelectorServidores();
+    var sel = document.getElementById('fx-servidor');
+    if (nombre && Array.prototype.some.call(sel.options, function(o){ return o.value === nombre; })) sel.value = nombre;
+    fxServidor = nombre || sel.value || null;
+    document.getElementById('fx-srv').textContent = fxServidor || 'solo equipo local';
+    document.getElementById('fx-velo').classList.add('abierto');
+    if (!fxRutaLoc) cargarLocal('');
+    if (fxServidor) cargarRemoto('');
+    else mensajeEn(document.getElementById('fx-lista-rem'), 'vacio-fx', 'Conecta un servidor para explorar sus archivos.');
+  }
+
+  function cerrarArchivos(){
+    document.getElementById('fx-velo').classList.remove('abierto');
+    selectorDestino = null;
+  }
+  document.getElementById('fx-cerrar').onclick = cerrarArchivos;
 
   function refrescarSelectorServidores(){
     var sel = document.getElementById('fx-servidor');
@@ -1088,7 +1116,7 @@
               ev.stopPropagation();
               document.getElementById('f-key').value = a.ruta;
               document.getElementById('f-key').dispatchEvent(new Event('input'));
-              selectorDestino = null;
+              cerrarArchivos();
               abrirFormulario();
               document.getElementById('btn-probar-key').click();
               document.getElementById('form').scrollIntoView({behavior:'smooth'});
@@ -1116,6 +1144,7 @@
 
   document.getElementById('fx-abrir').onclick = function(){
     fxServidor = document.getElementById('fx-servidor').value;
+    document.getElementById('fx-srv').textContent = fxServidor || 'solo equipo local';
     if (!fxServidor){ aviso('No hay conexiones activas.', false); return; }
     cargarRemoto('');
     if (!fxRutaLoc) cargarLocal('');
