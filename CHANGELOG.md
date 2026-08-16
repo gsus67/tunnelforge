@@ -1,4 +1,4 @@
-## v3.1.7
+## v3.1.8
 
 ### Corrección del Dashboard
 
@@ -9,6 +9,9 @@
 - Terminal y Archivos usan botones compactos con iconos SVG.
 - Los puertos/túneles permanecen ocultos por defecto y se muestran solo al pulsar "Puertos N".
 - Ajustado el layout de Terminal y Archivos para aprovechar correctamente el tamaño completo de la ventana WebView.
+- Corregido el estiramiento vertical de tarjetas guardadas y conexiones: las filas conservan su altura natural y se apilan arriba.
+- El texto legal/licencias deja de vivir dentro de Info y pasa a un footer real, compacto y permanente al borde inferior de la app.
+- El estado de updates comparte el footer y se muestra de forma compacta únicamente en Dashboard.
 
 ## v3.1.5
 

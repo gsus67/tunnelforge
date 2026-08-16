@@ -503,7 +503,7 @@
   @media (max-width:1180px){.dash-grid{grid-template-columns:1fr !important}.servidores,.conexiones{max-height:none !important}.dashboard-updates .du-body{grid-template-columns:1fr 1fr !important}}
 
 
-  /* v3.1.7: footer real + dashboard denso sin romper funciones */
+  /* v3.1.8: footer real + dashboard denso sin romper funciones */
   .content-shell{
     display:grid !important;
     grid-template-rows:auto minmax(0,1fr) auto;
@@ -608,6 +608,49 @@
     #dashboard .conexiones{max-height:320px !important}
     .dashboard-footer .df-note{display:none}
   }
+
+
+  /* v3.1.8 corrective pass: no grid stretching + real global footer */
+  .content-shell{grid-template-rows:auto minmax(0,1fr) 30px !important;}
+  main{padding-bottom:6px !important;}
+  #dashboard .servidores{
+    align-content:start !important;
+    align-items:start !important;
+    grid-auto-rows:max-content !important;
+  }
+  #dashboard .srv{
+    height:auto !important;
+    max-height:none !important;
+    align-self:start !important;
+  }
+  #dashboard .conexiones{
+    align-content:start !important;
+    align-items:start !important;
+    grid-auto-rows:max-content !important;
+  }
+  #dashboard .cnx{
+    height:auto !important;
+    max-height:none !important;
+    align-self:start !important;
+  }
+  .info-panel{align-self:start !important;height:auto !important;min-height:0 !important;}
+  .app-footer{
+    position:relative;z-index:3;height:30px;min-height:30px;margin:0 -14px;
+    padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:#05101b;border-top:1px solid rgba(77,134,184,.18);color:var(--suave);
+    font-size:9.5px;line-height:1;overflow:hidden;
+  }
+  .footer-legal{display:flex;align-items:center;gap:4px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .footer-legal b{color:var(--texto-2);font-weight:600}.footer-legal a{color:var(--texto-2)}
+  .footer-libs{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .footer-updates{display:flex;align-items:center;gap:7px;white-space:nowrap;flex:none;color:var(--texto-2);}
+  .footer-updates.hidden{display:none !important;}
+  .footer-updates > b{font-size:10px;color:var(--texto);font-weight:600;}
+  .footer-divider{width:1px;height:14px;background:rgba(77,134,184,.18);}
+  .footer-update-note{max-width:170px;overflow:hidden;text-overflow:ellipsis;color:var(--suave);}
+  .footer-check{width:24px;height:22px;min-width:24px;padding:0 !important;display:grid;place-items:center;border-radius:6px !important;}
+  .footer-check svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+  @media(max-width:1050px){.footer-libs{display:none}.footer-update-note{display:none}}
 
 </style>
 </head>
@@ -823,28 +866,26 @@
             <div class="info-card"><b>Acceso</b><span>Terminal integrada, SFTP y túneles por servidor.</span></div>
             <div class="info-card"><b>Updates</b><span>Releases privadas verificadas con firma Ed25519 y SHA-256.</span></div>
           </div>
-          <div class="pie">
-          Conectar Gateway <span id="pie-ver"></span> · © 2026 Gsus<br>
-          Software libre bajo licencia MIT · usa
-          <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a>,
-          <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a> y
-          <a href="https://github.com/webview/webview" target="_blank">webview</a>
-        </div></div>
+</div>
       </div>
     </main>
 
-    <footer class="dashboard-footer" id="dashboard-footer">
-      <div class="df-status">
+    <footer class="app-footer" id="app-footer">
+      <div class="footer-legal">
+        <span>Gateway WISP Access <b id="pie-ver">—</b> · © 2026 Gsus · MIT</span>
+        <span class="footer-libs">· <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a> · <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a> · <a href="https://github.com/webview/webview" target="_blank">webview</a></span>
+      </div>
+      <div class="footer-updates" id="dashboard-footer">
         <span class="upd-punto amarillo" id="upd-punto-dash" title="Estado de actualizaciones"></span>
         <b id="upd-dash-status">Sin comprobar</b>
+        <span class="footer-divider"></span>
+        <span><b id="dash-app-ver">—</b></span>
+        <span>Stable</span>
+        <span class="footer-update-note" id="dash-next-check">Updates firmados</span>
+        <button id="dash-upd-search" class="footer-check" title="Comprobar actualizaciones" aria-label="Comprobar actualizaciones">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5.3"/><path d="M20 4v7h-7"/></svg>
+        </button>
       </div>
-      <span class="df-divider"></span>
-      <div class="df-meta"><span>Versión</span><b id="dash-app-ver">—</b></div>
-      <div class="df-meta"><span>Canal</span><b>Stable</b></div>
-      <div class="df-note" id="dash-next-check">Actualizaciones firmadas</div>
-      <button id="dash-upd-search" class="df-check" title="Comprobar actualizaciones" aria-label="Comprobar actualizaciones">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5.3"/><path d="M20 4v7h-7"/></svg>
-      </button>
     </footer>
   </div>
 </div>

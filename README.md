@@ -11,6 +11,12 @@ pero sirve para **cualquier servidor SSH**: los túneles son configurables.
 
 Consulta el historial acumulado de versiones en **[CHANGELOG.md](CHANGELOG.md)**.
 
+## Dashboard
+
+![Dashboard de Gateway WISP Access](docs/dashboard.png)
+
+Vista principal para administrar servidores guardados, conexiones SSH activas, túneles, terminal, archivos y estado de actualizaciones desde una sola ventana.
+
 ---
 
 ## Qué hace
