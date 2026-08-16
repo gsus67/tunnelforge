@@ -373,6 +373,42 @@
   .info-panel .pie{margin-top:0}
   .view-page{min-height:0}
   @media (max-width:900px){.info-grid{grid-template-columns:1fr}}
+
+  /* v3.1.1 visual re-ajuste 16:9 */
+  :root{--panel-soft:rgba(11,22,35,.78)}
+  body{padding:18px;background:linear-gradient(180deg,#cfd5db 0%,#b8bec5 100%)}
+  .app-shell{max-width:1540px;min-height:calc(100vh - 36px);grid-template-columns:220px 1fr;border-radius:18px}
+  .sidebar{padding:14px 14px 12px;gap:14px}
+  .brand-card{padding:14px 14px;border-radius:16px}
+  .brand-logo{width:44px;height:44px;border-radius:14px;font-size:21px}
+  .brand-text{font-size:15px}.brand-text small{font-size:11px}
+  .side-nav{gap:6px}.nav-item{padding:10px 12px;border-radius:12px;font-size:14px;font-weight:550}.nav-item .ni{width:22px;height:22px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.06);border-radius:7px;background:rgba(255,255,255,.025)}
+  .nav-item.activo .ni{border-color:rgba(77,225,154,.24);background:rgba(77,225,154,.08)}
+  .side-status{padding:14px 12px;border-radius:16px}.side-status .mini{font-size:12px}
+  .side-footer{padding:2px 4px 0}
+  .content-shell{padding:20px 22px 20px}
+  .content-shell::after{opacity:.14;background-size:52px 52px}
+  .topbar{margin-bottom:18px;align-items:center}
+  .hero-title h1{font-size:32px;margin-bottom:4px}.hero-title p{font-size:14px;max-width:560px}
+  .top-actions{display:flex;gap:10px;align-items:center}.toolbar-btn{display:inline-flex;align-items:center;gap:9px;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--texto);font-weight:600;font-size:14px}.toolbar-btn.primary{background:linear-gradient(90deg, rgba(77,225,154,.88), rgba(77,225,154,.67));color:#092115;border-color:rgba(77,225,154,.32)}
+  .toolbar-btn .caret{opacity:.65;font-size:12px;margin-left:6px}
+  .dash-grid{grid-template-columns:1.15fr .95fr;gap:18px}
+  .panel{padding:16px;border-radius:18px;background:linear-gradient(180deg, rgba(7,20,32,.82), rgba(7,18,28,.78))}
+  .panel-header{margin-bottom:12px}.panel-title .ico{width:36px;height:36px;border-radius:11px;font-size:15px}.panel-title h3{font-size:17px}.panel-title p{font-size:12.5px}
+  .panel-count{font-size:11px;padding:5px 9px}
+  .buscador-row{display:flex;gap:10px;align-items:center;margin-bottom:12px}.buscador-row .buscador{flex:1;margin-bottom:0}.view-switch{display:flex;gap:8px}.view-switch button{padding:10px 12px;min-width:42px}
+  .servidores{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-height:412px}
+  .srv{min-height:124px;padding:12px;border-radius:16px;grid-template-columns:18px 4px 22px minmax(0,1fr) auto;gap:7px 9px;grid-template-areas:'asa franja fav info metodo' 'asa franja fav etiquetas etiquetas' 'asa franja fav acciones acciones'}
+  .srv .asa{font-size:14px}.srv .franja{width:4px}.srv .nombre{font-size:18px;margin-bottom:4px;font-family:Inter,system-ui,sans-serif;font-weight:700;letter-spacing:-.01em}.srv .detalle{font-size:12px}.srv .metodo{font-size:10px;padding:4px 8px;align-self:start}.srv .acciones{margin-top:2px;justify-content:flex-start}.srv .acciones button{padding:9px 12px;font-size:13px}.srv .acciones .peligro{padding:9px 11px}.srv .fav{font-size:15px}
+  .srv-tags{grid-area:etiquetas;display:flex;gap:6px;flex-wrap:wrap}.tag{font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.04);color:var(--texto-2)}.tag.key{color:#9cc4ff}.tag.pass{color:#cab58a}.tag.fingerprint{color:#88ddb1}
+  .conexiones{gap:10px;max-height:412px}.cnx{padding:12px 14px 12px 14px;border-radius:16px}.cnx::before{top:14px;bottom:14px;width:3px}.cnx .fila1{align-items:center;gap:8px;padding-left:6px}.cnx .txt{min-width:140px;font-size:13px}.cnx .txt b{font-size:18px;margin-bottom:3px;font-family:Inter,system-ui,sans-serif}.cnx .trafico{margin-left:auto;font-size:11px}.cnx .enlaces{padding-left:16px;margin-top:10px}.cnx .enlaces a{padding:6px 9px;font-size:11.5px}
+  .dashboard-updates{grid-column:1/-1;margin-top:0}.dashboard-updates .du-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.dashboard-updates .du-state{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--texto-2)}.dashboard-updates .du-state b{color:var(--verde);font-size:14px}.dashboard-updates .du-body{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0;border-top:1px solid rgba(255,255,255,.07);padding-top:14px;align-items:start}.dashboard-updates .du-col{padding-right:18px}.dashboard-updates .du-col+.du-col{padding-left:18px;border-left:1px solid rgba(255,255,255,.07)}.dashboard-updates .du-col label{font-size:12px;color:var(--suave);margin-bottom:10px}.dashboard-updates .du-main{font-size:28px;font-weight:700;color:var(--texto);margin-bottom:8px}.dashboard-updates .du-sub{font-size:12.5px;color:var(--texto-2);line-height:1.55}.dashboard-updates .du-select{width:100%;margin-top:2px}.dashboard-updates .du-actions{display:flex;justify-content:flex-end;align-items:center;padding-left:18px}.dashboard-updates .du-actions button{min-width:210px}
+  .app-view[data-view="updates"] .updapp .acciones{align-items:flex-start}
+  .info-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  @media (max-width:1360px){.app-shell{grid-template-columns:200px 1fr}.dashboard-updates .du-body{grid-template-columns:1fr 1fr}.dashboard-updates .du-col{padding:0 0 14px}.dashboard-updates .du-col+.du-col{padding-left:0;border-left:none}.dashboard-updates .du-actions{padding-left:0;justify-content:flex-start}}
+  @media (max-width:1120px){.dash-grid{grid-template-columns:1fr}.dashboard-updates{grid-column:auto}.servidores{grid-template-columns:1fr 1fr}.conexiones{max-height:none}.servidores{max-height:none}}
+  @media (max-width:900px){.app-shell{grid-template-columns:1fr}.servidores{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}.dashboard-updates .du-body{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -413,7 +449,11 @@
     <div class="topbar">
       <div class="hero-title">
         <h1 id="view-title">Dashboard</h1>
-        <p id="view-subtitle">Servidores guardados y conexiones activas en una sola vista.</p>
+        <p id="view-subtitle">Resumen de conexiones y herramientas.</p>
+      </div>
+      <div class="top-actions">
+        <button class="toolbar-btn" id="btn-import-toolbar">⇪ Importar servidor</button>
+        <button class="toolbar-btn primary" id="btn-new-toolbar">＋ Nuevo servidor <span class="caret">▾</span></button>
       </div>
     </div>
 
@@ -432,7 +472,13 @@
           </div>
           <div class="seccion desplegable abierta internal-toggle-hidden" id="srv-cabecera"><span class="flecha">▶</span></div>
           <div class="plegable abierto" id="srv-caja">
-            <div class="buscador"><input type="text" id="buscador" placeholder="Buscar por nombre, host o usuario…"></div>
+            <div class="buscador-row">
+              <div class="buscador"><input type="text" id="buscador" placeholder="Buscar servidores…"></div>
+              <div class="view-switch">
+                <button type="button" id="srv-view-grid" title="Vista de tarjetas">▦</button>
+                <button type="button" id="srv-view-list" title="Vista compacta">☰</button>
+              </div>
+            </div>
             <div class="servidores" id="lista"></div>
           </div>
         </div>
@@ -440,17 +486,55 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              <div class="ico">⌁</div>
+              <div class="ico">◉</div>
               <div>
                 <h3>Servidores conectados</h3>
-                <p>Conexiones activas, terminal, archivos y seguridad SSH.</p>
+                <p>Conexiones activas</p>
               </div>
             </div>
+            <button id="btn-desc-todo">Desconectar todo</button>
           </div>
           <div class="conexiones" id="conexiones">
             <div class="sin-conexion">Sin conexiones. Elige un servidor guardado y dale a Conectar.</div>
           </div>
         </div>
+
+        <section class="panel dashboard-updates">
+          <div class="du-head">
+            <div class="panel-title">
+              <div class="ico">↻</div>
+              <div>
+                <h3>Actualizaciones de la app</h3>
+                <p>Estado y comprobación rápida</p>
+              </div>
+            </div>
+            <div class="du-state"><span class="upd-punto amarillo" id="upd-punto-dash"></span><b id="upd-dash-status">Sin comprobar</b></div>
+          </div>
+          <div class="du-body">
+            <div class="du-col">
+              <label>Versión actual</label>
+              <div class="du-main" id="dash-app-ver">—</div>
+              <div class="du-sub" id="dash-app-sub">Configura el token para comprobar nuevas versiones.</div>
+            </div>
+            <div class="du-col">
+              <label>Canal de actualizaciones</label>
+              <select class="du-select" id="dash-update-channel" disabled>
+                <option>Stable (Recomendado)</option>
+              </select>
+              <div class="du-sub">Recibe versiones estables y firmadas.</div>
+            </div>
+            <div class="du-col">
+              <label>Verificaciones automáticas</label>
+              <select class="du-select" id="dash-update-frequency" disabled>
+                <option>Cada inicio</option>
+              </select>
+              <div class="du-sub" id="dash-next-check">Usa la página Updates para configurar el token privado.</div>
+            </div>
+            <div class="du-actions">
+              <button id="dash-upd-search">Buscar actualizaciones</button>
+            </div>
+          </div>
+        </section>
       </section>
 
       <div class="stack-grid">
@@ -822,38 +906,22 @@
       var fila = nodo('div', 'fila1');
       fila.appendChild(nodo('span', 'led'));
       var txt = nodo('div', 'txt');
-      txt.appendChild(document.createTextNode('CONECTADO a '));
       txt.appendChild(nodo('b', '', c.servidor));
-      txt.appendChild(document.createTextNode(' desde las ' + c.desde));
+      txt.appendChild(document.createTextNode((c.host||'servidor') + ' · ' + (c.usuario||'usuario')));
       fila.appendChild(txt);
 
-      var trafico = nodo('div', 'trafico');
-      trafico.appendChild(nodo('span', 'baja', '↓' + fmtBs(rxS)));
-      trafico.appendChild(document.createTextNode(' · '));
-      trafico.appendChild(nodo('span', 'sube', '↑' + fmtBs(txS)));
-      trafico.appendChild(document.createTextNode(' · ' + fmtB(c.rx + c.tx) + ' total'));
-      fila.appendChild(trafico);
-
-      var bTerm = nodo('button', 'icono', '>_');
-      bTerm.title = 'Terminal'; bTerm.style.marginLeft = '8px';
+      var bTerm = nodo('button', '', 'Terminal');
+      bTerm.title = 'Terminal';
       bTerm.onclick = function(){ abrirTerminal(c.servidor); };
       fila.appendChild(bTerm);
-      var bArch = nodo('button', 'icono', '▤');
+      var bArch = nodo('button', '', 'Archivos');
       bArch.title = 'Archivos';
       bArch.onclick = function(){ abrirArchivos(c.servidor); };
       fila.appendChild(bArch);
-      var bSSH = nodo('button', 'ssh-seg', 'Seguridad SSH');
-      bSSH.onclick = function(){ alternarSeguridadSSH(c.servidor, bSSH); };
-      fila.appendChild(bSSH);
-      consultarSeguridadSSH(c.servidor, bSSH, false);
-      var bDesc = nodo('button', '', 'Desconectar');
-      bDesc.style.marginLeft = '8px';
-      bDesc.onclick = function(){
-        desconectandoManual[c.servidor] = true;
-        api('/api/desconectar', {method:'POST', body: JSON.stringify({nombre: c.servidor})})
-          .then(function(){ refrescarEstado(); });
-      };
-      fila.appendChild(bDesc);
+
+      var trafico = nodo('div', 'trafico');
+      trafico.appendChild(document.createTextNode(c.desde || ''));
+      fila.appendChild(trafico);
       div.appendChild(fila);
 
       var enlaces = nodo('div', 'enlaces');
@@ -872,6 +940,15 @@
         enlaces.appendChild(sin);
       }
       div.appendChild(enlaces);
+      var foot = nodo('div','enlaces');
+      var bSSH = nodo('button', 'ssh-seg', 'Seguridad SSH');
+      bSSH.onclick = function(){ alternarSeguridadSSH(c.servidor, bSSH); };
+      foot.appendChild(bSSH);
+      consultarSeguridadSSH(c.servidor, bSSH, false);
+      var stats = nodo('span','', '↓ ' + fmtBs(rxS) + ' · ↑ ' + fmtBs(txS) + ' · ' + fmtB(c.rx + c.tx) + ' total');
+      stats.style.fontSize='11.5px'; stats.style.color='var(--suave)'; stats.style.marginLeft='auto';
+      foot.appendChild(stats);
+      div.appendChild(foot);
       cont.appendChild(div);
     });
   }
@@ -930,9 +1007,13 @@
       div.appendChild(fav);
       var info = nodo('div', 'info');
       info.appendChild(nodo('div', 'nombre', s.nombre));
-      info.appendChild(nodo('div', 'detalle', s.usuario + '@' + s.host + ':' + s.puerto));
+      info.appendChild(nodo('div', 'detalle', s.host + ' · ' + s.usuario));
       div.appendChild(info);
-      div.appendChild(nodo('span', 'metodo', metodo + (s.confiado ? ' · huella ✓' : '')));
+      div.appendChild(nodo('span', 'metodo', 'SSH :' + s.puerto));
+      var tags = nodo('div','srv-tags');
+      tags.appendChild(nodo('span','tag ' + (s.key ? 'key':'pass'), s.key ? 'Key SSH' : (s.tienePassword ? 'Contraseña guardada' : 'Password al conectar')));
+      if (s.confiado) tags.appendChild(nodo('span','tag fingerprint','Huella verificada'));
+      div.appendChild(tags);
 
       var acciones = nodo('div', 'acciones');
       var bC = nodo('button', 'principal', 'Conectar');
@@ -954,6 +1035,17 @@
   function refrescarLista(){ api('/api/servidores').then(pintarLista).catch(function(){}); }
   refrescarLista();
   $('buscador').addEventListener('input', function(){ pintarLista(servidoresCache); });
+  if ($('btn-new-toolbar')) $('btn-new-toolbar').onclick = function(){ abrirFormulario(); mostrarVista('profiles'); };
+  if ($('btn-import-toolbar')) $('btn-import-toolbar').onclick = function(){ mostrarVista('backup'); setTimeout(function(){ var el=$('imp-archivo'); if(el) el.click(); }, 50); };
+  if ($('btn-desc-todo')) $('btn-desc-todo').onclick = function(){
+    if(!window.confirm('¿Desconectar todas las sesiones activas?')) return;
+    api('/api/estado').then(function(e){
+      return Promise.all((e.conexiones||[]).map(function(c){ desconectandoManual[c.servidor]=true; return api('/api/desconectar',{method:'POST', body: JSON.stringify({nombre:c.servidor})}).catch(function(){}); }));
+    }).then(function(){ setTimeout(refrescarEstado, 200); });
+  };
+  if ($('srv-view-grid')) $('srv-view-grid').onclick = function(){ $('lista').style.gridTemplateColumns='repeat(2,minmax(0,1fr))'; };
+  if ($('srv-view-list')) $('srv-view-list').onclick = function(){ $('lista').style.gridTemplateColumns='1fr'; };
+  if ($('dash-upd-search')) $('dash-upd-search').onclick = function(){ updBuscar(false); };
 
   // Arrastrar para reordenar (HTML5 drag & drop nativo)
   function activarArrastre(cont){
@@ -1301,6 +1393,9 @@
     p.className='upd-punto '+estado;
     $('upd-resumen').textContent=resumen;
     p.title=resumen;
+    var p2=$('upd-punto-dash'); if (p2){ p2.className='upd-punto '+estado; p2.title=resumen; }
+    var s2=$('upd-dash-status'); if (s2) s2.textContent = resumen || 'sin comprobar';
+    var next=$('dash-next-check'); if(next){ next.textContent = estado==='rojo' ? 'Hay una nueva versión disponible.' : (estado==='verde' ? 'Tu instalación está verificada y al día.' : 'Pendiente de comprobar o falta token.'); }
   }
   function updEstado(texto, tipo){
     var e=$('upd-estado'); e.textContent=texto; e.className='estado'+(tipo?' '+tipo:'');
@@ -1318,11 +1413,13 @@
   }
   api('/api/version').then(function(v){
     $('app-ver').textContent='v'+v.version;
+    var dv=$('dash-app-ver'); if (dv) dv.textContent='v'+v.version;
     $('btn-releases').onclick=function(){ abrirFuera(v.releasesURL); };
   }).catch(function(){});
   api('/api/actualizaciones').then(function(c){
     $('upd-inicio').checked=!!c.buscarAlInicio;
     updEstado(c.tokenConfigurado?'Token configurado de forma segura.':'Configura el token una sola vez para habilitar las actualizaciones privadas.',c.tokenConfigurado?'ok':'');
+    var ds=$('dash-app-sub'); if(ds) ds.textContent = c.tokenConfigurado ? 'Token seguro configurado. Puedes buscar updates desde aquí.' : 'Configura el token privado para habilitar actualizaciones firmadas.';
     updSemaforo('amarillo', c.tokenConfigurado?'pendiente de comprobar':'token no configurado');
     if(c.tokenConfigurado && c.buscarAlInicio) updBuscar(true);
   }).catch(function(){});

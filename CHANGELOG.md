@@ -1,3 +1,14 @@
+## v3.1.1
+
+### Cambios
+
+- Reajuste visual del dashboard para acercarlo más al mockup 16:9 aprobado.
+- Sidebar más compacto y limpio, con iconografía más discreta.
+- Botonera superior con accesos rápidos a importar servidor y crear nuevo servidor.
+- Tarjetas de servidores guardados y conectados más compactas y mejor alineadas.
+- Nuevo resumen visual de actualizaciones dentro del dashboard.
+- Tamaño inicial de ventana ajustado a 16:9 (1440x810) en Windows.
+
 ## v3.1.0
 
 ### Interfaz por vistas
