@@ -1,3 +1,17 @@
+## v3.0.1
+
+### Corrección del rediseño de interfaz
+
+- La interfaz ahora ocupa toda la ventana nativa y elimina el marco gris/espacio exterior del primer rediseño.
+- Sidebar reducido y dashboard compacto para el tamaño real de la ventana de Gateway.
+- Tarjetas de servidores reajustadas para evitar nombres cortados por la etiqueta del método SSH.
+- Scroll movido al área de contenido para evitar que toda la ventana se vea como una página web larga.
+- Los botones del sidebar ahora son funcionales: Servidores, Perfiles, Copias, Updates e Info navegan y despliegan la sección correspondiente.
+- Los botones superiores “Nuevo servidor” y “Actualizaciones” ahora abren realmente sus paneles.
+- Fondo con algoritmos SSH algo más visible, manteniéndolo detrás del contenido.
+- Se conserva sin cambios la lógica de conexión SSH, Terminal, Archivos, túneles, updater y hardening SSH.
+- Eliminado el workflow antiguo duplicado de GitHub Actions para dejar un solo build/release oficial.
+
 ## v3.0.0
 
 ### Cambios
