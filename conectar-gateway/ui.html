@@ -44,19 +44,52 @@
 
   /* tarjetas de servidores */
   .servidores{display:grid;gap:10px}
-  .srv{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;transition:background .12s}
+  .srv{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:auto auto auto minmax(0,1fr) auto auto;align-items:center;gap:8px;transition:background .12s;overflow:hidden}
   .srv:hover{background:var(--panel-alto)}
   .srv.arrastrando{opacity:.4}
   .srv .asa{cursor:grab;color:var(--suave);font-size:15px;user-select:none;flex:none;padding:0 2px}
   .srv .franja{width:5px;align-self:stretch;border-radius:3px;background:var(--ambar);flex:none}
   .srv .fav{background:none;border:none;font-size:17px;cursor:pointer;color:var(--suave);padding:2px 4px;flex:none}
   .srv .fav.on{color:var(--ambar)}
-  .srv .info{flex:1;min-width:180px}
-  .srv .nombre{font-family:'Barlow Condensed';font-weight:600;font-size:19px;letter-spacing:.03em}
+  .srv .info{flex:1;min-width:120px;overflow:hidden}
+  .srv .nombre{font-family:'Barlow Condensed';font-weight:600;font-size:17px;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .srv .detalle{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--suave);margin-top:2px}
-  .srv .metodo{font-size:11px;color:var(--suave);background:var(--fondo);border:1px solid var(--linea);border-radius:20px;padding:3px 10px}
+  .srv .metodo{font-size:10.5px;color:var(--suave);background:var(--fondo);border:1px solid var(--linea);border-radius:20px;padding:2px 8px;flex:none;white-space:nowrap}
+  .srv button{padding:6px 10px;font-size:12px;flex:none}
+  .srv .acciones{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
+  .srv .acciones .peligro{min-width:34px;padding-left:8px;padding-right:8px}
+  @media (max-width:700px){
+    .srv{grid-template-columns:auto auto auto minmax(0,1fr);align-items:center}
+    .srv .metodo{grid-column:4}
+    .srv .acciones{grid-column:4;justify-self:stretch;justify-content:flex-end;flex-wrap:wrap}
+  }
   .vacio{color:var(--suave);font-size:14px;padding:16px;text-align:center;border:1px dashed var(--linea);border-radius:10px}
 
+  /* lista de servidores con scroll */
+  .servidores{max-height:340px;overflow-y:auto;padding-right:4px}
+  .servidores::-webkit-scrollbar{width:10px}
+  .servidores::-webkit-scrollbar-track{background:var(--fondo);border-radius:6px}
+  .servidores::-webkit-scrollbar-thumb{background:var(--linea);border-radius:6px}
+  .servidores::-webkit-scrollbar-thumb:hover{background:var(--panel-alto)}
+  /* explorador de archivos */
+  .fx{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:12px 14px}
+  .fx .barra{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .fx .ruta{flex:1;min-width:180px;font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:8px 10px;color:var(--texto)}
+  .fx .items{max-height:300px;overflow-y:auto;border:1px solid var(--linea);border-radius:8px}
+  .fx .items::-webkit-scrollbar{width:10px}
+  .fx .items::-webkit-scrollbar-track{background:var(--fondo)}
+  .fx .items::-webkit-scrollbar-thumb{background:var(--linea);border-radius:6px}
+  .fx .it{display:flex;align-items:center;gap:10px;padding:8px 11px;border-bottom:1px solid var(--linea);font-size:13px;cursor:pointer}
+  .fx .it:last-child{border-bottom:none}
+  .fx .it:hover{background:var(--panel-alto)}
+  .fx .it .ic{width:18px;text-align:center;flex:none}
+  .fx .it .nm{flex:1;font-family:'JetBrains Mono',monospace;font-size:12.5px;word-break:break-all}
+  .fx .it .meta{font-size:11px;color:var(--suave);flex:none}
+  .fx .it button{padding:4px 9px;font-size:11px}
+  .fx .vacio-fx{padding:14px;text-align:center;color:var(--suave);font-size:12.5px}
+  .fx .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:700px){ .fx .cols{grid-template-columns:1fr} }
+  .fx h4{font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.04em;margin-bottom:8px;color:var(--suave)}
   /* botones */
   button{font-family:'Barlow Condensed';font-weight:600;font-size:14px;letter-spacing:.05em;text-transform:uppercase;border:none;border-radius:7px;padding:9px 16px;cursor:pointer;background:var(--panel-alto);color:var(--texto);border:1px solid var(--linea)}
   button:hover{filter:brightness(1.15)}
@@ -172,20 +205,35 @@
     <div class="nota" style="margin-top:10px">La <b>ruta web</b> es opcional: se agrega al enlace del panel, por ejemplo <b>/metrics</b>. Los cambios aplican en la próxima conexión.</div>
   </div>
 
-  <div class="seccion">Servidores guardados</div>
-  <div class="buscador"><input type="text" id="buscador" placeholder="Buscar por nombre, host o usuario…"></div>
-  <div class="servidores" id="lista"></div>
+  <div class="seccion desplegable abierta" id="srv-cabecera">
+    <span class="flecha">▶</span>
+    <span>Servidores guardados</span>
+    <span class="cuenta" id="srv-cuenta"></span>
+  </div>
+  <div class="plegable abierto" id="srv-caja">
+    <div class="buscador"><input type="text" id="buscador" placeholder="Buscar por nombre, host o usuario…"></div>
+    <div class="servidores" id="lista"></div>
+  </div>
 
-  <div class="seccion">Agregar / editar servidor</div>
-  <form id="form" onsubmit="return false">
+  <div class="seccion desplegable" id="form-cabecera">
+    <span class="flecha">▶</span>
+    <span>Agregar / editar servidor</span>
+    <span class="cuenta">— clic para desplegar</span>
+  </div>
+  <form id="form" class="plegable" onsubmit="return false">
     <div><label>Nombre</label><input type="text" id="f-nombre" placeholder="gateway-1"></div>
     <div><label>IP o host</label><input type="text" id="f-host" placeholder="203.0.113.10"></div>
     <div><label>Puerto SSH</label><input type="number" id="f-puerto" value="22"></div>
     <div><label>Usuario</label><input type="text" id="f-usuario" placeholder="root"></div>
     <div class="ancho"><label>Key SSH — ruta de la clave privada (vacío = usar contraseña)</label>
-      <input type="text" id="f-key" placeholder="C:\Users\gsusb\.ssh\id_ed25519"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="f-key" placeholder="C:\Users\gsusb\.ssh\id_ed25519" style="flex:1">
+        <button type="button" id="btn-buscar-key">Buscar…</button>
+        <button type="button" id="btn-probar-key">Probar</button>
+      </div>
+      <div class="nota" id="key-res" style="margin-top:6px"></div></div>
     <div class="ancho" id="zona-pass">
-      <label>Contraseña</label>
+      <label id="lbl-pass">Contraseña</label>
       <input type="password" id="f-pass" placeholder="se pide al conectar si no la guardas">
       <div class="check" style="margin-top:8px">
         <input type="checkbox" id="f-guardar"><label for="f-guardar" style="margin:0">Recordar contraseña en este equipo (cifrada)</label>
@@ -238,6 +286,41 @@
     <div class="nota" style="margin-top:12px">La copia va cifrada con tu contraseña
     (no con la llave de este equipo), así que se puede llevar a otra PC. Sin esa
     contraseña el archivo es ilegible: <b>guárdala bien, no hay forma de recuperarla</b>.</div>
+  </div>
+
+  <div class="seccion desplegable" id="fx-cabecera">
+    <span class="flecha">▶</span>
+    <span>Archivos</span>
+    <span class="cuenta" id="fx-cuenta">— copiar archivos desde y hacia el servidor</span>
+  </div>
+  <div class="fx plegable" id="fx-caja">
+    <div class="barra">
+      <select id="fx-servidor" style="background:var(--fondo);border:1px solid var(--linea);border-radius:7px;color:var(--texto);padding:8px 10px;font-size:13px"></select>
+      <button id="fx-abrir">Abrir</button>
+    </div>
+    <div class="cols">
+      <div>
+        <h4>Servidor remoto</h4>
+        <div class="barra">
+          <input class="ruta" id="fx-ruta-rem" placeholder="/root">
+          <button id="fx-ir-rem">Ir</button>
+          <button id="fx-arriba-rem" title="Subir un nivel">↑</button>
+          <button id="fx-nueva-carpeta" title="Nueva carpeta">+📁</button>
+        </div>
+        <div class="items" id="fx-lista-rem"><div class="vacio-fx">Elige un servidor conectado y pulsa Abrir.</div></div>
+      </div>
+      <div>
+        <h4>Tu equipo</h4>
+        <div class="barra">
+          <input class="ruta" id="fx-ruta-loc" placeholder="carpeta local">
+          <button id="fx-ir-loc">Ir</button>
+          <button id="fx-arriba-loc" title="Subir un nivel">↑</button>
+        </div>
+        <div class="items" id="fx-lista-loc"><div class="vacio-fx">Cargando…</div></div>
+      </div>
+    </div>
+    <div class="nota" style="margin-top:10px">Usa <b>⬆ Subir</b> en un archivo local para enviarlo a la carpeta remota abierta,
+    y <b>⬇ Bajar</b> en uno remoto para traerlo a la carpeta local abierta. Requiere que el servidor tenga SFTP activo (lo normal en Debian).</div>
   </div>
 
   <div class="seccion">Actualizaciones de la app</div>
@@ -323,6 +406,20 @@
   }
   var $ = function(id){ return document.getElementById(id); };
 
+  // Todo dato que venga de servidores, archivos o backups se inserta como texto,
+  // nunca como HTML. Esto evita ejecutar contenido no confiable en el WebView.
+  function vaciar(el){ while (el.firstChild) el.removeChild(el.firstChild); }
+  function nodo(tag, clase, texto){
+    var el = document.createElement(tag);
+    if (clase) el.className = clase;
+    if (texto !== undefined && texto !== null) el.textContent = String(texto);
+    return el;
+  }
+  function mensajeEn(cont, clase, texto){
+    vaciar(cont);
+    cont.appendChild(nodo('div', clase, texto));
+  }
+
   function fmtB(b){
     if (b === null || b === undefined) return '—';
     var u = ['B','KB','MB','GB'], i = 0;
@@ -345,7 +442,6 @@
     var actuales = {};
     lista.forEach(function(c){ actuales[c.servidor] = true; });
 
-    // Notificar caidas que el usuario NO pidio
     Object.keys(previoConectados).forEach(function(nombre){
       if (!actuales[nombre] && !desconectandoManual[nombre]){
         aviso('Se perdió la conexión con ' + nombre + '.', false);
@@ -355,11 +451,11 @@
     previoConectados = actuales;
 
     if (!lista.length){
-      cont.innerHTML = '<div class="sin-conexion">Sin conexiones. Elige un servidor abajo y dale a Conectar.</div>';
+      mensajeEn(cont, 'sin-conexion', 'Sin conexiones. Elige un servidor abajo y dale a Conectar.');
       return;
     }
     var ahora = Date.now();
-    cont.innerHTML = '';
+    vaciar(cont);
     lista.forEach(function(c){
       var prev = previoBytes[c.servidor];
       var rxS = 0, txS = 0;
@@ -369,35 +465,58 @@
       }
       previoBytes[c.servidor] = {t: ahora, rx: c.rx, tx: c.tx};
 
-      var div = document.createElement('div');
-      div.className = 'cnx';
-      var enlaces = (c.tuneles||[]).length
-        ? (c.tuneles||[]).map(function(t){
-            return '<a href="#" data-url="http://localhost:' + t.puerto + (t.ruta||'') + '"><b>:' + t.puerto + '</b> ' + (t.nombre||'') + '</a>';
-          }).join('')
-        : '<span style="font-size:12px;color:var(--suave)">Sin túneles abiertos (puertos ocupados por otra conexión) — usa la terminal.</span>';
-      div.innerHTML =
-        '<div class="fila1"><span class="led"></span>' +
-        '<div class="txt">CONECTADO a <b>' + c.servidor + '</b> desde las ' + c.desde + '</div>' +
-        '<div class="trafico"><span class="baja">↓' + fmtBs(rxS) + '</span> · <span class="sube">↑' + fmtBs(txS) + '</span> · ' + fmtB(c.rx + c.tx) + ' total</div>' +
-        '</div><div class="enlaces">' + enlaces + '</div>';
-      var bTerm = document.createElement('button');
-      bTerm.className = 'icono'; bTerm.innerHTML = '&gt;_'; bTerm.title = 'Terminal';
-      bTerm.style.marginLeft = '8px';
+      var div = nodo('div', 'cnx');
+      var fila = nodo('div', 'fila1');
+      fila.appendChild(nodo('span', 'led'));
+      var txt = nodo('div', 'txt');
+      txt.appendChild(document.createTextNode('CONECTADO a '));
+      txt.appendChild(nodo('b', '', c.servidor));
+      txt.appendChild(document.createTextNode(' desde las ' + c.desde));
+      fila.appendChild(txt);
+
+      var trafico = nodo('div', 'trafico');
+      trafico.appendChild(nodo('span', 'baja', '↓' + fmtBs(rxS)));
+      trafico.appendChild(document.createTextNode(' · '));
+      trafico.appendChild(nodo('span', 'sube', '↑' + fmtBs(txS)));
+      trafico.appendChild(document.createTextNode(' · ' + fmtB(c.rx + c.tx) + ' total'));
+      fila.appendChild(trafico);
+
+      var bTerm = nodo('button', 'icono', '>_');
+      bTerm.title = 'Terminal'; bTerm.style.marginLeft = '8px';
       bTerm.onclick = function(){ abrirTerminal(c.servidor); };
-      var bDesc = document.createElement('button');
-      bDesc.textContent = 'Desconectar'; bDesc.style.marginLeft = '8px';
+      fila.appendChild(bTerm);
+      var bDesc = nodo('button', '', 'Desconectar');
+      bDesc.style.marginLeft = '8px';
       bDesc.onclick = function(){
         desconectandoManual[c.servidor] = true;
         api('/api/desconectar', {method:'POST', body: JSON.stringify({nombre: c.servidor})})
           .then(function(){ refrescarEstado(); });
       };
-      div.querySelector('.fila1').appendChild(bTerm);
-      div.querySelector('.fila1').appendChild(bDesc);
+      fila.appendChild(bDesc);
+      div.appendChild(fila);
+
+      var enlaces = nodo('div', 'enlaces');
+      if ((c.tuneles||[]).length){
+        (c.tuneles||[]).forEach(function(t){
+          var a = nodo('a', '', '');
+          a.href = '#';
+          a.dataset.url = 'http://localhost:' + t.puerto + (t.ruta||'');
+          a.appendChild(nodo('b', '', ':' + t.puerto));
+          a.appendChild(document.createTextNode(' ' + (t.nombre||'')));
+          enlaces.appendChild(a);
+        });
+      } else {
+        var sin = nodo('span', '', 'Sin túneles abiertos (puertos ocupados por otra conexión) — usa la terminal.');
+        sin.style.fontSize = '12px'; sin.style.color = 'var(--suave)';
+        enlaces.appendChild(sin);
+      }
+      div.appendChild(enlaces);
       cont.appendChild(div);
     });
   }
-  function refrescarEstado(){ api('/api/estado').then(pintarConexiones).catch(function(){}); }
+  function refrescarEstado(){
+    api('/api/estado').then(function(e){ pintarConexiones(e); refrescarSelectorServidores(); }).catch(function(){});
+  }
   setInterval(refrescarEstado, 3000); refrescarEstado();
 
   // Enlaces de las conexiones: abren en el navegador del sistema
@@ -412,58 +531,63 @@
   var servidoresCache = [];
   function pintarLista(lista){
     servidoresCache = lista;
+    var cta = document.getElementById('srv-cuenta');
+    if (cta) cta.textContent = '— ' + lista.length + ' servidor' + (lista.length===1?'':'es');
     var filtro = ($('buscador').value || '').toLowerCase().trim();
     var mostrar = lista.filter(function(s){
       if (!filtro) return true;
       return (s.nombre + ' ' + s.host + ' ' + s.usuario).toLowerCase().indexOf(filtro) !== -1;
     });
-    // favoritos primero, respetando el orden guardado dentro de cada grupo
     mostrar.sort(function(a,b){ return (b.favorito?1:0) - (a.favorito?1:0); });
 
     var cont = $('lista');
     if (!lista.length){
-      cont.innerHTML = '<div class="vacio">Ningún servidor todavía — agrega el primero abajo.</div>';
+      mensajeEn(cont, 'vacio', 'Ningún servidor todavía — agrega el primero abajo.');
       return;
     }
     if (!mostrar.length){
-      cont.innerHTML = '<div class="vacio">Sin resultados para "' + filtro + '".</div>';
+      mensajeEn(cont, 'vacio', 'Sin resultados para "' + filtro + '".');
       return;
     }
-    cont.innerHTML = '';
+    vaciar(cont);
     mostrar.forEach(function(s){
-      var div = document.createElement('div');
-      div.className = 'srv';
-      div.draggable = true;
-      div.dataset.nombre = s.nombre;
+      var div = nodo('div', 'srv');
+      div.draggable = true; div.dataset.nombre = s.nombre;
       var metodo = s.key ? 'key' : (s.tienePassword ? 'contraseña guardada' : 'contraseña al conectar');
-      div.innerHTML =
-        '<span class="asa" title="Arrastra para reordenar">⠿</span>' +
-        '<div class="franja"></div>' +
-        '<button class="fav' + (s.favorito ? ' on' : '') + '" title="Favorito">' + (s.favorito ? '★' : '☆') + '</button>' +
-        '<div class="info"><div class="nombre">' + s.nombre + '</div>' +
-        '<div class="detalle">' + s.usuario + '@' + s.host + ':' + s.puerto + '</div></div>' +
-        '<span class="metodo">' + metodo + (s.confiado ? ' · huella ✓' : '') + '</span>';
-      div.querySelector('.fav').onclick = function(ev){
+
+      var asa = nodo('span', 'asa', '⠿'); asa.title = 'Arrastra para reordenar';
+      div.appendChild(asa); div.appendChild(nodo('div', 'franja'));
+      var fav = nodo('button', 'fav' + (s.favorito ? ' on' : ''), s.favorito ? '★' : '☆');
+      fav.title = 'Favorito';
+      fav.onclick = function(ev){
         ev.stopPropagation();
         api('/api/servidores', {method:'POST', body: JSON.stringify({
           nombre: s.nombre, host: s.host, puerto: s.puerto, usuario: s.usuario,
           key: s.key, favorito: !s.favorito
         })}).then(refrescarLista);
       };
-      var bC = document.createElement('button'); bC.className = 'principal'; bC.textContent = 'Conectar';
+      div.appendChild(fav);
+      var info = nodo('div', 'info');
+      info.appendChild(nodo('div', 'nombre', s.nombre));
+      info.appendChild(nodo('div', 'detalle', s.usuario + '@' + s.host + ':' + s.puerto));
+      div.appendChild(info);
+      div.appendChild(nodo('span', 'metodo', metodo + (s.confiado ? ' · huella ✓' : '')));
+
+      var acciones = nodo('div', 'acciones');
+      var bC = nodo('button', 'principal', 'Conectar');
       bC.onclick = function(){ conectar(s.nombre, '', false); };
-      var bT = document.createElement('button'); bT.className = 'icono'; bT.innerHTML = '&gt;_';
-      bT.title = 'Abrir terminal SSH';
-      bT.onclick = function(){ pedirTerminal(s.nombre); };
-      var bE = document.createElement('button'); bE.textContent = 'Editar';
-      bE.onclick = function(){ cargarEnForm(s); };
-      var bB = document.createElement('button'); bB.className = 'peligro'; bB.textContent = '✕';
+      var bT = nodo('button', 'icono', '>_');
+      bT.title = 'Abrir terminal SSH'; bT.onclick = function(){ pedirTerminal(s.nombre); };
+      var bE = nodo('button', '', 'Editar');
+      bE.onclick = function(){ abrirFormulario(); cargarEnForm(s); };
+      var bB = nodo('button', 'peligro', '✕');
       bB.title = 'Borrar';
       bB.onclick = function(){
         if (confirm('¿Borrar "' + s.nombre + '"?'))
           api('/api/servidores?nombre=' + encodeURIComponent(s.nombre), {method:'DELETE'}).then(refrescarLista);
       };
-      div.appendChild(bC); div.appendChild(bT); div.appendChild(bE); div.appendChild(bB);
+      acciones.appendChild(bC); acciones.appendChild(bT); acciones.appendChild(bE); acciones.appendChild(bB);
+      div.appendChild(acciones);
       cont.appendChild(div);
     });
     activarArrastre(cont);
@@ -530,6 +654,14 @@
       nombre: nombre, password: password, aceptarHuella: aceptarHuella
     })}).then(function(r){
       if (r.error){ aviso(r.error, false); return; }
+      if (r.necesitaPassphrase){
+        pendiente = {nombre: nombre, aceptarHuella: aceptarHuella};
+        $('pass-para').textContent = 'La clave SSH de ' + nombre + ' tiene passphrase. Escríbela:';
+        $('pass-input').value = '';
+        $('m-pass').classList.add('abierto');
+        $('pass-input').focus();
+        return;
+      }
       if (r.necesitaPassword){
         pendiente = {nombre: nombre, aceptarHuella: aceptarHuella};
         $('pass-para').textContent = 'Escribe la contraseña para ' + nombre + ' (no se guardará):';
@@ -591,14 +723,12 @@
     document.getElementById('tun-caja').classList.toggle('abierto');
   };
   function filaTunel(t){
-    var d = document.createElement('div');
-    d.className = 'tun-fila';
-    d.innerHTML =
-      '<input class="p" type="number" min="1" max="65535" value="' + (t.puerto||'') + '" placeholder="8888">' +
-      '<input class="n" type="text" value="' + (t.nombre||'').replace(/"/g,'&quot;') + '" placeholder="Nombre del servicio">' +
-      '<input class="r" type="text" value="' + (t.ruta||'') + '" placeholder="/opcional">';
-    var b = document.createElement('button');
-    b.className = 'peligro'; b.textContent = '✕'; b.title = 'Quitar este túnel';
+    var d = nodo('div', 'tun-fila');
+    var p = nodo('input', 'p'); p.type='number'; p.min='1'; p.max='65535'; p.value=t.puerto||''; p.placeholder='8888';
+    var n = nodo('input', 'n'); n.type='text'; n.value=t.nombre||''; n.placeholder='Nombre del servicio';
+    var r = nodo('input', 'r'); r.type='text'; r.value=t.ruta||''; r.placeholder='/opcional';
+    d.appendChild(p); d.appendChild(n); d.appendChild(r);
+    var b = nodo('button', 'peligro', '✕'); b.title = 'Quitar este túnel';
     b.onclick = function(){ d.remove(); };
     d.appendChild(b);
     return d;
@@ -612,7 +742,7 @@
   function pintarTuneles(lista){
     resumenTuneles(lista);
     var cont = document.getElementById('tun-lista');
-    cont.innerHTML = '';
+    vaciar(cont);
     (lista||[]).forEach(function(t){ cont.appendChild(filaTunel(t)); });
   }
   function leerTuneles(){
@@ -701,9 +831,9 @@
   function pintarHistorialTerminal(lista){
     var cont = document.getElementById('term-hist-lista');
     if (!lista || !lista.length){
-      cont.innerHTML = '<div class="vacio-hist">Sin comandos todavía.</div>'; return;
+      mensajeEn(cont, 'vacio-hist', 'Sin comandos todavía.'); return;
     }
-    cont.innerHTML = '';
+    vaciar(cont);
     lista.slice().reverse().forEach(function(cmd){
       var d = document.createElement('div');
       d.className = 'cmd'; d.textContent = cmd;
@@ -742,9 +872,9 @@
     })}).then(function(r){
       var res = document.getElementById('exp-res');
       if (r.error){ res.textContent = r.error; aviso(r.error, false); return; }
-      res.innerHTML = '<b>Copia creada.</b><br>' + r.servidores + ' servidor(es), ' +
-        r.tuneles + ' túnel(es), ' + r.keys + ' clave(s) SSH.<br>Guardada en: ' + r.ruta;
-      if (r.omitidas && r.omitidas.length) res.innerHTML += '<br>No pude leer: ' + r.omitidas.join(', ');
+      res.textContent = 'Copia creada. ' + r.servidores + ' servidor(es), ' +
+        r.tuneles + ' túnel(es), ' + r.keys + ' clave(s) SSH. Guardada en: ' + r.ruta +
+        ((r.omitidas && r.omitidas.length) ? ' · No pude leer: ' + r.omitidas.join(', ') : '');
       document.getElementById('exp-pass').value = '';
       aviso('Copia exportada.', true);
     }).finally(function(){ b.disabled = false; b.textContent = 'Exportar'; });
@@ -763,9 +893,9 @@
       })}).then(function(r){
         var res = document.getElementById('imp-res');
         if (r.error){ res.textContent = r.error; aviso(r.error, false); return; }
-        res.innerHTML = '<b>Importado.</b><br>' + r.nuevos + ' nuevo(s), ' +
+        res.textContent = 'Importado. ' + r.nuevos + ' nuevo(s), ' +
           r.actualizados + ' actualizado(s), ' + r.tuneles + ' túnel(es), ' +
-          r.keys + ' clave(s).<br>Copia del ' + (r.creado || '?');
+          r.keys + ' clave(s). Copia del ' + (r.creado || '?');
         document.getElementById('imp-pass').value = '';
         document.getElementById('imp-archivo').value = '';
         refrescarLista(); refrescarTuneles();
@@ -793,7 +923,7 @@
   document.getElementById('btn-salir').onclick = function(){
     if (!confirm('¿Cerrar la aplicación? Se cerrarán todos los túneles.')) return;
     api('/api/salir', {method:'POST'}).then(function(){
-      document.body.innerHTML = '<div style="padding:60px;text-align:center;color:var(--suave)">Aplicación cerrada. Puedes cerrar esta pestaña.</div>';
+      vaciar(document.body); var cerrado=nodo('div','', 'Aplicación cerrada. Puedes cerrar esta pestaña.'); cerrado.style.cssText='padding:60px;text-align:center;color:var(--suave)'; document.body.appendChild(cerrado);
     });
   };
 
@@ -810,6 +940,206 @@
       if (activo && activo.closest && activo.closest('#form')){ guardarServidorDesdeForm(); }
     }
   });
+
+  // ── Plegables de servidores y formulario ─────────────────────
+  function plegar(cabId, cajaId){
+    document.getElementById(cabId).onclick = function(){
+      this.classList.toggle('abierta');
+      document.getElementById(cajaId).classList.toggle('abierto');
+    };
+  }
+  plegar('srv-cabecera','srv-caja');
+  plegar('form-cabecera','form');
+  plegar('fx-cabecera','fx-caja');
+
+  function abrirFormulario(){
+    document.getElementById('form-cabecera').classList.add('abierta');
+    document.getElementById('form').classList.add('abierto');
+  }
+
+  // ── Selector de clave SSH y diagnóstico ──────────────────────
+  var selectorDestino = null;  // 'key' | 'subir'
+  document.getElementById('btn-buscar-key').onclick = function(){
+    selectorDestino = 'key';
+    document.getElementById('fx-cabecera').classList.add('abierta');
+    document.getElementById('fx-caja').classList.add('abierto');
+    cargarLocal('');
+    aviso('Elige tu clave en el panel "Tu equipo" (botón Usar).', true);
+    document.getElementById('fx-caja').scrollIntoView({behavior:'smooth'});
+  };
+  document.getElementById('btn-probar-key').onclick = function(){
+    var key = document.getElementById('f-key').value.trim();
+    var res = document.getElementById('key-res');
+    if (!key){ res.textContent = 'Escribe o busca la ruta de la clave.'; return; }
+    res.textContent = 'Probando…';
+    api('/api/probar-key', {method:'POST', body: JSON.stringify({
+      key: key, passphrase: document.getElementById('f-pass').value
+    })}).then(function(r){
+      if (r.error){ res.textContent = r.error; res.style.color = 'var(--rojo)'; return; }
+      if (r.necesitaPassphrase){
+        res.textContent = 'La clave tiene passphrase: escríbela en el campo Contraseña de abajo y marca Recordar si quieres guardarla.';
+        res.style.color = 'var(--ambar)'; return;
+      }
+      res.textContent = 'Clave válida (' + r.tipo + ') · ' + r.huella; res.style.color = 'var(--verde)';
+      document.getElementById('f-key').value = r.rutaFinal;
+    });
+  };
+  // etiqueta dinámica: con key, lo que se guarda es la passphrase
+  document.getElementById('f-key').addEventListener('input', function(){
+    document.getElementById('lbl-pass').textContent =
+      this.value.trim() ? 'Passphrase de la clave (si tiene)' : 'Contraseña';
+  });
+
+  // ── Gestor de archivos ───────────────────────────────────────
+  var fxServidor = null, fxRutaRem = '', fxRutaLoc = '';
+
+  function refrescarSelectorServidores(){
+    var sel = document.getElementById('fx-servidor');
+    var activos = (estadoActual.conexiones || []).map(function(c){ return c.servidor; });
+    var previo = sel.value;
+    vaciar(sel);
+    if (activos.length){
+      activos.forEach(function(n){ var o=nodo('option','',n); o.value=n; sel.appendChild(o); });
+    } else {
+      var o=nodo('option','','— sin conexiones activas —'); o.value=''; sel.appendChild(o);
+    }
+    if (activos.indexOf(previo) !== -1) sel.value = previo;
+  }
+
+  function iconoDe(a){ return a.carpeta ? '📁' : '📄'; }
+  function fmtTam(a){ return a.carpeta ? '' : fmtB(a.tamano); }
+
+  function cargarRemoto(ruta){
+    if (!fxServidor){ aviso('Elige un servidor conectado.', false); return; }
+    api('/api/archivos', {method:'POST', body: JSON.stringify({servidor: fxServidor, ruta: ruta})})
+      .then(function(d){
+        var cont = document.getElementById('fx-lista-rem');
+        if (d.error){ mensajeEn(cont, 'vacio-fx', d.error); return; }
+        fxRutaRem = d.ruta;
+        document.getElementById('fx-ruta-rem').value = d.ruta;
+        if (!d.archivos || !d.archivos.length){ mensajeEn(cont, 'vacio-fx', 'Carpeta vacía.'); return; }
+        vaciar(cont);
+        d.archivos.forEach(function(a){
+          var it = nodo('div', 'it');
+          it.appendChild(nodo('span', 'ic', iconoDe(a)));
+          it.appendChild(nodo('span', 'nm', a.nombre));
+          it.appendChild(nodo('span', 'meta', fmtTam(a)));
+          if (a.carpeta){
+            it.onclick = function(ev){ if (ev.target.tagName !== 'BUTTON') cargarRemoto(a.ruta); };
+          } else {
+            var bD = document.createElement('button'); bD.textContent = '⬇ Bajar';
+            bD.onclick = function(ev){
+              ev.stopPropagation();
+              bD.disabled = true; bD.textContent = '…';
+              api('/api/archivos/descargar', {method:'POST', body: JSON.stringify({
+                servidor: fxServidor, ruta: a.ruta, destinoLocal: fxRutaLoc
+              })}).then(function(r){
+                if (r.error) aviso(r.error, false);
+                else { aviso('Descargado: ' + r.destino, true); cargarLocal(fxRutaLoc); }
+              }).finally(function(){ bD.disabled = false; bD.textContent = '⬇ Bajar'; });
+            };
+            it.appendChild(bD);
+          }
+          var bR = document.createElement('button'); bR.textContent = '✎';
+          bR.title = 'Renombrar';
+          bR.onclick = function(ev){
+            ev.stopPropagation();
+            var nuevo = prompt('Nuevo nombre para ' + a.nombre + ':', a.nombre);
+            if (!nuevo || nuevo === a.nombre) return;
+            var destino = fxRutaRem.replace(/\/$/,'') + '/' + nuevo;
+            api('/api/archivos', {method:'POST', body: JSON.stringify({
+              servidor: fxServidor, accion: 'renombrar', ruta: a.ruta, destino: destino
+            })}).then(function(r){ r.error ? aviso(r.error,false) : cargarRemoto(fxRutaRem); });
+          };
+          var bB = document.createElement('button'); bB.className='peligro'; bB.textContent = '✕';
+          bB.title = 'Borrar';
+          bB.onclick = function(ev){
+            ev.stopPropagation();
+            if (!confirm('¿Borrar ' + a.nombre + ' en el servidor?')) return;
+            api('/api/archivos', {method:'POST', body: JSON.stringify({
+              servidor: fxServidor, accion: 'borrar', ruta: a.ruta
+            })}).then(function(r){ r.error ? aviso(r.error,false) : cargarRemoto(fxRutaRem); });
+          };
+          it.appendChild(bR); it.appendChild(bB);
+          cont.appendChild(it);
+        });
+      }).catch(function(){});
+  }
+
+  function cargarLocal(ruta){
+    api('/api/local?ruta=' + encodeURIComponent(ruta || '')).then(function(d){
+      var cont = document.getElementById('fx-lista-loc');
+      if (d.error){ mensajeEn(cont, 'vacio-fx', d.error); return; }
+      fxRutaLoc = d.ruta;
+      document.getElementById('fx-ruta-loc').value = d.ruta;
+      if (!d.archivos || !d.archivos.length){ mensajeEn(cont, 'vacio-fx', 'Carpeta vacía.'); return; }
+      vaciar(cont);
+      d.archivos.forEach(function(a){
+        var it = nodo('div', 'it');
+        it.appendChild(nodo('span', 'ic', iconoDe(a)));
+        it.appendChild(nodo('span', 'nm', a.nombre));
+        it.appendChild(nodo('span', 'meta', fmtTam(a)));
+        if (a.carpeta){
+          it.onclick = function(ev){ if (ev.target.tagName !== 'BUTTON') cargarLocal(a.ruta); };
+        } else {
+          if (selectorDestino === 'key'){
+            var bU = document.createElement('button'); bU.className='principal'; bU.textContent = 'Usar';
+            bU.onclick = function(ev){
+              ev.stopPropagation();
+              document.getElementById('f-key').value = a.ruta;
+              document.getElementById('f-key').dispatchEvent(new Event('input'));
+              selectorDestino = null;
+              abrirFormulario();
+              document.getElementById('btn-probar-key').click();
+              document.getElementById('form').scrollIntoView({behavior:'smooth'});
+            };
+            it.appendChild(bU);
+          }
+          var bS = document.createElement('button'); bS.textContent = '⬆ Subir';
+          bS.onclick = function(ev){
+            ev.stopPropagation();
+            if (!fxServidor || !fxRutaRem){ aviso('Abre primero una carpeta del servidor.', false); return; }
+            bS.disabled = true; bS.textContent = '…';
+            api('/api/archivos/subir', {method:'POST', body: JSON.stringify({
+              servidor: fxServidor, rutaLocal: a.ruta, carpetaRemota: fxRutaRem
+            })}).then(function(r){
+              if (r.error) aviso(r.error, false);
+              else { aviso('Subido: ' + r.destino, true); cargarRemoto(fxRutaRem); }
+            }).finally(function(){ bS.disabled = false; bS.textContent = '⬆ Subir'; });
+          };
+          it.appendChild(bS);
+        }
+        cont.appendChild(it);
+      });
+    }).catch(function(){});
+  }
+
+  document.getElementById('fx-abrir').onclick = function(){
+    fxServidor = document.getElementById('fx-servidor').value;
+    if (!fxServidor){ aviso('No hay conexiones activas.', false); return; }
+    cargarRemoto('');
+    if (!fxRutaLoc) cargarLocal('');
+  };
+  document.getElementById('fx-ir-rem').onclick = function(){ cargarRemoto(document.getElementById('fx-ruta-rem').value); };
+  document.getElementById('fx-ir-loc').onclick = function(){ cargarLocal(document.getElementById('fx-ruta-loc').value); };
+  document.getElementById('fx-arriba-rem').onclick = function(){
+    var p = fxRutaRem.replace(/\/+$/,'').split('/').slice(0,-1).join('/') || '/';
+    cargarRemoto(p);
+  };
+  document.getElementById('fx-arriba-loc').onclick = function(){
+    var sep = fxRutaLoc.indexOf('\\') !== -1 ? '\\' : '/';
+    var p = fxRutaLoc.replace(/[\\/]+$/,'').split(sep).slice(0,-1).join(sep) || sep;
+    cargarLocal(p);
+  };
+  document.getElementById('fx-nueva-carpeta').onclick = function(){
+    if (!fxServidor || !fxRutaRem){ aviso('Abre primero una carpeta del servidor.', false); return; }
+    var nombre = prompt('Nombre de la nueva carpeta:');
+    if (!nombre) return;
+    api('/api/archivos', {method:'POST', body: JSON.stringify({
+      servidor: fxServidor, accion: 'carpeta', ruta: fxRutaRem.replace(/\/$/,'') + '/' + nombre
+    })}).then(function(r){ r.error ? aviso(r.error,false) : cargarRemoto(fxRutaRem); });
+  };
+  cargarLocal('');
 </script>
 </body>
 </html>

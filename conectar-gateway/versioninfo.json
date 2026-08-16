@@ -2,14 +2,14 @@
   "FixedFileInfo": {
     "FileVersion": {
       "Major": 2,
-      "Minor": 5,
-      "Patch": 0,
+      "Minor": 6,
+      "Patch": 1,
       "Build": 0
     },
     "ProductVersion": {
       "Major": 2,
-      "Minor": 5,
-      "Patch": 0,
+      "Minor": 6,
+      "Patch": 1,
       "Build": 0
     }
   },
@@ -18,8 +18,8 @@
     "FileDescription": "Tuneles SSH y terminal para gateways WISP",
     "LegalCopyright": "Copyright (c) 2026 Gsus - Licencia MIT",
     "CompanyName": "Gsus",
-    "FileVersion": "2.5.0",
-    "ProductVersion": "2.5.0",
+    "FileVersion": "2.6.1",
+    "ProductVersion": "2.6.1",
     "InternalName": "conectar-gateway",
     "OriginalFilename": "Conectar-Gateway.exe"
   },

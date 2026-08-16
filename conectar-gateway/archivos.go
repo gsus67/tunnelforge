@@ -41,8 +41,11 @@ func clienteSFTP(nombre string) (*sftp.Client, error) {
 	if con == nil {
 		return nil, fmt.Errorf("no estás conectado a '%s'", nombre)
 	}
-	mu.Lock()
-	defer mu.Unlock()
+
+	// El lock es por conexión, no global: abrir SFTP puede implicar I/O de red
+	// y no debe congelar el resto de la API mientras el servidor responde.
+	con.sftpMu.Lock()
+	defer con.sftpMu.Unlock()
 	if con.sftp != nil {
 		return con.sftp, nil
 	}

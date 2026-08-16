@@ -11,6 +11,7 @@ copyright se conservan aquí como ellas requieren.
 | [webview/webview_go](https://github.com/webview/webview_go) | Ventana nativa | MIT © Serge Zaitsev |
 | [coder/websocket](https://github.com/coder/websocket) | WebSocket del terminal | ISC © Coder Technologies |
 | [golang.org/x/crypto/scrypt](https://pkg.go.dev/golang.org/x/crypto/scrypt) | Derivación de clave para la copia de seguridad | BSD-3-Clause © The Go Authors |
+| [pkg/sftp](https://github.com/pkg/sftp) | Gestor de archivos remoto (SFTP) | BSD-2-Clause © The pkg/sftp authors |
 | [Go](https://go.dev) | Lenguaje y biblioteca estándar | BSD-3-Clause © The Go Authors |
 
 Las fuentes de la interfaz (Barlow Condensed, JetBrains Mono) se cargan desde

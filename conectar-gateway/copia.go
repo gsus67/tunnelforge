@@ -112,6 +112,9 @@ func descifrarPaquete(datos []byte, password string) (*Paquete, error) {
 	if err := json.Unmarshal(plano, &p); err != nil {
 		return nil, fmt.Errorf("contenido ilegible")
 	}
+	if p.Formato != formatoPaquete {
+		return nil, fmt.Errorf("contenido de copia no reconocido")
+	}
 	return &p, nil
 }
 
@@ -198,6 +201,18 @@ func manejarExportar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func nombreKeySeguro(nombre string) (string, error) {
+	nombre = filepath.Clean(nombre)
+	base := filepath.Base(nombre)
+	if nombre == "." || nombre == "" || base != nombre || base == "." || base == ".." {
+		return "", fmt.Errorf("nombre de clave SSH no válido")
+	}
+	if len(base) > 255 {
+		return "", fmt.Errorf("nombre de clave SSH demasiado largo")
+	}
+	return base, nil
+}
+
 func manejarImportar(w http.ResponseWriter, r *http.Request) {
 	var pet struct {
 		Password  string
@@ -211,6 +226,18 @@ func manejarImportar(w http.ResponseWriter, r *http.Request) {
 	p, err := descifrarPaquete([]byte(pet.Contenido), pet.Password)
 	if err != nil {
 		responderError(w, err)
+		return
+	}
+	if pet.Modo == "" {
+		pet.Modo = "fusionar"
+	}
+	if pet.Modo != "fusionar" && pet.Modo != "reemplazar" {
+		responderError(w, fmt.Errorf("modo de importación no válido"))
+		return
+	}
+	validosTuneles, err := validarTuneles(p.Tuneles)
+	if err != nil {
+		responderError(w, fmt.Errorf("túneles inválidos en la copia: %v", err))
 		return
 	}
 
@@ -227,7 +254,17 @@ func manejarImportar(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					continue
 				}
-				destino := filepath.Join(dirKeys, k.Nombre)
+				nombreSeguro, err := nombreKeySeguro(k.Nombre)
+				if err != nil {
+					continue
+				}
+				destino := filepath.Join(dirKeys, nombreSeguro)
+				// Defensa adicional: incluso si cambia la normalización de rutas,
+				// el destino debe permanecer dentro de baseDir/keys.
+				rel, err := filepath.Rel(dirKeys, destino)
+				if err != nil || rel == ".." || len(rel) >= 3 && rel[:3] == ".."+string(filepath.Separator) {
+					continue
+				}
 				if os.WriteFile(destino, datos, 0600) == nil {
 					rutasNuevas[rutaVieja] = destino
 				}
@@ -275,9 +312,9 @@ func manejarImportar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tuneles := 0
-	if len(p.Tuneles) > 0 {
-		if err := guardarTuneles(p.Tuneles); err == nil {
-			tuneles = len(p.Tuneles)
+	if len(validosTuneles) > 0 {
+		if err := guardarTuneles(validosTuneles); err == nil {
+			tuneles = len(validosTuneles)
 		}
 	}
 

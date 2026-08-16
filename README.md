@@ -21,6 +21,8 @@ pero sirve para **cualquier servidor SSH**: los túneles son configurables.
 - **Terminal SSH integrado**, con **historial de comandos** que persiste entre sesiones
 - **Favoritos y orden manual**: marca con ★ o arrastra para reordenar la lista
 - **Buscador** de servidores por nombre, host o usuario
+- **Gestor de archivos (SFTP)**: navega el servidor y tu equipo lado a lado,
+  sube y baja archivos, crea carpetas, renombra y borra
 - **Copia de seguridad** cifrada: exporta e importa toda tu configuración
 - **Verifica la identidad del servidor**: si su huella cambia, se niega a conectar
 - **Avisa si una conexión se cae** sola (sin que la hayas cerrado tú)
@@ -82,6 +84,29 @@ guarda las claves SSH en su carpeta de configuración y reapunta las rutas
 automáticamente. Puedes **fusionar** con lo que ya tengas (por defecto, los
 nombres repetidos se actualizan) o **reemplazar todo**.
 
+### Archivos
+
+La sección **Archivos** abre un explorador de dos paneles sobre la conexión
+SSH que ya tienes (no abre una segunda sesión): el servidor a la izquierda y
+tu equipo a la derecha. Botón **⬆ Subir** en un archivo local para enviarlo a
+la carpeta remota abierta, **⬇ Bajar** en uno remoto para traerlo. También
+crea carpetas, renombra y borra en el servidor.
+
+Requiere que el servidor tenga el subsistema SFTP activo, que viene por
+defecto en Debian y la mayoría de distribuciones.
+
+### Claves SSH
+
+Si la clave da problemas, el botón **Probar** dice exactamente qué pasa:
+ruta inexistente, apuntar a la clave pública `.pub` por error, formato PuTTY
+`.ppk` (no compatible: conviértela con PuTTYgen), permisos, o que la clave
+tenga **passphrase** — en ese caso la app la pide al conectar y puedes
+guardarla cifrada como cualquier contraseña.
+
+El botón **Buscar…** abre el explorador para elegir el archivo sin teclear la
+ruta. Las rutas se normalizan solas: se aceptan comillas pegadas al copiar
+desde el Explorador, `~` y variables como `%USERPROFILE%`.
+
 ### Varias conexiones a la vez
 
 Puedes conectar a más de un servidor en paralelo. La limitación real: los
@@ -126,6 +151,11 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
   token de sesión aleatorio.
 - **Enlaces restringidos**: la app solo abre en el navegador direcciones de tus
   túneles locales; cualquier otro destino se rechaza.
+- **Interfaz endurecida contra XSS**: nombres de servidores, archivos, errores y
+  datos importados se insertan como texto mediante el DOM, no como HTML ejecutable.
+- **Importaciones validadas**: las claves SSH restauradas no pueden escapar de
+  `keys/` mediante rutas manipuladas, y los túneles importados pasan las mismas
+  validaciones de puertos y duplicados que los creados desde la interfaz.
 
 ### Actualizaciones de la app
 
@@ -209,6 +239,8 @@ conectar-gateway/
   ventana_otros.go     Navegador (Linux/macOS)
   copia.go             Exportar / importar configuración cifrada
   historial.go         Historial de comandos del terminal, por servidor
+  claves.go            Carga y diagnóstico de claves SSH
+  archivos.go          Gestor de archivos SFTP y explorador local
   version.go           Info de versión para el botón de actualizaciones
   ui.html              Interfaz
   static/              xterm.js embebido

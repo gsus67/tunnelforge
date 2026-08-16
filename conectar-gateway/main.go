@@ -37,10 +37,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "2.5.0"
+const version = "2.6.1"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -81,6 +82,32 @@ func guardarTuneles(lista []Tunel) error {
 	}
 	datos, _ := json.MarshalIndent(map[string]any{"tuneles": lista}, "", "  ")
 	return os.WriteFile(rutaJunto("ajustes.json"), datos, 0600)
+}
+
+func validarTuneles(lista []Tunel) ([]Tunel, error) {
+	validados := make([]Tunel, len(lista))
+	copy(validados, lista)
+	vistos := map[int]bool{}
+	for i := range validados {
+		if validados[i].Puerto < 1 || validados[i].Puerto > 65535 {
+			return nil, fmt.Errorf("puerto inválido: %d", validados[i].Puerto)
+		}
+		if vistos[validados[i].Puerto] {
+			return nil, fmt.Errorf("puerto repetido: %d", validados[i].Puerto)
+		}
+		vistos[validados[i].Puerto] = true
+		validados[i].Nombre = strings.TrimSpace(validados[i].Nombre)
+		if validados[i].Nombre == "" {
+			validados[i].Nombre = fmt.Sprintf("Puerto %d", validados[i].Puerto)
+		}
+		if len(validados[i].Nombre) > 120 {
+			return nil, fmt.Errorf("nombre de túnel demasiado largo")
+		}
+		if len(validados[i].Ruta) > 512 {
+			return nil, fmt.Errorf("ruta de túnel demasiado larga")
+		}
+	}
+	return validados, nil
 }
 
 //go:embed ui.html
@@ -189,7 +216,9 @@ type Conexion struct {
 	servidor string
 	desde    time.Time
 	abiertos []int
-	rx, tx   int64 // bytes acumulados (atomic)
+	rx, tx   int64        // bytes acumulados (atomic)
+	sftp     *sftp.Client // canal SFTP (perezoso: solo si se usa el gestor)
+	sftpMu   sync.Mutex   // evita abrir dos canales SFTP simultáneos
 }
 
 // Varias conexiones simultaneas a distintos servidores. Si dos servidores
@@ -197,6 +226,7 @@ type Conexion struct {
 // (mismo comportamiento que un puerto local ocupado por cualquier otro programa).
 var (
 	conexiones = map[string]*Conexion{}
+	conectando = map[string]bool{}
 )
 
 func cerrarConexion(nombre string) {
@@ -207,6 +237,12 @@ func cerrarConexion(nombre string) {
 	for _, l := range c.escuchas {
 		l.Close()
 	}
+	c.sftpMu.Lock()
+	if c.sftp != nil {
+		c.sftp.Close()
+		c.sftp = nil
+	}
+	c.sftpMu.Unlock()
 	c.cliente.Close()
 	delete(conexiones, nombre)
 }
@@ -241,17 +277,23 @@ func puente(local net.Conn, cliente *ssh.Client, puerto int, rx, tx *int64) {
 	local.Close()
 }
 
-func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool) (map[string]any, error) {
+func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any, error) {
 	// ---- autenticación ----
 	var auth []ssh.AuthMethod
 	if s.Key != "" {
-		datos, err := os.ReadFile(s.Key)
-		if err != nil {
-			return nil, fmt.Errorf("no pude leer la key: %v", err)
+		// la passphrase puede venir en esta peticion, o guardada cifrada
+		frase := password
+		if frase == "" && s.PassCifr != "" {
+			if p, err := descifrar(s.PassCifr); err == nil {
+				frase = p
+			}
 		}
-		firmante, err := ssh.ParsePrivateKey(datos)
+		firmante, necesita, err := cargarFirmante(s.Key, frase)
 		if err != nil {
-			return nil, fmt.Errorf("key inválida o con passphrase (usa una key sin passphrase, o contraseña): %v", err)
+			return nil, err
+		}
+		if necesita {
+			return map[string]any{"necesitaPassphrase": true}, nil
 		}
 		auth = append(auth, ssh.PublicKeys(firmante))
 	} else {
@@ -278,12 +320,12 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 
 	// ---- verificación de huella (TOFU) ----
 	var huellaVista string
+	huellaOriginal := s.Huella
 	callback := func(_ string, _ net.Addr, key ssh.PublicKey) error {
 		huellaVista = ssh.FingerprintSHA256(key)
 		if s.Huella == "" {
 			if aceptarHuella {
 				s.Huella = huellaVista
-				_ = guardar(lista)
 				return nil
 			}
 			return fmt.Errorf("confirmar-huella")
@@ -303,10 +345,23 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 		return nil, err
 	}
 
+	if huellaOriginal == "" && aceptarHuella && huellaVista != "" {
+		mu.Lock()
+		actuales := cargar()
+		if actual := buscar(actuales, s.Nombre); actual != nil && actual.Huella == "" {
+			actual.Huella = huellaVista
+			_ = guardar(actuales)
+		}
+		mu.Unlock()
+	}
+
 	// ---- túneles locales ----
 	con := &Conexion{cliente: cliente, servidor: s.Nombre, desde: time.Now()}
+	mu.Lock()
+	tuneles := cargarTuneles()
+	mu.Unlock()
 	var omitidos []int
-	for _, t := range cargarTuneles() {
+	for _, t := range tuneles {
 		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", t.Puerto))
 		if err != nil {
 			// puerto ocupado (por otro programa, o por OTRA conexion nuestra
@@ -352,7 +407,17 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 		mu.Unlock()
 	}()
 
+	mu.Lock()
+	if anterior := conexiones[con.servidor]; anterior != nil {
+		mu.Unlock()
+		for _, l := range con.escuchas {
+			l.Close()
+		}
+		cliente.Close()
+		return nil, fmt.Errorf("ya estás conectado a '%s'", con.servidor)
+	}
 	conexiones[con.servidor] = con
+	mu.Unlock()
 	resultado := map[string]any{"ok": true, "puertos": con.abiertos, "sinTuneles": sinTuneles}
 	if len(omitidos) > 0 {
 		resultado["puertosOmitidos"] = omitidos
@@ -363,6 +428,10 @@ func conectar(s *Servidor, lista []Servidor, password string, aceptarHuella bool
 // ---------------------------------------------------------------------------
 // API HTTP local
 // ---------------------------------------------------------------------------
+func decodificar(r *http.Request, destino any) error {
+	return json.NewDecoder(r.Body).Decode(destino)
+}
+
 func responder(w http.ResponseWriter, datos any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(datos)
@@ -476,13 +545,12 @@ func main() {
 				lista = append(lista, Servidor{Nombre: pet.Nombre})
 				s = &lista[len(lista)-1]
 			}
-			s.Host, s.Puerto, s.Usuario, s.Key = pet.Host, pet.Puerto, pet.Usuario, pet.Key
+			s.Host, s.Puerto, s.Usuario = pet.Host, pet.Puerto, pet.Usuario
+			s.Key = normalizarRuta(pet.Key)
 			if pet.Favorito != nil {
 				s.Favorito = *pet.Favorito
 			}
-			if pet.Key != "" {
-				s.PassCifr = ""
-			} else if pet.GuardarPassword && pet.Password != "" {
+			if pet.GuardarPassword && pet.Password != "" {
 				c, err := cifrar(pet.Password)
 				if err != nil {
 					responderError(w, err)
@@ -526,22 +594,12 @@ func main() {
 				responderError(w, err)
 				return
 			}
-			vistos := map[int]bool{}
-			for i := range lista {
-				if lista[i].Puerto < 1 || lista[i].Puerto > 65535 {
-					responderError(w, fmt.Errorf("puerto inválido: %d", lista[i].Puerto))
-					return
-				}
-				if vistos[lista[i].Puerto] {
-					responderError(w, fmt.Errorf("puerto repetido: %d", lista[i].Puerto))
-					return
-				}
-				vistos[lista[i].Puerto] = true
-				if lista[i].Nombre == "" {
-					lista[i].Nombre = fmt.Sprintf("Puerto %d", lista[i].Puerto)
-				}
+			validada, err := validarTuneles(lista)
+			if err != nil {
+				responderError(w, err)
+				return
 			}
-			if err := guardarTuneles(lista); err != nil {
+			if err := guardarTuneles(validada); err != nil {
 				responderError(w, fmt.Errorf("no pude guardar: %v", err))
 				return
 			}
@@ -559,6 +617,11 @@ func main() {
 	mux.HandleFunc("/api/importar", proteger(manejarImportar))
 	mux.HandleFunc("/api/historial", proteger(manejarHistorial))
 	mux.HandleFunc("/api/version", proteger(manejarVersion))
+	mux.HandleFunc("/api/probar-key", proteger(manejarProbarKey))
+	mux.HandleFunc("/api/archivos", proteger(manejarArchivos))
+	mux.HandleFunc("/api/archivos/descargar", proteger(manejarDescargar))
+	mux.HandleFunc("/api/archivos/subir", proteger(manejarSubir))
+	mux.HandleFunc("/api/local", proteger(manejarLocal))
 
 	// Reordenar servidores (arrastrar en la interfaz): recibe la lista de
 	// nombres en el nuevo orden y reescribe el archivo respetando ese orden.
@@ -606,18 +669,28 @@ func main() {
 			return
 		}
 		mu.Lock()
-		defer mu.Unlock()
-		if _, ya := conexiones[pet.Nombre]; ya {
-			responderError(w, fmt.Errorf("ya estás conectado a '%s'", pet.Nombre))
+		if _, ya := conexiones[pet.Nombre]; ya || conectando[pet.Nombre] {
+			mu.Unlock()
+			responderError(w, fmt.Errorf("ya estás conectado o conectando a '%s'", pet.Nombre))
 			return
 		}
 		lista := cargar()
 		s := buscar(lista, pet.Nombre)
 		if s == nil {
+			mu.Unlock()
 			responderError(w, fmt.Errorf("servidor no encontrado"))
 			return
 		}
-		res, err := conectar(s, lista, pet.Password, pet.AceptarHuella)
+		copiaServidor := *s
+		conectando[pet.Nombre] = true
+		mu.Unlock()
+		defer func() {
+			mu.Lock()
+			delete(conectando, pet.Nombre)
+			mu.Unlock()
+		}()
+
+		res, err := conectar(&copiaServidor, pet.Password, pet.AceptarHuella)
 		if err != nil {
 			responderError(w, err)
 			return
