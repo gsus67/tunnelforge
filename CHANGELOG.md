@@ -1,3 +1,15 @@
+## v3.1.0
+
+### Interfaz por vistas
+
+- El Dashboard queda dedicado únicamente a servidores guardados y conexiones activas.
+- Perfiles, Copias, Actualizaciones e Info pasan a ser vistas independientes controladas desde el sidebar.
+- Eliminados botones y paneles duplicados del Dashboard.
+- Eliminado el elemento redundante Servidores del sidebar; los servidores ya viven en Dashboard.
+- El estado de actualizaciones se muestra directamente en el botón Updates del sidebar.
+- La ventana nativa de Windows abre a 1320×860 para conservar el layout de dos columnas y acercarse al mockup aprobado.
+- Editar un servidor cambia automáticamente a la vista Perfil SSH sin hacer scroll extraño.
+
 ## v3.0.1
 
 ### Corrección del rediseño de interfaz

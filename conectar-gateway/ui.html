@@ -356,28 +356,43 @@
     .tun-fila input.r,.tun-fila .aw{width:100%}
     .updapp .token{min-width:0;flex-direction:column}
   }
+
+  /* navegación por vistas: el dashboard ya no duplica herramientas del sidebar */
+  .app-view{display:none!important}
+  .app-view.activa{display:block!important}
+  .dash-grid.app-view.activa{display:grid!important}
+  .stack-grid{display:block;margin-top:0}
+  .internal-toggle-hidden{display:none!important}
+  .panel-count{font-size:12px;color:var(--suave);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:6px 10px;white-space:nowrap}
+  .update-page-status{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);font-size:13px;color:var(--suave)}
+  .update-page-status b{color:var(--texto);font-weight:600}
+  .info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
+  .info-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;display:grid;gap:7px}
+  .info-card b{font-size:16px;color:var(--verde)}
+  .info-card span{font-size:13px;color:var(--texto-2);line-height:1.55}
+  .info-panel .pie{margin-top:0}
+  .view-page{min-height:0}
+  @media (max-width:900px){.info-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand-top">🛡️ <span>Gateway WISP Access</span></div>
     <div class="brand-card">
-      <div class="brand-logo">🔐</div>
-      <div class="brand-text">Gateway WISP Access<small>Gestión SSH y túneles seguros</small></div>
+      <div class="brand-logo">⌁</div>
+      <div class="brand-text">Gateway WISP Access<small>SSH · túneles · archivos</small></div>
     </div>
     <nav class="side-nav">
-      <a class="nav-item activo" href="#dashboard" data-nav="dashboard"><span class="ni">▣</span><span>Dashboard</span></a>
-      <a class="nav-item" href="#srv-cabecera" data-nav="servers"><span class="ni">🖧</span><span>Servidores</span></a>
-      <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni">✎</span><span>Perfiles</span></a>
-      <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni">🗄</span><span>Copias</span></a>
-      <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni">⬆</span><span>Updates</span></a>
-      <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni">⚙</span><span>Info</span></a>
+      <a class="nav-item activo" href="#dashboard" data-nav="dashboard"><span class="ni">▦</span><span>Dashboard</span></a>
+      <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni">⌁</span><span>Perfiles</span></a>
+      <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni">⇩</span><span>Copias</span></a>
+      <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni">↻</span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
+      <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni">ⓘ</span><span>Info</span></a>
     </nav>
     <div class="side-spacer"></div>
     <div class="side-status">
-      <div class="st1"><span class="dot"></span><span>SSH Seguro</span></div>
-      <div class="mini">Agente: activo<br>Algoritmos modernos<br>Actualizador firmado</div>
+      <div class="st1"><span class="dot"></span><span>Seguridad SSH</span></div>
+      <div class="mini">TOFU + ED25519<br>Hardening reversible<br>Updates firmados</div>
     </div>
     <div class="side-footer"><span>Build</span><span id="ver">—</span></div>
   </aside>
@@ -392,37 +407,30 @@
       <span class="bg-item i6">authorized_keys</span>
       <span class="bg-item small" style="bottom:208px; right:40px;">sha256 fingerprint</span>
       <span class="bg-line l1"></span><span class="bg-line l2"></span><span class="bg-line l3"></span><span class="bg-line l4"></span>
-      <span class="bg-lock">🔒</span><span class="bg-key">🗝</span>
+      <span class="bg-lock">◇</span><span class="bg-key">⌁</span>
     </div>
 
     <div class="topbar">
       <div class="hero-title">
-        <h1>Dashboard</h1>
-        <p>Resumen de conexiones, servidores guardados, túneles y seguridad SSH. Mantén una vista clara de tus gateways WISP con un estilo más moderno y enfocado en acceso seguro.</p>
-      </div>
-      <div class="top-actions">
-        <a href="#upd-panel" class="ghost-link" id="top-updates">⟳ Actualizaciones</a>
-        <a href="#form-cabecera" class="primary-link" id="top-new-server">＋ Nuevo servidor</a>
+        <h1 id="view-title">Dashboard</h1>
+        <p id="view-subtitle">Servidores guardados y conexiones activas en una sola vista.</p>
       </div>
     </div>
 
     <main>
-      <section class="dash-grid" id="dashboard">
+      <section class="dash-grid app-view activa" id="dashboard" data-view="dashboard">
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              <div class="ico">🗄</div>
+              <div class="ico">▤</div>
               <div>
                 <h3>Servidores guardados</h3>
                 <p>Perfiles de conexión SSH listos para conectar o editar.</p>
               </div>
             </div>
+            <span class="panel-count" id="srv-cuenta"></span>
           </div>
-          <div class="seccion desplegable abierta" id="srv-cabecera">
-            <span class="flecha">▶</span>
-            <span>Listado</span>
-            <span class="cuenta" id="srv-cuenta"></span>
-          </div>
+          <div class="seccion desplegable abierta internal-toggle-hidden" id="srv-cabecera"><span class="flecha">▶</span></div>
           <div class="plegable abierto" id="srv-caja">
             <div class="buscador"><input type="text" id="buscador" placeholder="Buscar por nombre, host o usuario…"></div>
             <div class="servidores" id="lista"></div>
@@ -432,7 +440,7 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              <div class="ico">📡</div>
+              <div class="ico">⌁</div>
               <div>
                 <h3>Servidores conectados</h3>
                 <p>Conexiones activas, terminal, archivos y seguridad SSH.</p>
@@ -446,13 +454,13 @@
       </section>
 
       <div class="stack-grid">
-        <section class="panel" id="editor-panel">
-          <div class="seccion desplegable" id="form-cabecera">
+        <section class="panel app-view" id="editor-panel" data-view="profiles">
+          <div class="seccion desplegable internal-toggle-hidden" id="form-cabecera">
             <span class="flecha">▶</span>
             <span>Agregar / editar servidor</span>
             <span class="cuenta">— clic para desplegar</span>
           </div>
-          <form id="form" class="plegable" onsubmit="return false">
+          <form id="form" class="plegable abierto" onsubmit="return false">
             <div><label>Nombre</label><input type="text" id="f-nombre" placeholder="gateway-1"></div>
             <div><label>IP o host</label><input type="text" id="f-host" placeholder="203.0.113.10"></div>
             <div><label>Puerto SSH</label><input type="number" id="f-puerto" value="22"></div>
@@ -496,13 +504,13 @@
           </form>
         </section>
 
-        <section class="panel" id="copia-panel">
-          <div class="seccion desplegable" id="copia-cabecera">
+        <section class="panel app-view" id="copia-panel" data-view="backup">
+          <div class="seccion desplegable internal-toggle-hidden" id="copia-cabecera">
             <span class="flecha">▶</span>
             <span>Copia de seguridad</span>
             <span class="cuenta">— exportar / importar servidores, túneles y claves</span>
           </div>
-          <div class="copia plegable" id="copia-caja">
+          <div class="copia plegable abierto" id="copia-caja">
             <div class="col">
               <div>
                 <h4>Exportar</h4>
@@ -537,14 +545,11 @@
           </div>
         </section>
 
-        <section class="panel" id="upd-panel">
-          <div class="seccion desplegable" id="upd-cabecera">
-            <span class="flecha">▶</span>
-            <span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones"></span>
-            <span>Actualizaciones de la app</span>
-            <span class="cuenta" id="upd-resumen">— sin comprobar</span>
+        <section class="panel app-view" id="upd-panel" data-view="updates">
+          <div class="update-page-status" id="upd-cabecera">
+            <span>Estado</span><b id="upd-resumen">— sin comprobar</b>
           </div>
-          <div class="updapp plegable" id="upd-caja">
+          <div class="updapp plegable abierto" id="upd-caja">
             <div class="txt">Versión instalada: <b id="app-ver">—</b><br>
             Repo privado: usa un token <b>fine-grained</b> con acceso únicamente a este repositorio y permiso <b>Contents: read</b>.
             En Windows el token se protege con DPAPI y queda ligado a tu usuario de Windows. Las actualizaciones además deben pasar firma Ed25519 + SHA-256.</div>
@@ -563,13 +568,19 @@
           </div>
         </section>
 
-        <div class="pie" id="pie-final">
+        <div class="panel app-view info-panel" id="pie-final" data-view="info">
+          <div class="info-grid">
+            <div class="info-card"><b>SSH</b><span>Keys ED25519, verificación de huella y hardening reversible.</span></div>
+            <div class="info-card"><b>Acceso</b><span>Terminal integrada, SFTP y túneles por servidor.</span></div>
+            <div class="info-card"><b>Updates</b><span>Releases privadas verificadas con firma Ed25519 y SHA-256.</span></div>
+          </div>
+          <div class="pie">
           Conectar Gateway <span id="pie-ver"></span> · © 2026 Gsus<br>
           Software libre bajo licencia MIT · usa
           <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a>,
           <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a> y
           <a href="https://github.com/webview/webview" target="_blank">webview</a>
-        </div>
+        </div></div>
       </div>
     </main>
   </div>
@@ -970,7 +981,6 @@
     $('f-key').value = s.key || ''; $('f-pass').value = '';
     $('f-guardar').checked = !!s.tienePassword;
     pintarTunelesForm(s.tuneles || tunelesDefecto);
-    window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
   }
   $('btn-limpiar').onclick = function(){
     ['f-nombre','f-host','f-usuario','f-key','f-pass'].forEach(function(i){ $(i).value=''; });
@@ -1366,12 +1376,10 @@
       document.getElementById(cajaId).classList.toggle('abierto');
     };
   }
-  plegar('srv-cabecera','srv-caja');
-  plegar('form-cabecera','form');
   plegar('tun-cabecera-form','tun-caja-form');
-  plegar('upd-cabecera','upd-caja');
 
   function abrirFormulario(){
+    mostrarVista('profiles');
     document.getElementById('form-cabecera').classList.add('abierta');
     document.getElementById('form').classList.add('abierto');
   }
@@ -1385,22 +1393,30 @@
     if(!el) return;
     el.scrollIntoView({behavior:'smooth',block:'start'});
   }
+  var vistaActual='dashboard';
+  var titulosVista={
+    dashboard:['Dashboard','Servidores guardados y conexiones activas en una sola vista.'],
+    profiles:['Perfil SSH','Agrega un servidor nuevo o edita un perfil existente.'],
+    backup:['Copia de seguridad','Exporta o restaura servidores, túneles, contraseñas guardadas y claves SSH.'],
+    updates:['Actualizaciones','Comprueba e instala versiones firmadas desde el repositorio privado.'],
+    info:['Gateway WISP Access','Información de seguridad, componentes y versión instalada.']
+  };
+  function mostrarVista(nombre){
+    if(!titulosVista[nombre]) nombre='dashboard';
+    vistaActual=nombre;
+    document.querySelectorAll('.app-view').forEach(function(v){v.classList.toggle('activa',v.dataset.view===nombre);});
+    document.querySelectorAll('.nav-item[data-nav]').forEach(function(a){a.classList.toggle('activo',a.dataset.nav===nombre);});
+    $('view-title').textContent=titulosVista[nombre][0];
+    $('view-subtitle').textContent=titulosVista[nombre][1];
+    var cs=document.querySelector('.content-shell'); if(cs) cs.scrollTop=0;
+    if(nombre==='profiles') abrirPlegable('form-cabecera','form');
+    if(nombre==='backup') abrirPlegable('copia-cabecera','copia-caja');
+    if(nombre==='updates') abrirPlegable('upd-cabecera','upd-caja');
+  }
   document.querySelectorAll('.nav-item[data-nav]').forEach(function(a){
-    a.addEventListener('click',function(ev){
-      ev.preventDefault();
-      document.querySelectorAll('.nav-item').forEach(function(x){x.classList.remove('activo');});
-      a.classList.add('activo');
-      var n=a.dataset.nav;
-      if(n==='dashboard'){ document.querySelector('.content-shell').scrollTo({top:0,behavior:'smooth'}); return; }
-      if(n==='servers'){ abrirPlegable('srv-cabecera','srv-caja'); irA(document.getElementById('dashboard')); return; }
-      if(n==='profiles'){ abrirFormulario(); irA(document.getElementById('editor-panel')); return; }
-      if(n==='backup'){ abrirPlegable('copia-cabecera','copia-caja'); irA(document.getElementById('copia-panel')); return; }
-      if(n==='updates'){ abrirPlegable('upd-cabecera','upd-caja'); irA(document.getElementById('upd-panel')); return; }
-      if(n==='info'){ irA(document.getElementById('pie-final')); }
-    });
+    a.addEventListener('click',function(ev){ev.preventDefault();mostrarVista(a.dataset.nav);});
   });
-  document.getElementById('top-new-server').onclick=function(ev){ ev.preventDefault(); abrirFormulario(); irA(document.getElementById('editor-panel')); };
-  document.getElementById('top-updates').onclick=function(ev){ ev.preventDefault(); abrirPlegable('upd-cabecera','upd-caja'); irA(document.getElementById('upd-panel')); };
+
 
   // ── Selector de clave SSH y diagnóstico ──────────────────────
   var selectorDestino = null;  // 'key' | 'subir'
