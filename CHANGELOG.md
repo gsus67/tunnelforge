@@ -1,12 +1,14 @@
-## v3.1.6
+## v3.1.7
 
-### Cambios
+### Corrección del Dashboard
 
-- La sección de actualizaciones del Dashboard se mueve al fondo y queda reducida a una barra compacta.
-- Más espacio vertical para servidores guardados y conectados.
-- Terminal y Archivos cambian a iconos compactos en las conexiones activas.
-- Los puertos/túneles quedan plegados por defecto y se despliegan solo al tocar "Puertos".
-- Ajustes de tamaño en overlays de Terminal y Archivos para que encajen mejor en la ventana.
+- Reconstruido sobre la base estable v3.1.5, descartando el layout problemático de v3.1.6.
+- Actualizaciones movidas a un footer real de 38 px en el borde inferior del Dashboard.
+- Servidores guardados vuelven a mostrarse correctamente y usan una cuadrícula compacta de dos columnas para aumentar la densidad.
+- Restaurada la desconexión individual de cada servidor conectado, manteniendo también "Desconectar todo".
+- Terminal y Archivos usan botones compactos con iconos SVG.
+- Los puertos/túneles permanecen ocultos por defecto y se muestran solo al pulsar "Puertos N".
+- Ajustado el layout de Terminal y Archivos para aprovechar correctamente el tamaño completo de la ventana WebView.
 
 ## v3.1.5
 

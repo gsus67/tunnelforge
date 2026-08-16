@@ -503,41 +503,111 @@
   @media (max-width:1180px){.dash-grid{grid-template-columns:1fr !important}.servidores,.conexiones{max-height:none !important}.dashboard-updates .du-body{grid-template-columns:1fr 1fr !important}}
 
 
-  /* v3.1.6 compactación dashboard y overlays */
-  .dash-grid{grid-template-columns:1.22fr .88fr !important;gap:10px !important}
-  .panel{padding:10px !important}
-  .panel-header{margin-bottom:6px !important}
-  .panel-title h3{font-size:15px !important}.panel-title p{font-size:11px !important}
-  .panel-count{padding:4px 8px !important;font-size:10px !important}
-  .servidores{max-height:calc(100vh - 225px) !important;gap:7px !important}
-  .conexiones{max-height:calc(100vh - 225px) !important;gap:7px !important}
-  .dashboard-updates.compact{padding:8px 10px !important;margin-top:2px !important}
-  .dashboard-updates.compact .du-inline{display:flex;align-items:center;gap:12px;flex-wrap:nowrap}
-  .dashboard-updates.compact .du-chip,.dashboard-updates.compact .du-item{display:flex;align-items:center;gap:8px;min-width:0;color:var(--texto-2);font-size:11px}
-  .dashboard-updates.compact .du-chip b,.dashboard-updates.compact .du-item b{color:var(--texto);font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .dashboard-updates.compact .du-item span{color:var(--suave);text-transform:uppercase;letter-spacing:.08em;font-size:10px}
-  .dashboard-updates.compact .du-item.grow{flex:1;min-width:160px}.dashboard-updates.compact .du-item.grow b{white-space:normal;line-height:1.25}
-  .dashboard-updates.compact button{padding:7px 10px !important;font-size:12px !important;white-space:nowrap}
-  .cnx .fila1 > button.icon-only{width:32px;min-width:32px;height:30px;padding:0 !important;display:grid;place-items:center;font-size:0}
-  .cnx .fila1 > button.icon-only svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-  .cnx .fila1{align-items:center !important}
-  .cnx .txt{min-width:100px !important}
-  .cnx .puertos-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;padding-left:12px}
-  .cnx .puertos-btn{padding:5px 8px !important;font-size:11px !important;line-height:1.1;background:rgba(15,31,47,.82)}
-  .cnx .puertos-lista{display:none;gap:6px;flex-wrap:wrap;margin-top:6px;padding-left:12px}
-  .cnx .puertos-lista.abierta{display:flex}
-  .cnx .puertos-lista a{background:rgba(10,25,38,.78);border:1px solid rgba(77,134,184,.12);border-radius:8px;padding:4px 7px;font-size:11px;color:var(--texto-2)}
-  .cnx .puertos-vacio{font-size:11px;color:var(--suave)}
-  .term-barra,.fx-barra-superior{padding:10px 12px !important}
-  .term-barra .t,.fx-barra-superior .t{font-size:16px !important}
-  .term-cuerpo,.fx-cuerpo{padding:10px !important;min-height:0 !important;height:calc(100vh - 56px)}
-  #term{min-height:0 !important;height:100% !important}
-  .term-hist{width:220px !important;margin-left:10px !important}
-  .fx{padding:10px !important}
-  .fx .items{height:calc(100vh - 170px) !important;min-height:220px !important}
-  .fx .barra button,#fx-abrir,#fx-cerrar,#term-cerrar{padding:8px 10px !important;font-size:12px !important}
-  .fx .barra{gap:6px !important}
-  @media (max-width:1180px){.dashboard-updates.compact .du-inline{flex-wrap:wrap}.dashboard-updates.compact .du-item.grow{flex-basis:100%}.servidores,.conexiones{max-height:none !important}}
+  /* v3.1.7: footer real + dashboard denso sin romper funciones */
+  .content-shell{
+    display:grid !important;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    height:100vh !important;
+    min-height:0 !important;
+    overflow:hidden !important;
+    padding:12px 14px 0 !important;
+  }
+  .topbar{margin-bottom:8px !important;flex:none}
+  main{height:auto !important;min-height:0 !important;overflow:auto !important;padding-bottom:10px}
+  #dashboard.app-view.activa{
+    height:100% !important;
+    min-height:0 !important;
+    grid-template-columns:minmax(0,1.35fr) minmax(330px,.85fr) !important;
+    grid-template-rows:minmax(0,1fr) !important;
+    gap:10px !important;
+    align-items:stretch !important;
+  }
+  #dashboard > .panel{min-height:0;display:flex;flex-direction:column;padding:9px 10px !important}
+  #dashboard #srv-caja.plegable.abierto{display:flex !important;flex-direction:column;flex:1;min-height:0}
+  #dashboard .servidores{
+    flex:1;min-height:0;max-height:none !important;overflow-y:auto;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    grid-auto-rows:minmax(62px,auto);gap:6px !important;padding-right:2px;
+  }
+  #dashboard .conexiones{flex:1;min-height:0;max-height:none !important;overflow-y:auto;gap:6px !important;padding-right:2px}
+  #dashboard .panel-header{margin-bottom:6px !important}
+  #dashboard .panel-title .ico{width:24px !important;height:24px !important}
+  #dashboard .panel-title h3{font-size:14px !important}
+  #dashboard .panel-title p{font-size:10.5px !important}
+  #dashboard .panel-count{font-size:10px !important;padding:3px 7px !important}
+  #dashboard .buscador-row{margin-bottom:6px !important;gap:6px !important}
+  #dashboard .buscador input{padding:8px 9px !important;font-size:12px !important}
+  #dashboard .view-switch button{width:30px;min-width:30px;padding:6px !important}
+
+  #dashboard .srv{
+    min-height:62px !important;padding:7px 8px !important;
+    grid-template-columns:12px 3px 15px minmax(0,1fr) auto !important;
+    grid-template-areas:'asa franja fav info acciones' 'asa franja fav etiquetas acciones' !important;
+    gap:3px 6px !important;align-items:center !important;
+  }
+  #dashboard .srv .asa{font-size:11px !important;padding:0 !important}
+  #dashboard .srv .franja{width:3px !important}
+  #dashboard .srv .fav{font-size:13px !important}
+  #dashboard .srv .nombre{font-size:14px !important;line-height:1.05 !important;margin:0 0 2px !important;white-space:nowrap !important;text-overflow:ellipsis;overflow:hidden}
+  #dashboard .srv .detalle{font-size:10.5px !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #dashboard .srv .metodo{display:none !important}
+  #dashboard .srv-tags{gap:3px !important;overflow:hidden;white-space:nowrap;flex-wrap:nowrap !important}
+  #dashboard .tag{font-size:9px !important;padding:2px 5px !important;white-space:nowrap}
+  #dashboard .srv .acciones{margin:0 !important;gap:4px !important;justify-content:flex-end !important;flex-wrap:nowrap !important}
+  #dashboard .srv .acciones button{padding:6px 8px !important;font-size:10.5px !important;white-space:nowrap}
+  #dashboard .srv .acciones .peligro{padding:6px 7px !important}
+
+  #dashboard .cnx{padding:7px 8px !important;min-height:58px}
+  #dashboard .cnx .fila1{gap:5px !important;padding-left:3px !important;flex-wrap:nowrap !important}
+  #dashboard .cnx .txt{min-width:90px !important;font-size:10.5px !important;overflow:hidden}
+  #dashboard .cnx .txt b{font-size:13.5px !important;margin:0 0 1px !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #dashboard .cnx .trafico{font-size:9.5px !important;white-space:nowrap}
+  #dashboard .cnx .mini-action{width:29px;height:27px;min-width:29px;padding:0 !important;display:grid;place-items:center;font-size:0}
+  #dashboard .cnx .mini-action svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  #dashboard .cnx .mini-action.disconnect{color:var(--rojo)}
+  #dashboard .cnx .cnx-meta{display:flex;align-items:center;gap:5px;margin-top:5px;padding-left:10px;min-width:0}
+  #dashboard .cnx .ports-toggle{padding:4px 7px !important;font-size:9.5px !important;white-space:nowrap}
+  #dashboard .cnx .ssh-seg{padding:4px 7px !important;font-size:9.5px !important}
+  #dashboard .cnx .stats-mini{font-size:9.5px;color:var(--suave);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #dashboard .cnx .ports-list{display:none;gap:4px;flex-wrap:wrap;margin-top:5px;padding-left:10px}
+  #dashboard .cnx .ports-list.open{display:flex}
+  #dashboard .cnx .ports-list a{padding:3px 6px;font-size:9.5px;background:rgba(10,25,38,.78);border:1px solid rgba(77,134,184,.12);border-radius:6px;color:var(--texto-2)}
+
+  .dashboard-footer{
+    position:relative;z-index:2;height:38px;min-height:38px;margin:0 -14px;
+    padding:0 14px;display:flex;align-items:center;gap:12px;
+    background:linear-gradient(180deg,rgba(6,17,28,.97),rgba(5,15,25,.99));
+    border-top:1px solid rgba(77,134,184,.18);color:var(--texto-2);
+    font-size:10.5px;overflow:hidden;
+  }
+  .dashboard-footer.hidden{display:none}
+  .dashboard-footer .df-status,.dashboard-footer .df-meta{display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .dashboard-footer .df-status b{color:var(--texto);font-size:11px}
+  .dashboard-footer .df-meta span{color:var(--suave);text-transform:uppercase;letter-spacing:.07em;font-size:9px}
+  .dashboard-footer .df-meta b{color:var(--texto);font-size:10.5px}
+  .dashboard-footer .df-divider{height:18px;width:1px;background:rgba(77,134,184,.16);flex:none}
+  .dashboard-footer .df-note{flex:1;min-width:0;color:var(--suave);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+  .dashboard-footer .df-check{width:29px;height:27px;min-width:29px;padding:0 !important;display:grid;place-items:center}
+  .dashboard-footer .df-check svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+  .term-velo,.fx-velo{width:100vw;height:100vh;overflow:hidden}
+  .term-barra,.fx-barra-superior{min-height:48px;padding:8px 10px !important}
+  .term-cuerpo{height:calc(100vh - 48px);min-height:0;padding:8px !important;overflow:hidden}
+  #term{height:100% !important;min-height:0 !important;overflow:hidden}
+  .term-hist{width:205px !important;min-height:0;margin-left:8px !important;padding:8px !important}
+  .fx-cuerpo{height:calc(100vh - 48px);min-height:0;padding:8px !important;overflow:hidden !important}
+  .fx{height:100%;min-height:0 !important;padding:8px !important;display:flex;flex-direction:column}
+  .fx .cols{flex:1;min-height:0;grid-template-columns:1fr 1fr !important}
+  .fx .cols > div{min-height:0;display:flex;flex-direction:column}
+  .fx .items{height:auto !important;min-height:0 !important;flex:1}
+  .fx .barra{gap:5px !important;margin-bottom:7px !important}
+  .fx .barra button,#fx-abrir,#fx-cerrar,#term-cerrar{padding:7px 9px !important;font-size:11px !important}
+  @media(max-width:1150px){
+    #dashboard.app-view.activa{grid-template-columns:1fr !important;overflow:auto;height:auto !important}
+    #dashboard .servidores{grid-template-columns:repeat(2,minmax(0,1fr)) !important;max-height:420px !important}
+    #dashboard .conexiones{max-height:320px !important}
+    .dashboard-footer .df-note{display:none}
+  }
 
 </style>
 </head>
@@ -629,15 +699,7 @@
           </div>
         </div>
 
-        <section class="panel dashboard-updates compact">
-          <div class="du-inline">
-            <div class="du-chip"><span class="upd-punto amarillo" id="upd-punto-dash"></span><b id="upd-dash-status">Sin comprobar</b></div>
-            <div class="du-item"><span>Versión</span><b id="dash-app-ver">—</b></div>
-            <div class="du-item"><span>Canal</span><b>Stable</b></div>
-            <div class="du-item grow"><span>Notas</span><b id="dash-next-check">Configura el token en Updates para comprobar nuevas versiones.</b></div>
-            <button id="dash-upd-search">Comprobar</button>
-          </div>
-        </section>
+
       </section>
 
       <div class="stack-grid">
@@ -770,6 +832,20 @@
         </div></div>
       </div>
     </main>
+
+    <footer class="dashboard-footer" id="dashboard-footer">
+      <div class="df-status">
+        <span class="upd-punto amarillo" id="upd-punto-dash" title="Estado de actualizaciones"></span>
+        <b id="upd-dash-status">Sin comprobar</b>
+      </div>
+      <span class="df-divider"></span>
+      <div class="df-meta"><span>Versión</span><b id="dash-app-ver">—</b></div>
+      <div class="df-meta"><span>Canal</span><b>Stable</b></div>
+      <div class="df-note" id="dash-next-check">Actualizaciones firmadas</div>
+      <button id="dash-upd-search" class="df-check" title="Comprobar actualizaciones" aria-label="Comprobar actualizaciones">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5.3"/><path d="M20 4v7h-7"/></svg>
+      </button>
+    </footer>
   </div>
 </div>
 
@@ -902,6 +978,18 @@
     if (texto !== undefined && texto !== null) el.textContent = String(texto);
     return el;
   }
+  function svgAccion(tipo){
+    var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 24 24');
+    function add(tag,attrs){ var x=document.createElementNS('http://www.w3.org/2000/svg',tag); Object.keys(attrs).forEach(function(k){x.setAttribute(k,attrs[k]);}); svg.appendChild(x); }
+    if(tipo==='terminal'){ add('rect',{x:'4',y:'5',width:'16',height:'14',rx:'1.5'}); add('path',{d:'M7 9l3 3-3 3'}); add('path',{d:'M12 15h5'}); }
+    else if(tipo==='files'){ add('path',{d:'M4 7h6l2 2h8v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z'}); add('path',{d:'M4 9h16'}); }
+    else if(tipo==='disconnect'){ add('path',{d:'M12 3v8'}); add('path',{d:'M7.2 5.8a8 8 0 1 0 9.6 0'}); }
+    return svg;
+  }
+  function botonAccion(tipo,titulo,clase){
+    var b=nodo('button','mini-action'+(clase?' '+clase:''),''); b.title=titulo; b.setAttribute('aria-label',titulo); b.appendChild(svgAccion(tipo)); return b;
+  }
   function mensajeEn(cont, clase, texto){
     vaciar(cont);
     cont.appendChild(nodo('div', clase, texto));
@@ -1013,45 +1101,46 @@
       txt.appendChild(document.createTextNode((c.host||'servidor') + ' · ' + (c.usuario||'usuario')));
       fila.appendChild(txt);
 
-      var bTerm = botonIcono('terminal', 'Terminal');
+      var bTerm = botonAccion('terminal','Terminal');
       bTerm.onclick = function(){ abrirTerminal(c.servidor); };
       fila.appendChild(bTerm);
-      var bArch = botonIcono('archivos', 'Archivos');
+      var bArch = botonAccion('files','Archivos');
       bArch.onclick = function(){ abrirArchivos(c.servidor); };
       fila.appendChild(bArch);
+      var bDesc = botonAccion('disconnect','Desconectar este servidor','disconnect');
+      bDesc.onclick = function(){
+        desconectandoManual[c.servidor] = true;
+        api('/api/desconectar',{method:'POST',body:JSON.stringify({nombre:c.servidor})}).then(function(){ refrescarEstado(); });
+      };
+      fila.appendChild(bDesc);
 
       var trafico = nodo('div', 'trafico');
       trafico.appendChild(document.createTextNode(c.desde || ''));
       fila.appendChild(trafico);
       div.appendChild(fila);
 
-      var puertosBar = nodo('div', 'puertos-bar');
-      var listaPuertos = nodo('div', 'puertos-lista');
-      var tuneles = (c.tuneles||[]);
+      var meta = nodo('div','cnx-meta');
+      var tuneles = c.tuneles || [];
+      var ports = nodo('div','ports-list');
       if (tuneles.length){
-        var bPuertos = nodo('button', 'puertos-btn', 'Puertos (' + tuneles.length + ')');
-        bPuertos.onclick = function(){ listaPuertos.classList.toggle('abierta'); };
-        puertosBar.appendChild(bPuertos);
+        var bPorts=nodo('button','ports-toggle','Puertos '+tuneles.length);
+        bPorts.title='Mostrar/ocultar túneles';
+        bPorts.onclick=function(){ ports.classList.toggle('open'); };
+        meta.appendChild(bPorts);
         tuneles.forEach(function(t){
-          var a = nodo('a', '', '');
-          a.href = '#';
-          a.dataset.url = 'http://localhost:' + t.puerto + (t.ruta||'');
-          a.appendChild(nodo('b', '', ':' + t.puerto));
-          a.appendChild(document.createTextNode(' ' + (t.nombre||'')));
-          listaPuertos.appendChild(a);
+          var a=nodo('a','', ''); a.href='#'; a.dataset.url='http://localhost:'+t.puerto+(t.ruta||'');
+          a.appendChild(nodo('b','', ':'+t.puerto)); a.appendChild(document.createTextNode(' '+(t.nombre||''))); ports.appendChild(a);
         });
       } else {
-        puertosBar.appendChild(nodo('span', 'puertos-vacio', 'Sin túneles abiertos'));
+        meta.appendChild(nodo('span','ports-toggle','Sin puertos'));
       }
-      var bSSH = nodo('button', 'ssh-seg', 'SSH');
-      bSSH.onclick = function(){ alternarSeguridadSSH(c.servidor, bSSH); };
-      puertosBar.appendChild(bSSH);
-      consultarSeguridadSSH(c.servidor, bSSH, false);
-      var stats = nodo('span','', '↓ ' + fmtBs(rxS) + ' · ↑ ' + fmtBs(txS) + ' · ' + fmtB(c.rx + c.tx));
-      stats.style.fontSize='11px'; stats.style.color='var(--suave)'; stats.style.marginLeft='auto';
-      puertosBar.appendChild(stats);
-      div.appendChild(puertosBar);
-      div.appendChild(listaPuertos);
+      var bSSH = nodo('button','ssh-seg','SSH');
+      bSSH.onclick=function(){ alternarSeguridadSSH(c.servidor,bSSH); };
+      meta.appendChild(bSSH); consultarSeguridadSSH(c.servidor,bSSH,false);
+      var stats=nodo('span','stats-mini','↓ '+fmtBs(rxS)+' · ↑ '+fmtBs(txS)+' · '+fmtB(c.rx+c.tx));
+      meta.appendChild(stats);
+      div.appendChild(meta);
+      div.appendChild(ports);
       cont.appendChild(div);
     });
   }
@@ -1149,7 +1238,7 @@
   if ($('srv-view-grid')) $('srv-view-grid').onclick = function(){ $('lista').style.gridTemplateColumns='repeat(2,minmax(0,1fr))'; };
   if ($('srv-view-list')) $('srv-view-list').onclick = function(){ $('lista').style.gridTemplateColumns='1fr'; };
   if ($('dash-upd-search')) $('dash-upd-search').onclick = function(){ updBuscar(false); };
-  if ($('lista')) $('lista').style.gridTemplateColumns='1fr';
+  if ($('lista')) $('lista').style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
 
 
   // Arrastrar para reordenar (HTML5 drag & drop nativo)
@@ -1524,7 +1613,7 @@
   api('/api/actualizaciones').then(function(c){
     $('upd-inicio').checked=!!c.buscarAlInicio;
     updEstado(c.tokenConfigurado?'Token configurado de forma segura.':'Configura el token una sola vez para habilitar las actualizaciones privadas.',c.tokenConfigurado?'ok':'');
-        updSemaforo('amarillo', c.tokenConfigurado?'pendiente de comprobar':'token no configurado');
+    updSemaforo('amarillo', c.tokenConfigurado?'pendiente de comprobar':'token no configurado');
     if(c.tokenConfigurado && c.buscarAlInicio) updBuscar(true);
   }).catch(function(){});
   $('upd-guardar').onclick=function(){
@@ -1613,6 +1702,7 @@
     if(nombre==='profiles') abrirPlegable('form-cabecera','form');
     if(nombre==='backup') abrirPlegable('copia-cabecera','copia-caja');
     if(nombre==='updates') abrirPlegable('upd-cabecera','upd-caja');
+    var df=$('dashboard-footer'); if(df) df.classList.toggle('hidden', nombre!=='dashboard');
   }
   document.querySelectorAll('.nav-item[data-nav]').forEach(function(a){
     a.addEventListener('click',function(ev){ev.preventDefault();mostrarVista(a.dataset.nav);});
