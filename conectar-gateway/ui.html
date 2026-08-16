@@ -10,348 +10,554 @@
 <link rel="stylesheet" href="/static/xterm.css">
 <style>
   :root{
-    --fondo:#0D1A22; --panel:#132630; --panel-alto:#17303C; --linea:#1F3B49;
-    --texto:#D8E4EA; --suave:#7C97A6; --ambar:#E8A33D; --verde:#3DC97C; --rojo:#E05C4B;
+    --bg:#09121a;
+    --bg-2:#0e1924;
+    --panel:rgba(13,26,40,.78);
+    --panel-2:rgba(17,31,48,.92);
+    --panel-3:rgba(14,28,43,.95);
+    --linea:rgba(136,173,201,.14);
+    --linea-2:rgba(136,173,201,.22);
+    --texto:#e8f1f7;
+    --texto-2:#b9c7d4;
+    --suave:#8ea1b3;
+    --verde:#4de19b;
+    --verde-2:#2bbd7f;
+    --azul:#4d92ff;
+    --ambar:#e6b45b;
+    --rojo:#ec6d69;
+    --morado:#946dff;
+    --sombra:0 18px 40px rgba(0,0,0,.33);
+    --radio:18px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--fondo);color:var(--texto);font-family:system-ui,'Segoe UI',sans-serif;min-height:100vh;padding:0 18px 26px}
-  header{max-width:760px;margin:0 auto;padding:18px 0 12px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ambar)}
-  .titulo{font-family:'Barlow Condensed';font-weight:700;font-size:clamp(24px,4vw,34px);letter-spacing:.06em;text-transform:uppercase}
-  .titulo span{color:var(--ambar)}
-  .ver{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--suave)}
-  main{max-width:760px;margin:0 auto}
-  .seccion{font-family:'Barlow Condensed';font-weight:600;font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--suave);margin:26px 0 10px}
-
-  /* conexiones activas (multiples) */
-  .conexiones{display:grid;gap:10px}
-  .cnx{background:var(--panel);border:1px solid var(--linea);border-left:5px solid var(--verde);border-radius:10px;padding:12px 16px}
-  .cnx .fila1{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .cnx .led{width:9px;height:9px;border-radius:50%;background:var(--verde);box-shadow:0 0 7px var(--verde);flex:none}
-  .cnx .txt{flex:1;min-width:160px;font-size:14px}
-  .cnx .txt b{font-family:'JetBrains Mono',monospace}
+  html,body{min-height:100%}
+  body{
+    background:
+      radial-gradient(circle at 15% 10%, rgba(0,106,255,.18), transparent 28%),
+      radial-gradient(circle at 80% 0%, rgba(35,154,255,.10), transparent 30%),
+      linear-gradient(180deg, #cad1d7 0%, #b9c0c7 100%);
+    color:var(--texto);
+    font-family:Inter,system-ui,'Segoe UI',sans-serif;
+    min-height:100vh;
+    padding:28px;
+    overflow-x:hidden;
+  }
+  a{text-decoration:none;color:inherit}
+  .app-shell{
+    max-width:1480px;
+    margin:0 auto;
+    min-height:calc(100vh - 56px);
+    display:grid;
+    grid-template-columns:240px 1fr;
+    background:rgba(7,14,21,.35);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:26px;
+    box-shadow:var(--sombra);
+    overflow:hidden;
+    backdrop-filter: blur(12px);
+  }
+  .sidebar{
+    background:linear-gradient(180deg, rgba(7,18,30,.98), rgba(6,18,30,.96));
+    border-right:1px solid rgba(255,255,255,.08);
+    display:flex;
+    flex-direction:column;
+    padding:22px 18px 16px;
+    gap:18px;
+    min-height:100%;
+  }
+  .brand-top{display:flex;align-items:center;gap:10px;color:#f2f8fc;font-weight:700;font-size:15px;opacity:.96}
+  .brand-card{
+    background:linear-gradient(180deg, rgba(10,28,46,.98), rgba(7,18,31,.92));
+    border:1px solid rgba(77,226,189,.22);
+    border-radius:20px;
+    padding:22px 18px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .brand-logo{
+    width:52px;height:52px;border-radius:18px;display:grid;place-items:center;
+    border:1px solid rgba(77,226,189,.35);
+    background:radial-gradient(circle at 30% 25%, rgba(77,226,189,.18), rgba(77,226,189,.06));
+    font-size:24px;
+  }
+  .brand-text{font-family:'Segoe UI',system-ui,sans-serif;font-weight:700;line-height:1.15;font-size:17px}
+  .brand-text small{display:block;color:var(--texto-2);font-weight:500;font-size:12px;margin-top:4px}
+  .side-nav{display:grid;gap:8px}
+  .nav-item{
+    display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;color:var(--texto-2);
+    border:1px solid transparent;font-size:15px;font-weight:500;transition:.18s ease;
+  }
+  .nav-item:hover{background:rgba(255,255,255,.03);color:var(--texto)}
+  .nav-item.activo{background:linear-gradient(90deg, rgba(77,225,154,.3), rgba(77,225,154,.18));border-color:rgba(77,225,154,.26);color:var(--texto)}
+  .nav-item .ni{width:20px;text-align:center;opacity:.9}
+  .side-spacer{flex:1}
+  .side-status{
+    background:rgba(15,28,42,.8);
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:18px;
+    padding:16px 14px;
+  }
+  .side-status .st1{display:flex;align-items:center;gap:10px;color:var(--verde);font-weight:600;margin-bottom:10px}
+  .side-status .dot{width:9px;height:9px;border-radius:50%;background:var(--verde);box-shadow:0 0 10px rgba(77,225,154,.7)}
+  .side-status .mini{font-size:13px;color:var(--texto-2);line-height:1.7}
+  .side-footer{display:flex;justify-content:space-between;align-items:center;padding:6px 4px 0;color:var(--suave);font-size:12px}
+  .content-shell{
+    position:relative;
+    background:linear-gradient(180deg, rgba(8,19,31,.98), rgba(8,17,27,.98));
+    overflow:hidden;
+    padding:26px 28px 26px;
+  }
+  .content-shell::before{
+    content:''; position:absolute; inset:0;
+    background:
+      radial-gradient(circle at 22% 18%, rgba(35,111,255,.12), transparent 28%),
+      radial-gradient(circle at 82% 30%, rgba(44,170,255,.10), transparent 25%),
+      linear-gradient(90deg, rgba(0,133,255,.07), transparent 18%, transparent 82%, rgba(0,133,255,.05));
+    pointer-events:none;
+  }
+  .content-shell::after{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.18;
+    background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,.65), transparent 88%);
+  }
+  .ssh-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .bg-item{position:absolute;color:rgba(193,214,234,.18);font-size:19px;letter-spacing:.03em;font-weight:500}
+  .bg-item.small{font-size:15px;color:rgba(193,214,234,.14)}
+  .bg-line{position:absolute;height:2px;background:linear-gradient(90deg, transparent, rgba(161,190,214,.14), transparent);border-radius:999px}
+  .bg-lock,.bg-key{position:absolute;color:rgba(190,210,228,.15);font-size:44px}
+  .i1{top:64px;left:35%}.i2{top:84px;left:62%}.i3{top:115px;left:68%}.i4{top:58%;left:4%}.i5{top:58%;left:66%}.i6{top:62%;left:82%}
+  .l1{top:92px;left:18%;width:420px}.l2{top:165px;right:11%;width:260px}.l3{bottom:256px;left:47%;width:360px}.l4{bottom:182px;right:4%;width:300px}
+  .bg-lock{top:60px;left:48%}.bg-key{bottom:202px;left:58%}
+  .topbar{position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:26px;z-index:1}
+  .hero-title h1{font-size:46px;line-height:1.02;font-weight:700;margin-bottom:8px;letter-spacing:-.03em}
+  .hero-title p{font-size:16px;color:var(--texto-2);max-width:620px;line-height:1.55}
+  .top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .ghost-link,.primary-link{
+    display:inline-flex;align-items:center;gap:8px;padding:13px 16px;border-radius:14px;font-weight:600;font-size:14px;
+    border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03); color:var(--texto);
+  }
+  .primary-link{background:linear-gradient(90deg, rgba(77,225,154,.8), rgba(77,225,154,.58));color:#062314;border-color:rgba(77,225,154,.36)}
+  main{position:relative;z-index:1}
+  .dash-grid{display:grid;grid-template-columns:1.25fr .95fr;gap:22px;align-items:start}
+  .stack-grid{display:grid;gap:22px;margin-top:22px}
+  .panel{
+    background:linear-gradient(180deg, rgba(10,24,37,.82), rgba(10,22,35,.78));
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:22px;
+    box-shadow:0 8px 22px rgba(0,0,0,.18);
+    backdrop-filter: blur(8px);
+    padding:18px 18px 18px;
+  }
+  .panel-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+  .panel-title{display:flex;gap:12px;align-items:flex-start}
+  .panel-title .ico{width:40px;height:40px;border-radius:13px;background:rgba(255,255,255,.04);display:grid;place-items:center;border:1px solid rgba(255,255,255,.08)}
+  .panel-title h3{font-size:18px;font-weight:700;line-height:1.15;margin-bottom:4px}
+  .panel-title p{font-size:13px;color:var(--suave)}
+  .panel-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .seccion{font-size:12px;color:var(--suave);letter-spacing:.16em;text-transform:uppercase;margin-bottom:12px;font-weight:700}
+  .seccion.desplegable{cursor:pointer;user-select:none;display:flex;align-items:center;gap:10px;margin:0 0 12px}
+  .seccion.desplegable:hover{color:var(--texto)}
+  .seccion.desplegable .flecha{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.05);font-size:10px;color:var(--verde);transition:transform .18s ease}
+  .seccion.desplegable.abierta .flecha{transform:rotate(90deg)}
+  .seccion.desplegable .cuenta{font-size:11px;letter-spacing:0;text-transform:none;color:var(--suave);margin-left:auto}
+  .plegable{display:none}
+  #srv-caja.plegable.abierto,#copia-caja.plegable.abierto,#tun-caja-form.plegable.abierto,.updapp.plegable.abierto{display:block}
+  form.plegable.abierto{display:grid}
+  .buscador{margin-bottom:12px}
+  .buscador input, input[type=text], input[type=password], input[type=number], select, .fx .ruta{
+    width:100%;
+    background:rgba(4,12,20,.72);
+    border:1px solid rgba(255,255,255,.1);
+    border-radius:14px;
+    color:var(--texto);
+    padding:12px 14px;
+    font-size:14px;
+    font-family:Inter,system-ui,sans-serif;
+  }
+  input:focus, select:focus{outline:none;border-color:rgba(77,225,154,.35);box-shadow:0 0 0 3px rgba(77,225,154,.1)}
+  .servidores{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-height:498px;overflow:auto;padding-right:4px}
+  .servidores::-webkit-scrollbar,.conexiones::-webkit-scrollbar,.fx .items::-webkit-scrollbar,.term-hist::-webkit-scrollbar{width:10px}
+  .servidores::-webkit-scrollbar-track,.conexiones::-webkit-scrollbar-track,.fx .items::-webkit-scrollbar-track,.term-hist::-webkit-scrollbar-track{background:rgba(255,255,255,.03);border-radius:999px}
+  .servidores::-webkit-scrollbar-thumb,.conexiones::-webkit-scrollbar-thumb,.fx .items::-webkit-scrollbar-thumb,.term-hist::-webkit-scrollbar-thumb{background:rgba(140,170,192,.2);border-radius:999px}
+  .srv{
+    background:linear-gradient(180deg, rgba(16,29,45,.94), rgba(13,25,39,.94));
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    padding:14px;
+    display:grid;
+    grid-template-columns:auto auto auto minmax(0,1fr) auto;
+    grid-template-areas:
+      'asa franja fav info metodo'
+      'asa franja fav acciones acciones';
+    gap:8px 10px; align-items:start; min-height:148px;
+    box-shadow:0 8px 20px rgba(0,0,0,.14);
+  }
+  .srv:hover{border-color:rgba(77,225,154,.18);transform:translateY(-1px)}
+  .srv.arrastrando{opacity:.45}
+  .srv .asa{grid-area:asa;cursor:grab;color:var(--suave);padding-top:4px}
+  .srv .franja{grid-area:franja;width:6px;border-radius:999px;align-self:stretch;background:linear-gradient(180deg, var(--verde), rgba(77,225,154,.2))}
+  .srv .fav{grid-area:fav;background:none;border:none;color:var(--suave);padding:0;font-size:18px;align-self:start}
+  .srv .fav.on{color:var(--ambar)}
+  .srv .info{grid-area:info;min-width:0}
+  .srv .nombre{font-size:27px;line-height:1;font-family:'Barlow Condensed', Impact, sans-serif;font-weight:600;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+  .srv .detalle{font-size:13px;color:var(--texto-2);font-family:'JetBrains Mono',monospace}
+  .srv .metodo{grid-area:metodo;justify-self:end;font-size:11px;background:rgba(255,255,255,.03);padding:5px 10px;border:1px solid rgba(255,255,255,.08);border-radius:999px;color:var(--suave)}
+  .srv .acciones{grid-area:acciones;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px}
+  .srv button{padding:10px 12px;font-size:13px}
+  .conexiones{display:grid;gap:14px;max-height:498px;overflow:auto;padding-right:2px}
+  .cnx{
+    background:linear-gradient(180deg, rgba(14,28,44,.95), rgba(10,22,36,.93));
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:18px;
+    padding:14px 16px;
+    position:relative;
+    overflow:hidden;
+  }
+  .cnx::before{content:'';position:absolute;left:0;top:18px;bottom:18px;width:4px;background:linear-gradient(180deg, var(--verde), rgba(77,225,154,.16));border-radius:999px}
+  .cnx .fila1{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-left:8px}
+  .cnx .led{width:10px;height:10px;border-radius:50%;background:var(--verde);box-shadow:0 0 12px rgba(77,225,154,.55)}
+  .cnx .txt{flex:1;min-width:220px;font-size:15px;color:var(--texto-2)}
+  .cnx .txt b{display:block;color:var(--texto);font-size:22px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em;font-weight:600;margin-bottom:4px}
   .cnx .trafico{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--suave)}
   .cnx .trafico .baja{color:var(--verde)} .cnx .trafico .sube{color:var(--ambar)}
-  .cnx .enlaces{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-  .cnx .enlaces a{color:var(--texto);text-decoration:none;font-size:12.5px;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:6px 10px}
-  .cnx .enlaces a:hover{background:var(--panel-alto)}
+  .cnx .enlaces{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-left:20px}
+  .cnx .enlaces a{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:7px 10px;font-size:12px;color:var(--texto-2)}
   .cnx .enlaces a b{color:var(--ambar);font-family:'JetBrains Mono',monospace}
-  .sin-conexion{color:var(--suave);font-size:13.5px;padding:14px 16px;text-align:center;border:1px dashed var(--linea);border-radius:10px}
-
-  /* buscador */
-  .buscador{margin-bottom:10px}
-  .buscador input{width:100%;background:var(--panel);border:1px solid var(--linea);border-radius:9px;color:var(--texto);padding:10px 13px;font-size:14px}
-  .buscador input:focus{outline:1px solid var(--ambar)}
-
-  /* tarjetas de servidores */
-  .servidores{display:grid;gap:10px}
-  .srv{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:auto auto auto minmax(0,1fr) auto auto;align-items:center;gap:8px;transition:background .12s;overflow:hidden}
-  .srv:hover{background:var(--panel-alto)}
-  .srv.arrastrando{opacity:.4}
-  .srv .asa{cursor:grab;color:var(--suave);font-size:15px;user-select:none;flex:none;padding:0 2px}
-  .srv .franja{width:5px;align-self:stretch;border-radius:3px;background:var(--ambar);flex:none}
-  .srv .fav{background:none;border:none;font-size:17px;cursor:pointer;color:var(--suave);padding:2px 4px;flex:none}
-  .srv .fav.on{color:var(--ambar)}
-  .srv .info{flex:1;min-width:120px;overflow:hidden}
-  .srv .nombre{font-family:'Barlow Condensed';font-weight:600;font-size:17px;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .srv .detalle{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--suave);margin-top:2px}
-  .srv .metodo{font-size:10.5px;color:var(--suave);background:var(--fondo);border:1px solid var(--linea);border-radius:20px;padding:2px 8px;flex:none;white-space:nowrap}
-  .srv button{padding:6px 10px;font-size:12px;flex:none}
-  .srv .acciones{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
-  .srv .acciones .peligro{min-width:34px;padding-left:8px;padding-right:8px}
-  @media (max-width:700px){
-    .srv{grid-template-columns:auto auto auto minmax(0,1fr);align-items:center}
-    .srv .metodo{grid-column:4}
-    .srv .acciones{grid-column:4;justify-self:stretch;justify-content:flex-end;flex-wrap:wrap}
+  .sin-conexion,.vacio{border:1px dashed rgba(255,255,255,.12);border-radius:18px;padding:22px 16px;text-align:center;color:var(--suave);font-size:14px;background:rgba(255,255,255,.02)}
+  button{
+    font-family:Inter,system-ui,sans-serif;font-weight:600;font-size:14px;letter-spacing:0;border:none;border-radius:13px;
+    padding:11px 15px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--texto);
+    border:1px solid rgba(255,255,255,.08);transition:.18s ease;
   }
-  .vacio{color:var(--suave);font-size:14px;padding:16px;text-align:center;border:1px dashed var(--linea);border-radius:10px}
-
-  /* lista de servidores con scroll */
-  .servidores{max-height:340px;overflow-y:auto;padding-right:4px}
-  .servidores::-webkit-scrollbar{width:10px}
-  .servidores::-webkit-scrollbar-track{background:var(--fondo);border-radius:6px}
-  .servidores::-webkit-scrollbar-thumb{background:var(--linea);border-radius:6px}
-  .servidores::-webkit-scrollbar-thumb:hover{background:var(--panel-alto)}
-  /* explorador de archivos a pantalla completa */
-  .fx-velo{position:fixed;inset:0;background:rgba(6,13,17,.96);display:none;flex-direction:column;z-index:21}
-  .fx-velo.abierto{display:flex}
-  .fx-barra-superior{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:2px solid var(--ambar);flex:none}
-  .fx-barra-superior .t{font-family:'Barlow Condensed';font-weight:600;font-size:17px;letter-spacing:.06em;text-transform:uppercase}
-  .fx-barra-superior .t b{color:var(--ambar)}
-  .fx-barra-superior .sep{flex:1}
-  .fx-cuerpo{flex:1;min-height:0;padding:14px 16px;overflow:auto}
-  .fx{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:12px 14px;min-height:100%}
-  .fx .barra{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
-  .fx .ruta{flex:1;min-width:180px;font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:8px 10px;color:var(--texto)}
-  .fx .items{height:calc(100vh - 230px);min-height:260px;overflow-y:auto;border:1px solid var(--linea);border-radius:8px}
-  .fx .items::-webkit-scrollbar{width:10px}
-  .fx .items::-webkit-scrollbar-track{background:var(--fondo)}
-  .fx .items::-webkit-scrollbar-thumb{background:var(--linea);border-radius:6px}
-  .fx .it{display:flex;align-items:center;gap:10px;padding:8px 11px;border-bottom:1px solid var(--linea);font-size:13px;cursor:pointer}
-  .fx .it:last-child{border-bottom:none}
-  .fx .it:hover{background:var(--panel-alto)}
-  .fx .it .ic{width:18px;text-align:center;flex:none}
-  .fx .it .nm{flex:1;font-family:'JetBrains Mono',monospace;font-size:12.5px;word-break:break-all}
-  .fx .it .meta{font-size:11px;color:var(--suave);flex:none}
-  .fx .it button{padding:4px 9px;font-size:11px}
-  .fx .vacio-fx{padding:14px;text-align:center;color:var(--suave);font-size:12.5px}
-  .fx .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media (max-width:700px){ .fx .cols{grid-template-columns:1fr}.fx .items{height:320px}.fx-barra-superior{flex-wrap:wrap} }
-  .fx h4{font-family:'Barlow Condensed';font-weight:600;font-size:15px;letter-spacing:.04em;margin-bottom:8px;color:var(--suave)}
-  /* botones */
-  button{font-family:'Barlow Condensed';font-weight:600;font-size:14px;letter-spacing:.05em;text-transform:uppercase;border:none;border-radius:7px;padding:9px 16px;cursor:pointer;background:var(--panel-alto);color:var(--texto);border:1px solid var(--linea)}
-  button:hover{filter:brightness(1.15)}
-  button.principal{background:var(--ambar);color:#20180A;border:none;font-weight:700}
+  button:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.08)}
+  button.principal{background:linear-gradient(90deg, rgba(77,225,154,.82), rgba(77,225,154,.62));color:#051e14;border-color:rgba(77,225,154,.25)}
   button.peligro{color:var(--rojo)}
-  button:disabled{opacity:.5;cursor:default}
-  button.icono{padding:7px 11px;font-size:15px;line-height:1}
-  button.ssh-seg{padding:6px 9px;font-size:10.5px;letter-spacing:.03em;text-transform:none;color:var(--suave);white-space:nowrap}
-  button.ssh-seg.seguro{color:var(--verde);border-color:rgba(61,201,124,.45)}
-  button.ssh-seg.password{color:var(--ambar);border-color:rgba(232,163,61,.45)}
-
-  /* formulario */
-  form{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  button.icono{padding:10px 12px;font-size:14px;line-height:1;border-radius:12px}
+  button.ssh-seg{padding:9px 11px;font-size:12px;color:var(--suave);text-transform:none;white-space:nowrap}
+  button.ssh-seg.seguro{color:var(--verde);border-color:rgba(77,225,154,.35)}
+  button.ssh-seg.password{color:var(--ambar);border-color:rgba(230,180,91,.32)}
+  button:disabled{opacity:.55;cursor:default;transform:none}
+  form{background:none;border:none;border-radius:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
   form .ancho{grid-column:1/-1}
-  label{font-size:12px;color:var(--suave);display:block;margin-bottom:4px}
-  input[type=text],input[type=password],input[type=number]{width:100%;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;color:var(--texto);padding:9px 11px;font-size:14px;font-family:'JetBrains Mono',monospace}
-  input:focus{outline:1px solid var(--ambar)}
-  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--suave)}
-  .nota{font-size:11.5px;color:var(--suave);line-height:1.5}
-
-  /* modal */
-  .velo{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px}
-  .velo.abierto{display:flex}
-  .modal{background:var(--panel);border:1px solid var(--linea);border-top:4px solid var(--ambar);border-radius:12px;max-width:440px;width:100%;padding:20px}
-  .modal h3{font-family:'Barlow Condensed';font-weight:600;font-size:19px;margin-bottom:10px}
-  .modal p{font-size:13.5px;color:var(--suave);line-height:1.55;margin-bottom:12px}
-  .modal .huella{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:10px;word-break:break-all;color:var(--verde);margin-bottom:14px}
-  .modal .botones{display:flex;gap:10px;justify-content:flex-end}
-  .pie{max-width:760px;margin:22px auto 0;text-align:center;font-size:11.5px;color:var(--suave);opacity:.75;line-height:1.6}
-  .pie a{color:var(--suave)}
-  #aviso{position:fixed;bottom:16px;right:16px;background:var(--panel-alto);border:1px solid var(--linea);border-left:4px solid var(--ambar);border-radius:8px;padding:11px 15px;font-size:13px;max-width:340px;display:none;z-index:30}
-  #aviso.caida{border-left-color:var(--rojo)}
-
-  /* seccion desplegable */
-  .seccion.desplegable{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px}
-  .seccion.desplegable:hover{color:var(--texto)}
-  .seccion.desplegable .flecha{display:inline-block;transition:transform .18s;font-size:11px;color:var(--ambar)}
-  .seccion.desplegable.abierta .flecha{transform:rotate(90deg)}
-  .seccion.desplegable .cuenta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--suave);letter-spacing:0;text-transform:none}
-  .plegable{display:none}
-  .plegable.abierto{display:block}
-
-  /* tuneles configurables */
-  .tuneles{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px}
-  .tun-fila{display:flex;gap:10px;align-items:center;margin-bottom:8px}
-  .tun-fila input.p{width:110px;flex:none}
-  .tun-fila input.n{flex:1}
-  .tun-fila input.r{width:130px;flex:none}
-  .tun-fila .aw{width:72px;flex:none;text-align:center}
-  .tun-cab{display:flex;gap:10px;font-size:11px;color:var(--suave);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
-  .tun-cab span:nth-child(1){width:110px}
-  .tun-cab span:nth-child(2){flex:1}
-  .tun-cab span:nth-child(3){width:130px}
-  .tun-cab span:nth-child(4){width:72px;text-align:center}
-  .tun-cab span:nth-child(5){width:44px}
-  .tun-acciones{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap}
-  .tun-desplegable{cursor:pointer;user-select:none;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:12px 14px;color:var(--suave)}
-  .tun-desplegable:hover{color:var(--texto)}
-  .tun-desplegable .flecha{display:inline-block;transition:transform .18s;font-size:11px;color:var(--ambar)}
+  label{display:block;font-size:12px;color:var(--suave);margin-bottom:6px;font-weight:600;letter-spacing:.01em}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--texto-2)}
+  .nota{font-size:12.5px;color:var(--suave);line-height:1.65}
+  .tun-desplegable{cursor:pointer;user-select:none;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:13px 14px;color:var(--texto-2)}
+  .tun-desplegable .flecha{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.05);font-size:10px;color:var(--verde);transition:transform .18s}
   .tun-desplegable.abierta .flecha{transform:rotate(90deg)}
-  .tun-desplegable .cuenta{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--suave)}
-  .tuneles.plegable{margin-top:8px}
-  .seg-lista{background:var(--fondo);border:1px solid var(--linea);border-radius:8px;padding:10px 12px;margin:10px 0 14px}
-  .seg-lista div{font-size:12.5px;color:var(--suave);line-height:1.65}
-  .seg-lista b{color:var(--texto)}
-
-  /* copia de seguridad */
-  .copia{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px}
-  .copia .col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .copia h4{font-family:'Barlow Condensed';font-weight:600;font-size:16px;letter-spacing:.04em;margin-bottom:8px}
-  .copia .campo{margin-bottom:8px}
-  .copia .campo input[type=password],.copia .campo input[type=file]{width:100%}
-  .copia .check{margin:4px 0}
-  .copia .res{font-size:12px;color:var(--suave);margin-top:8px;line-height:1.5;word-break:break-all}
+  .tun-desplegable .cuenta{margin-left:auto;font-size:11px;color:var(--suave);font-family:'JetBrains Mono',monospace}
+  .tuneles{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px 15px;margin-top:10px}
+  .tun-cab{display:flex;gap:10px;font-size:11px;color:var(--suave);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
+  .tun-cab span:nth-child(1){width:110px}.tun-cab span:nth-child(2){flex:1}.tun-cab span:nth-child(3){width:130px}.tun-cab span:nth-child(4){width:72px;text-align:center}.tun-cab span:nth-child(5){width:44px}
+  .tun-fila{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+  .tun-fila input.p{width:110px;flex:none}.tun-fila input.n{flex:1}.tun-fila input.r{width:130px;flex:none}.tun-fila .aw{width:72px;flex:none;text-align:center}
+  .copia,.updapp{background:none;border:none;border-radius:0;padding:0}
+  .copia .col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .copia h4{font-size:18px;font-weight:700;margin-bottom:10px}
+  .copia .campo{margin-bottom:10px}
+  .copia .res{font-size:12px;color:var(--texto-2);margin-top:8px;line-height:1.55;word-break:break-all}
   .copia .res b{color:var(--verde)}
-  @media (max-width:640px){ .copia .col{grid-template-columns:1fr} }
-
-  /* actualizaciones de la app */
-  .updapp{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-  .updapp.plegable{display:none}
-  .updapp.plegable.abierto{display:flex}
-  .updapp .txt{flex:1;min-width:200px;font-size:13.5px;color:var(--suave)}
-  .updapp .txt b{color:var(--texto);font-family:'JetBrains Mono',monospace}
-  .updapp .acciones{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%}
-  .updapp .token{display:flex;gap:8px;flex:1;min-width:320px}
-  .updapp .token input{flex:1;min-width:180px}
-  .updapp .estado{width:100%;font-size:12.5px;color:var(--suave);line-height:1.5;white-space:pre-wrap}
+  .updapp{display:none}
+  .updapp .txt{font-size:13px;color:var(--texto-2);line-height:1.65;margin-bottom:14px}
+  .updapp .txt b{color:var(--texto)}
+  .updapp .acciones{display:flex;gap:10px;flex-wrap:wrap;align-items:center;width:100%}
+  .updapp .token{display:flex;gap:10px;flex:1;min-width:320px}
+  .updapp .token input{flex:1}
+  .updapp .estado{width:100%;font-size:12.5px;color:var(--texto-2);line-height:1.65;white-space:pre-wrap;margin-top:12px}
   .updapp .estado.ok{color:var(--verde)} .updapp .estado.err{color:var(--rojo)}
-  .updapp .notas{width:100%;max-height:150px;overflow:auto;padding:9px 11px;border:1px solid var(--linea);border-radius:7px;background:var(--fondo);font-size:12px;white-space:pre-wrap;display:none}
-  .upd-punto{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;background:var(--suave);box-shadow:0 0 0 2px rgba(255,255,255,.04)}
-  .upd-punto.verde{background:var(--verde);box-shadow:0 0 8px rgba(50,210,130,.45)}
-  .upd-punto.amarillo{background:var(--ambar);box-shadow:0 0 8px rgba(255,185,65,.40)}
-  .upd-punto.rojo{background:var(--rojo);box-shadow:0 0 8px rgba(255,80,80,.40)}
-
-  /* terminal integrado */
-  .term-velo{position:fixed;inset:0;background:rgba(6,13,17,.96);display:none;flex-direction:column;z-index:20}
-  .term-velo.abierto{display:flex}
-  .term-barra{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:2px solid var(--ambar);flex:none}
-  .term-barra .t{font-family:'Barlow Condensed';font-weight:600;font-size:17px;letter-spacing:.06em;text-transform:uppercase}
-  .term-barra .t b{color:var(--ambar)}
-  .term-barra .sep{flex:1}
-  .term-cuerpo{flex:1;display:flex;min-height:0}
-  #term{flex:1;padding:8px 4px 4px 10px;min-height:0}
-  .term-hist{width:230px;flex:none;border-left:1px solid var(--linea);padding:10px 12px;overflow-y:auto}
-  .term-hist h5{font-family:'Barlow Condensed';font-weight:600;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--suave);margin-bottom:8px}
-  .term-hist .cmd{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--texto);background:var(--panel);border:1px solid var(--linea);border-radius:6px;padding:6px 9px;margin-bottom:6px;cursor:pointer;word-break:break-all}
-  .term-hist .cmd:hover{background:var(--panel-alto);border-color:var(--ambar)}
+  .updapp .notas{width:100%;max-height:180px;overflow:auto;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.03);font-size:12px;white-space:pre-wrap;display:none;margin-top:8px}
+  .upd-punto{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;background:var(--suave);box-shadow:0 0 0 2px rgba(255,255,255,.05)}
+  .upd-punto.verde{background:var(--verde);box-shadow:0 0 10px rgba(77,225,154,.45)}
+  .upd-punto.amarillo{background:var(--ambar);box-shadow:0 0 10px rgba(230,180,91,.4)}
+  .upd-punto.rojo{background:var(--rojo);box-shadow:0 0 10px rgba(236,109,105,.4)}
+  .pie{margin-top:22px;text-align:center;font-size:12px;color:var(--suave);line-height:1.7;opacity:.88}
+  .pie a{color:var(--texto-2)}
+  #aviso{position:fixed;bottom:18px;right:18px;background:rgba(11,24,36,.96);border:1px solid rgba(255,255,255,.08);border-left:4px solid var(--verde);border-radius:14px;padding:12px 16px;font-size:13px;max-width:360px;display:none;z-index:40;box-shadow:var(--sombra)}
+  #aviso.caida{border-left-color:var(--rojo)}
+  .velo,.term-velo,.fx-velo{position:fixed;inset:0;background:rgba(2,8,13,.88);backdrop-filter:blur(5px)}
+  .velo{display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .velo.abierto{display:flex}
+  .modal{background:linear-gradient(180deg, rgba(12,27,41,.97), rgba(10,22,35,.97));border:1px solid rgba(255,255,255,.08);border-top:4px solid var(--verde);border-radius:22px;max-width:500px;width:100%;padding:22px;box-shadow:var(--sombra)}
+  .modal h3{font-size:24px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em;margin-bottom:10px}
+  .modal p{font-size:13.5px;color:var(--texto-2);line-height:1.7;margin-bottom:14px}
+  .modal .huella{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;word-break:break-all;color:var(--verde);margin-bottom:14px}
+  .modal .botones{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+  .seg-lista{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 14px;margin:10px 0 14px}
+  .seg-lista div{font-size:12.5px;color:var(--texto-2);line-height:1.75}
+  .seg-lista b{color:var(--texto)}
+  .term-velo,.fx-velo{display:none;flex-direction:column;z-index:45}
+  .term-velo.abierto,.fx-velo.abierto{display:flex}
+  .term-barra,.fx-barra-superior{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(8,17,27,.96);flex:none}
+  .term-barra .t,.fx-barra-superior .t{font-size:18px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;text-transform:uppercase}
+  .term-barra .t b,.fx-barra-superior .t b{color:var(--verde)}
+  .term-barra .sep,.fx-barra-superior .sep{flex:1}
+  .term-cuerpo,.fx-cuerpo{flex:1;display:flex;min-height:0;padding:14px}
+  #term{flex:1;min-height:0;background:rgba(8,17,27,.96);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:8px}
+  .term-hist{width:250px;flex:none;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:12px 12px;margin-left:14px;overflow-y:auto;background:rgba(8,17,27,.96)}
+  .term-hist h5{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--suave);margin-bottom:8px}
+  .term-hist .cmd{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--texto);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 10px;margin-bottom:6px;cursor:pointer;word-break:break-all}
   .term-hist .vacio-hist{font-size:11.5px;color:var(--suave)}
+  .fx-cuerpo{overflow:auto}
+  .fx{background:rgba(8,17,27,.96);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:14px;min-height:100%}
+  .fx .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .fx h4{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--suave);margin-bottom:10px}
+  .fx .barra{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .fx .items{height:calc(100vh - 250px);min-height:260px;overflow-y:auto;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.02)}
+  .fx .it{display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;cursor:pointer}
+  .fx .it:hover{background:rgba(255,255,255,.04)}
+  .fx .it .ic{width:18px;text-align:center;flex:none}.fx .it .nm{flex:1;font-family:'JetBrains Mono',monospace;font-size:12.5px;word-break:break-all}.fx .it .meta{font-size:11px;color:var(--suave);flex:none}
+  .fx .vacio-fx{padding:16px;text-align:center;color:var(--suave);font-size:12.5px}
+  @media (max-width:1220px){
+    .dash-grid{grid-template-columns:1fr}
+    .content-shell{padding:22px}
+  }
+  @media (max-width:980px){
+    body{padding:14px}
+    .app-shell{grid-template-columns:1fr}
+    .sidebar{border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}
+    .side-nav{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .brand-card{padding:16px}
+  }
+  @media (max-width:860px){
+    .servidores{grid-template-columns:1fr}
+    form{grid-template-columns:1fr}
+    .copia .col,.fx .cols{grid-template-columns:1fr}
+    .term-cuerpo{flex-direction:column}
+    .term-hist{width:auto;margin-left:0;margin-top:12px}
+    .topbar{flex-direction:column}
+  }
+  @media (max-width:640px){
+    .side-nav{grid-template-columns:1fr 1fr}
+    .top-actions{width:100%}
+    .top-actions .ghost-link,.top-actions .primary-link{flex:1;justify-content:center}
+    .srv{grid-template-columns:auto auto auto minmax(0,1fr);grid-template-areas:'asa franja fav info' 'metodo metodo metodo metodo' 'acciones acciones acciones acciones';}
+    .srv .metodo{justify-self:start}
+    .tun-cab{display:none}
+    .tun-fila{display:grid;grid-template-columns:1fr 1fr;align-items:center}
+    .tun-fila input.n{grid-column:1/-1}
+    .tun-fila input.r,.tun-fila .aw{width:100%}
+    .updapp .token{min-width:0;flex-direction:column}
+  }
 </style>
 </head>
 <body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand-top">🛡️ <span>Gateway WISP Access</span></div>
+    <div class="brand-card">
+      <div class="brand-logo">🔐</div>
+      <div class="brand-text">Gateway WISP Access<small>Gestión SSH y túneles seguros</small></div>
+    </div>
+    <nav class="side-nav">
+      <a class="nav-item activo" href="#dashboard"><span class="ni">▣</span><span>Dashboard</span></a>
+      <a class="nav-item" href="#srv-cabecera"><span class="ni">🖧</span><span>Servidores</span></a>
+      <a class="nav-item" href="#editor-panel"><span class="ni">✎</span><span>Perfiles</span></a>
+      <a class="nav-item" href="#copia-panel"><span class="ni">🗄</span><span>Copias</span></a>
+      <a class="nav-item" href="#upd-panel"><span class="ni">⬆</span><span>Updates</span></a>
+      <a class="nav-item" href="#pie-final"><span class="ni">⚙</span><span>Info</span></a>
+    </nav>
+    <div class="side-spacer"></div>
+    <div class="side-status">
+      <div class="st1"><span class="dot"></span><span>SSH Seguro</span></div>
+      <div class="mini">Agente: activo<br>Algoritmos modernos<br>Actualizador firmado</div>
+    </div>
+    <div class="side-footer"><span>Build</span><span id="ver">—</span></div>
+  </aside>
 
-<header>
-  <div class="titulo">Conectar <span>Gateway</span></div>
-  <div class="ver" id="ver"></div>
-</header>
+  <div class="content-shell">
+    <div class="ssh-bg" aria-hidden="true">
+      <span class="bg-item i1">ssh-ed25519</span>
+      <span class="bg-item i2">curve25519</span>
+      <span class="bg-item small i3">aes256-gcm</span>
+      <span class="bg-item i4">chacha20-poly1305</span>
+      <span class="bg-item i5">public key</span>
+      <span class="bg-item i6">authorized_keys</span>
+      <span class="bg-item small" style="bottom:208px; right:40px;">sha256 fingerprint</span>
+      <span class="bg-line l1"></span><span class="bg-line l2"></span><span class="bg-line l3"></span><span class="bg-line l4"></span>
+      <span class="bg-lock">🔒</span><span class="bg-key">🗝</span>
+    </div>
 
-<main>
-  <div class="seccion">Conexiones activas</div>
-  <div class="conexiones" id="conexiones">
-    <div class="sin-conexion">Sin conexiones. Elige un servidor abajo y dale a Conectar.</div>
-  </div>
-
-  <div class="seccion desplegable abierta" id="srv-cabecera">
-    <span class="flecha">▶</span>
-    <span>Servidores guardados</span>
-    <span class="cuenta" id="srv-cuenta"></span>
-  </div>
-  <div class="plegable abierto" id="srv-caja">
-    <div class="buscador"><input type="text" id="buscador" placeholder="Buscar por nombre, host o usuario…"></div>
-    <div class="servidores" id="lista"></div>
-  </div>
-
-  <div class="seccion desplegable" id="form-cabecera">
-    <span class="flecha">▶</span>
-    <span>Agregar / editar servidor</span>
-    <span class="cuenta">— clic para desplegar</span>
-  </div>
-  <form id="form" class="plegable" onsubmit="return false">
-    <div><label>Nombre</label><input type="text" id="f-nombre" placeholder="gateway-1"></div>
-    <div><label>IP o host</label><input type="text" id="f-host" placeholder="203.0.113.10"></div>
-    <div><label>Puerto SSH</label><input type="number" id="f-puerto" value="22"></div>
-    <div><label>Usuario</label><input type="text" id="f-usuario" placeholder="root"></div>
-    <div class="ancho"><label>Key SSH — ruta de la clave privada (vacío = usar contraseña)</label>
-      <div style="display:flex;gap:8px">
-        <input type="text" id="f-key" placeholder="C:\Users\gsusb\.ssh\id_ed25519" style="flex:1">
-        <button type="button" id="btn-buscar-key">Buscar…</button>
-        <button type="button" id="btn-probar-key">Probar</button>
-        <button type="button" class="principal" id="btn-crear-key">🔑 Crear e instalar Key</button>
+    <div class="topbar">
+      <div class="hero-title">
+        <h1>Dashboard</h1>
+        <p>Resumen de conexiones, servidores guardados, túneles y seguridad SSH. Mantén una vista clara de tus gateways WISP con un estilo más moderno y enfocado en acceso seguro.</p>
       </div>
-      <div class="nota" id="key-res" style="margin-top:6px"></div></div>
-    <div class="ancho" id="zona-pass">
-      <label id="lbl-pass">Contraseña</label>
-      <input type="password" id="f-pass" placeholder="se pide al conectar si no la guardas">
-      <div class="check" style="margin-top:8px">
-        <input type="checkbox" id="f-guardar"><label for="f-guardar" style="margin:0">Recordar contraseña en este equipo (cifrada)</label>
+      <div class="top-actions">
+        <a href="#upd-panel" class="ghost-link">⟳ Actualizaciones</a>
+        <a href="#form-cabecera" class="primary-link">＋ Nuevo servidor</a>
       </div>
     </div>
-    <div class="ancho" style="margin-top:4px">
-      <div class="tun-desplegable" id="tun-cabecera-form">
-        <span class="flecha">▶</span>
-        <b>Túneles de este servidor</b>
-        <span class="cuenta" id="tun-cuenta">— plegado</span>
-      </div>
-      <div class="tuneles plegable" id="tun-caja-form">
-        <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-          <button type="button" id="tun-defecto">Usar predeterminados</button>
+
+    <main>
+      <section class="dash-grid" id="dashboard">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="ico">🗄</div>
+              <div>
+                <h3>Servidores guardados</h3>
+                <p>Perfiles de conexión SSH listos para conectar o editar.</p>
+              </div>
+            </div>
+          </div>
+          <div class="seccion desplegable abierta" id="srv-cabecera">
+            <span class="flecha">▶</span>
+            <span>Listado</span>
+            <span class="cuenta" id="srv-cuenta"></span>
+          </div>
+          <div class="plegable abierto" id="srv-caja">
+            <div class="buscador"><input type="text" id="buscador" placeholder="Buscar por nombre, host o usuario…"></div>
+            <div class="servidores" id="lista"></div>
+          </div>
         </div>
-        <div class="tun-cab"><span>Puerto</span><span>Nombre</span><span>Ruta web</span><span>Auto web</span><span></span></div>
-        <div id="tun-lista"></div>
-        <button type="button" id="tun-agregar">+ Agregar puerto</button>
-        <div class="nota" style="margin-top:8px">Marca <b>Auto web</b> para abrir ese panel automáticamente en tu navegador cuando el túnel quede activo.</div>
-      </div>
-    </div>
-    <div class="ancho nota">Las contraseñas guardadas se cifran (AES-256) con una llave local en <b>secreto.bin</b>. Máxima seguridad: usa key SSH.
-    Atajo: <b>Ctrl+Enter</b> guarda el servidor desde este formulario.</div>
-    <div class="ancho" style="display:flex;gap:10px;justify-content:flex-end">
-      <button type="button" id="btn-limpiar">Limpiar</button>
-      <button type="button" class="principal" id="btn-guardar">Guardar servidor</button>
-    </div>
-  </form>
 
-  <div class="seccion desplegable" id="copia-cabecera">
-    <span class="flecha">▶</span>
-    <span>Copia de seguridad</span>
-    <span class="cuenta">— exportar / importar servidores, túneles y claves</span>
-  </div>
-  <div class="copia plegable" id="copia-caja">
-    <div class="col">
-      <div>
-        <h4>Exportar</h4>
-        <div class="campo">
-          <label>Contraseña para proteger la copia (mín. 8)</label>
-          <input type="password" id="exp-pass" placeholder="la necesitarás para importar">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="ico">📡</div>
+              <div>
+                <h3>Servidores conectados</h3>
+                <p>Conexiones activas, terminal, archivos y seguridad SSH.</p>
+              </div>
+            </div>
+          </div>
+          <div class="conexiones" id="conexiones">
+            <div class="sin-conexion">Sin conexiones. Elige un servidor guardado y dale a Conectar.</div>
+          </div>
         </div>
-        <div class="check"><input type="checkbox" id="exp-claves" checked>
-          <label for="exp-claves" style="margin:0">Incluir contraseñas guardadas</label></div>
-        <div class="check"><input type="checkbox" id="exp-keys" checked>
-          <label for="exp-keys" style="margin:0">Incluir claves SSH privadas</label></div>
-        <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar</button>
-        <div class="res" id="exp-res"></div>
-      </div>
-      <div>
-        <h4>Importar</h4>
-        <div class="campo">
-          <label>Archivo de copia (.cgw)</label>
-          <input type="file" id="imp-archivo" accept=".cgw,application/json">
-        </div>
-        <div class="campo">
-          <label>Contraseña de la copia</label>
-          <input type="password" id="imp-pass" placeholder="la que usaste al exportar">
-        </div>
-        <div class="check"><input type="checkbox" id="imp-reemplazar">
-          <label for="imp-reemplazar" style="margin:0">Reemplazar todo (por defecto: fusionar)</label></div>
-        <button class="principal" id="btn-importar" style="margin-top:8px">Importar</button>
-        <div class="res" id="imp-res"></div>
-      </div>
-    </div>
-    <div class="nota" style="margin-top:12px">La copia va cifrada con tu contraseña
-    (no con la llave de este equipo), así que se puede llevar a otra PC. Sin esa
-    contraseña el archivo es ilegible: <b>guárdala bien, no hay forma de recuperarla</b>.</div>
-  </div>
+      </section>
 
-  <div class="seccion desplegable" id="upd-cabecera">
-    <span class="flecha">▶</span>
-    <span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones"></span>
-    <span>Actualizaciones de la app</span>
-    <span class="cuenta" id="upd-resumen">— sin comprobar</span>
-  </div>
-  <div class="updapp plegable" id="upd-caja">
-    <div class="txt">Versión instalada: <b id="app-ver">—</b><br>
-    Repo privado: usa un token <b>fine-grained</b> con acceso únicamente a este repositorio y permiso <b>Contents: read</b>.
-    En Windows el token se protege con DPAPI y queda ligado a tu usuario de Windows. Las actualizaciones además deben pasar firma Ed25519 + SHA-256.</div>
-    <div class="acciones">
-      <div class="token"><input type="password" id="upd-token" autocomplete="off" placeholder="github_pat_… (solo se usa contra api.github.com)">
-      <button class="principal" id="upd-guardar">Guardar token</button></div>
-      <button id="upd-token-web">Crear token</button>
-      <button id="upd-borrar">Borrar token</button>
-      <button id="upd-buscar">Buscar actualización</button>
-      <button id="btn-releases">Ver Releases</button>
-      <button class="principal" id="upd-instalar" style="display:none">Actualizar ahora</button>
-    </div>
-    <div class="check" style="width:100%"><input type="checkbox" id="upd-inicio"><label for="upd-inicio" style="margin:0">Buscar actualizaciones al iniciar</label></div>
-    <div class="estado" id="upd-estado">Configura el token una sola vez para habilitar las actualizaciones privadas.</div>
-    <div class="notas" id="upd-notas"></div>
-  </div>
+      <div class="stack-grid">
+        <section class="panel" id="editor-panel">
+          <div class="seccion desplegable" id="form-cabecera">
+            <span class="flecha">▶</span>
+            <span>Agregar / editar servidor</span>
+            <span class="cuenta">— clic para desplegar</span>
+          </div>
+          <form id="form" class="plegable" onsubmit="return false">
+            <div><label>Nombre</label><input type="text" id="f-nombre" placeholder="gateway-1"></div>
+            <div><label>IP o host</label><input type="text" id="f-host" placeholder="203.0.113.10"></div>
+            <div><label>Puerto SSH</label><input type="number" id="f-puerto" value="22"></div>
+            <div><label>Usuario</label><input type="text" id="f-usuario" placeholder="root"></div>
+            <div class="ancho"><label>Key SSH — ruta de la clave privada (vacío = usar contraseña)</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <input type="text" id="f-key" placeholder="C:\Users\gsusb\.ssh\id_ed25519" style="flex:1;min-width:240px">
+                <button type="button" id="btn-buscar-key">Buscar…</button>
+                <button type="button" id="btn-probar-key">Probar</button>
+                <button type="button" class="principal" id="btn-crear-key">🔑 Crear e instalar Key</button>
+              </div>
+              <div class="nota" id="key-res" style="margin-top:6px"></div></div>
+            <div class="ancho" id="zona-pass">
+              <label id="lbl-pass">Contraseña</label>
+              <input type="password" id="f-pass" placeholder="se pide al conectar si no la guardas">
+              <div class="check" style="margin-top:10px">
+                <input type="checkbox" id="f-guardar"><label for="f-guardar" style="margin:0">Recordar contraseña en este equipo (cifrada)</label>
+              </div>
+            </div>
+            <div class="ancho" style="margin-top:4px">
+              <div class="tun-desplegable" id="tun-cabecera-form">
+                <span class="flecha">▶</span>
+                <b>Túneles de este servidor</b>
+                <span class="cuenta" id="tun-cuenta">— plegado</span>
+              </div>
+              <div class="tuneles plegable" id="tun-caja-form">
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+                  <button type="button" id="tun-defecto">Usar predeterminados</button>
+                </div>
+                <div class="tun-cab"><span>Puerto</span><span>Nombre</span><span>Ruta web</span><span>Auto web</span><span></span></div>
+                <div id="tun-lista"></div>
+                <button type="button" id="tun-agregar">+ Agregar puerto</button>
+                <div class="nota" style="margin-top:8px">Marca <b>Auto web</b> para abrir ese panel automáticamente en tu navegador cuando el túnel quede activo.</div>
+              </div>
+            </div>
+            <div class="ancho nota">Las contraseñas guardadas se cifran (AES-256) con una llave local en <b>secreto.bin</b>. Máxima seguridad: usa key SSH. Atajo: <b>Ctrl+Enter</b> guarda el servidor desde este formulario.</div>
+            <div class="ancho" style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+              <button type="button" id="btn-limpiar">Limpiar</button>
+              <button type="button" class="principal" id="btn-guardar">Guardar servidor</button>
+            </div>
+          </form>
+        </section>
 
-  <div class="pie">
-    Conectar Gateway <span id="pie-ver"></span> · © 2026 Gsus<br>
-    Software libre bajo licencia MIT · usa
-    <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a>,
-    <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a> y
-    <a href="https://github.com/webview/webview" target="_blank">webview</a>
+        <section class="panel" id="copia-panel">
+          <div class="seccion desplegable" id="copia-cabecera">
+            <span class="flecha">▶</span>
+            <span>Copia de seguridad</span>
+            <span class="cuenta">— exportar / importar servidores, túneles y claves</span>
+          </div>
+          <div class="copia plegable" id="copia-caja">
+            <div class="col">
+              <div>
+                <h4>Exportar</h4>
+                <div class="campo">
+                  <label>Contraseña para proteger la copia (mín. 8)</label>
+                  <input type="password" id="exp-pass" placeholder="la necesitarás para importar">
+                </div>
+                <div class="check"><input type="checkbox" id="exp-claves" checked>
+                  <label for="exp-claves" style="margin:0">Incluir contraseñas guardadas</label></div>
+                <div class="check"><input type="checkbox" id="exp-keys" checked>
+                  <label for="exp-keys" style="margin:0">Incluir claves SSH privadas</label></div>
+                <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar</button>
+                <div class="res" id="exp-res"></div>
+              </div>
+              <div>
+                <h4>Importar</h4>
+                <div class="campo">
+                  <label>Archivo de copia (.cgw)</label>
+                  <input type="file" id="imp-archivo" accept=".cgw,application/json">
+                </div>
+                <div class="campo">
+                  <label>Contraseña de la copia</label>
+                  <input type="password" id="imp-pass" placeholder="la que usaste al exportar">
+                </div>
+                <div class="check"><input type="checkbox" id="imp-reemplazar">
+                  <label for="imp-reemplazar" style="margin:0">Reemplazar todo (por defecto: fusionar)</label></div>
+                <button class="principal" id="btn-importar" style="margin-top:8px">Importar</button>
+                <div class="res" id="imp-res"></div>
+              </div>
+            </div>
+            <div class="nota" style="margin-top:12px">La copia va cifrada con tu contraseña (no con la llave de este equipo), así que se puede llevar a otra PC. Sin esa contraseña el archivo es ilegible: <b>guárdala bien, no hay forma de recuperarla</b>.</div>
+          </div>
+        </section>
+
+        <section class="panel" id="upd-panel">
+          <div class="seccion desplegable" id="upd-cabecera">
+            <span class="flecha">▶</span>
+            <span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones"></span>
+            <span>Actualizaciones de la app</span>
+            <span class="cuenta" id="upd-resumen">— sin comprobar</span>
+          </div>
+          <div class="updapp plegable" id="upd-caja">
+            <div class="txt">Versión instalada: <b id="app-ver">—</b><br>
+            Repo privado: usa un token <b>fine-grained</b> con acceso únicamente a este repositorio y permiso <b>Contents: read</b>.
+            En Windows el token se protege con DPAPI y queda ligado a tu usuario de Windows. Las actualizaciones además deben pasar firma Ed25519 + SHA-256.</div>
+            <div class="acciones">
+              <div class="token"><input type="password" id="upd-token" autocomplete="off" placeholder="github_pat_… (solo se usa contra api.github.com)">
+              <button class="principal" id="upd-guardar">Guardar token</button></div>
+              <button id="upd-token-web">Crear token</button>
+              <button id="upd-borrar">Borrar token</button>
+              <button id="upd-buscar">Buscar actualización</button>
+              <button id="btn-releases">Ver Releases</button>
+              <button class="principal" id="upd-instalar" style="display:none">Actualizar ahora</button>
+            </div>
+            <div class="check" style="width:100%;margin-top:12px"><input type="checkbox" id="upd-inicio"><label for="upd-inicio" style="margin:0">Buscar actualizaciones al iniciar</label></div>
+            <div class="estado" id="upd-estado">Configura el token una sola vez para habilitar las actualizaciones privadas.</div>
+            <div class="notas" id="upd-notas"></div>
+          </div>
+        </section>
+
+        <div class="pie" id="pie-final">
+          Conectar Gateway <span id="pie-ver"></span> · © 2026 Gsus<br>
+          Software libre bajo licencia MIT · usa
+          <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a>,
+          <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a> y
+          <a href="https://github.com/webview/webview" target="_blank">webview</a>
+        </div>
+      </div>
+    </main>
   </div>
-</main>
+</div>
 
 <!-- Terminal SSH integrado -->
 <div class="term-velo" id="term-velo">

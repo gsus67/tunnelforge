@@ -1,3 +1,14 @@
+## v3.0.0
+
+### Cambios
+
+- Rediseño completo de la interfaz principal con layout tipo dashboard.
+- Nuevo sidebar lateral y encabezado visual más moderno.
+- Fondo sutil con referencias a algoritmos SSH y elementos de seguridad.
+- Tarjetas renovadas para servidores guardados y conexiones activas.
+- Mantiene la lógica existente de Terminal, Archivos, túneles, actualizaciones y seguridad SSH.
+- Conserva menús plegables y el estado visual de actualizaciones.
+
 # Historial de cambios
 
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
