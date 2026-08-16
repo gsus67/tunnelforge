@@ -502,6 +502,43 @@
   .cnx .enlaces{padding-left:12px !important;gap:6px !important;margin-top:7px !important}.cnx .enlaces a{padding:5px 8px !important;font-size:11px !important}
   @media (max-width:1180px){.dash-grid{grid-template-columns:1fr !important}.servidores,.conexiones{max-height:none !important}.dashboard-updates .du-body{grid-template-columns:1fr 1fr !important}}
 
+
+  /* v3.1.6 compactación dashboard y overlays */
+  .dash-grid{grid-template-columns:1.22fr .88fr !important;gap:10px !important}
+  .panel{padding:10px !important}
+  .panel-header{margin-bottom:6px !important}
+  .panel-title h3{font-size:15px !important}.panel-title p{font-size:11px !important}
+  .panel-count{padding:4px 8px !important;font-size:10px !important}
+  .servidores{max-height:calc(100vh - 225px) !important;gap:7px !important}
+  .conexiones{max-height:calc(100vh - 225px) !important;gap:7px !important}
+  .dashboard-updates.compact{padding:8px 10px !important;margin-top:2px !important}
+  .dashboard-updates.compact .du-inline{display:flex;align-items:center;gap:12px;flex-wrap:nowrap}
+  .dashboard-updates.compact .du-chip,.dashboard-updates.compact .du-item{display:flex;align-items:center;gap:8px;min-width:0;color:var(--texto-2);font-size:11px}
+  .dashboard-updates.compact .du-chip b,.dashboard-updates.compact .du-item b{color:var(--texto);font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dashboard-updates.compact .du-item span{color:var(--suave);text-transform:uppercase;letter-spacing:.08em;font-size:10px}
+  .dashboard-updates.compact .du-item.grow{flex:1;min-width:160px}.dashboard-updates.compact .du-item.grow b{white-space:normal;line-height:1.25}
+  .dashboard-updates.compact button{padding:7px 10px !important;font-size:12px !important;white-space:nowrap}
+  .cnx .fila1 > button.icon-only{width:32px;min-width:32px;height:30px;padding:0 !important;display:grid;place-items:center;font-size:0}
+  .cnx .fila1 > button.icon-only svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .cnx .fila1{align-items:center !important}
+  .cnx .txt{min-width:100px !important}
+  .cnx .puertos-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;padding-left:12px}
+  .cnx .puertos-btn{padding:5px 8px !important;font-size:11px !important;line-height:1.1;background:rgba(15,31,47,.82)}
+  .cnx .puertos-lista{display:none;gap:6px;flex-wrap:wrap;margin-top:6px;padding-left:12px}
+  .cnx .puertos-lista.abierta{display:flex}
+  .cnx .puertos-lista a{background:rgba(10,25,38,.78);border:1px solid rgba(77,134,184,.12);border-radius:8px;padding:4px 7px;font-size:11px;color:var(--texto-2)}
+  .cnx .puertos-vacio{font-size:11px;color:var(--suave)}
+  .term-barra,.fx-barra-superior{padding:10px 12px !important}
+  .term-barra .t,.fx-barra-superior .t{font-size:16px !important}
+  .term-cuerpo,.fx-cuerpo{padding:10px !important;min-height:0 !important;height:calc(100vh - 56px)}
+  #term{min-height:0 !important;height:100% !important}
+  .term-hist{width:220px !important;margin-left:10px !important}
+  .fx{padding:10px !important}
+  .fx .items{height:calc(100vh - 170px) !important;min-height:220px !important}
+  .fx .barra button,#fx-abrir,#fx-cerrar,#term-cerrar{padding:8px 10px !important;font-size:12px !important}
+  .fx .barra{gap:6px !important}
+  @media (max-width:1180px){.dashboard-updates.compact .du-inline{flex-wrap:wrap}.dashboard-updates.compact .du-item.grow{flex-basis:100%}.servidores,.conexiones{max-height:none !important}}
+
 </style>
 </head>
 <body>
@@ -592,40 +629,13 @@
           </div>
         </div>
 
-        <section class="panel dashboard-updates">
-          <div class="du-head">
-            <div class="panel-title">
-              <div class="ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M20 11a8 8 0 1 0 2 5.3'/><path d='M20 4v7h-7'/></svg></div>
-              <div>
-                <h3>Actualizaciones de la app</h3>
-                <p>Estado y comprobación rápida</p>
-              </div>
-            </div>
-            <div class="du-state"><span class="upd-punto amarillo" id="upd-punto-dash"></span><b id="upd-dash-status">Sin comprobar</b></div>
-          </div>
-          <div class="du-body">
-            <div class="du-col">
-              <label>Versión actual</label>
-              <div class="du-main" id="dash-app-ver">—</div>
-              <div class="du-sub" id="dash-app-sub">Configura el token para comprobar nuevas versiones.</div>
-            </div>
-            <div class="du-col">
-              <label>Canal de actualizaciones</label>
-              <select class="du-select" id="dash-update-channel" disabled>
-                <option>Stable (Recomendado)</option>
-              </select>
-              <div class="du-sub">Recibe versiones estables y firmadas.</div>
-            </div>
-            <div class="du-col">
-              <label>Verificaciones automáticas</label>
-              <select class="du-select" id="dash-update-frequency" disabled>
-                <option>Cada inicio</option>
-              </select>
-              <div class="du-sub" id="dash-next-check">Usa la página Updates para configurar el token privado.</div>
-            </div>
-            <div class="du-actions">
-              <button id="dash-upd-search">Buscar actualizaciones</button>
-            </div>
+        <section class="panel dashboard-updates compact">
+          <div class="du-inline">
+            <div class="du-chip"><span class="upd-punto amarillo" id="upd-punto-dash"></span><b id="upd-dash-status">Sin comprobar</b></div>
+            <div class="du-item"><span>Versión</span><b id="dash-app-ver">—</b></div>
+            <div class="du-item"><span>Canal</span><b>Stable</b></div>
+            <div class="du-item grow"><span>Notas</span><b id="dash-next-check">Configura el token en Updates para comprobar nuevas versiones.</b></div>
+            <button id="dash-upd-search">Comprobar</button>
           </div>
         </section>
       </section>
@@ -1003,12 +1013,10 @@
       txt.appendChild(document.createTextNode((c.host||'servidor') + ' · ' + (c.usuario||'usuario')));
       fila.appendChild(txt);
 
-      var bTerm = nodo('button', '', 'Terminal');
-      bTerm.title = 'Terminal';
+      var bTerm = botonIcono('terminal', 'Terminal');
       bTerm.onclick = function(){ abrirTerminal(c.servidor); };
       fila.appendChild(bTerm);
-      var bArch = nodo('button', '', 'Archivos');
-      bArch.title = 'Archivos';
+      var bArch = botonIcono('archivos', 'Archivos');
       bArch.onclick = function(){ abrirArchivos(c.servidor); };
       fila.appendChild(bArch);
 
@@ -1017,31 +1025,33 @@
       fila.appendChild(trafico);
       div.appendChild(fila);
 
-      var enlaces = nodo('div', 'enlaces');
-      if ((c.tuneles||[]).length){
-        (c.tuneles||[]).forEach(function(t){
+      var puertosBar = nodo('div', 'puertos-bar');
+      var listaPuertos = nodo('div', 'puertos-lista');
+      var tuneles = (c.tuneles||[]);
+      if (tuneles.length){
+        var bPuertos = nodo('button', 'puertos-btn', 'Puertos (' + tuneles.length + ')');
+        bPuertos.onclick = function(){ listaPuertos.classList.toggle('abierta'); };
+        puertosBar.appendChild(bPuertos);
+        tuneles.forEach(function(t){
           var a = nodo('a', '', '');
           a.href = '#';
           a.dataset.url = 'http://localhost:' + t.puerto + (t.ruta||'');
           a.appendChild(nodo('b', '', ':' + t.puerto));
           a.appendChild(document.createTextNode(' ' + (t.nombre||'')));
-          enlaces.appendChild(a);
+          listaPuertos.appendChild(a);
         });
       } else {
-        var sin = nodo('span', '', 'Sin túneles abiertos (puertos ocupados por otra conexión) — usa la terminal.');
-        sin.style.fontSize = '12px'; sin.style.color = 'var(--suave)';
-        enlaces.appendChild(sin);
+        puertosBar.appendChild(nodo('span', 'puertos-vacio', 'Sin túneles abiertos'));
       }
-      div.appendChild(enlaces);
-      var foot = nodo('div','enlaces');
-      var bSSH = nodo('button', 'ssh-seg', 'Seguridad SSH');
+      var bSSH = nodo('button', 'ssh-seg', 'SSH');
       bSSH.onclick = function(){ alternarSeguridadSSH(c.servidor, bSSH); };
-      foot.appendChild(bSSH);
+      puertosBar.appendChild(bSSH);
       consultarSeguridadSSH(c.servidor, bSSH, false);
-      var stats = nodo('span','', '↓ ' + fmtBs(rxS) + ' · ↑ ' + fmtBs(txS) + ' · ' + fmtB(c.rx + c.tx) + ' total');
-      stats.style.fontSize='11.5px'; stats.style.color='var(--suave)'; stats.style.marginLeft='auto';
-      foot.appendChild(stats);
-      div.appendChild(foot);
+      var stats = nodo('span','', '↓ ' + fmtBs(rxS) + ' · ↑ ' + fmtBs(txS) + ' · ' + fmtB(c.rx + c.tx));
+      stats.style.fontSize='11px'; stats.style.color='var(--suave)'; stats.style.marginLeft='auto';
+      puertosBar.appendChild(stats);
+      div.appendChild(puertosBar);
+      div.appendChild(listaPuertos);
       cont.appendChild(div);
     });
   }
@@ -1514,8 +1524,7 @@
   api('/api/actualizaciones').then(function(c){
     $('upd-inicio').checked=!!c.buscarAlInicio;
     updEstado(c.tokenConfigurado?'Token configurado de forma segura.':'Configura el token una sola vez para habilitar las actualizaciones privadas.',c.tokenConfigurado?'ok':'');
-    var ds=$('dash-app-sub'); if(ds) ds.textContent = c.tokenConfigurado ? 'Token seguro configurado. Puedes buscar updates desde aquí.' : 'Configura el token privado para habilitar actualizaciones firmadas.';
-    updSemaforo('amarillo', c.tokenConfigurado?'pendiente de comprobar':'token no configurado');
+        updSemaforo('amarillo', c.tokenConfigurado?'pendiente de comprobar':'token no configurado');
     if(c.tokenConfigurado && c.buscarAlInicio) updBuscar(true);
   }).catch(function(){});
   $('upd-guardar').onclick=function(){

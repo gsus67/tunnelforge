@@ -1,3 +1,13 @@
+## v3.1.6
+
+### Cambios
+
+- La sección de actualizaciones del Dashboard se mueve al fondo y queda reducida a una barra compacta.
+- Más espacio vertical para servidores guardados y conectados.
+- Terminal y Archivos cambian a iconos compactos en las conexiones activas.
+- Los puertos/túneles quedan plegados por defecto y se despliegan solo al tocar "Puertos".
+- Ajustes de tamaño en overlays de Terminal y Archivos para que encajen mejor en la ventana.
+
 ## v3.1.5
 
 ### Cambios
