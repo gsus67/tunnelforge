@@ -104,6 +104,9 @@
   button.peligro{color:var(--rojo)}
   button:disabled{opacity:.5;cursor:default}
   button.icono{padding:7px 11px;font-size:15px;line-height:1}
+  button.ssh-seg{padding:6px 9px;font-size:10.5px;letter-spacing:.03em;text-transform:none;color:var(--suave);white-space:nowrap}
+  button.ssh-seg.seguro{color:var(--verde);border-color:rgba(61,201,124,.45)}
+  button.ssh-seg.password{color:var(--ambar);border-color:rgba(232,163,61,.45)}
 
   /* formulario */
   form{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -496,6 +499,59 @@
   var desconectandoManual = {};       // evita falso aviso de "caida" al desconectar a proposito
   var previoBytes = {};               // nombre -> {t, rx, tx} para calcular tasas
 
+  var sshSeguridadCache = {};
+  function rotularSeguridadSSH(btn, modo){
+    btn.classList.remove('seguro','password');
+    btn.dataset.modo = modo || 'unknown';
+    if (modo === 'secure'){
+      btn.textContent = 'SSH seguro';
+      btn.title = 'Contraseña desactivada. Click para volver a permitir contraseña a usuarios normales.';
+      btn.classList.add('seguro');
+    } else if (modo === 'password'){
+      btn.textContent = 'SSH password';
+      btn.title = 'PasswordAuthentication está permitido. Click para asegurar SSH y dejar acceso por key.';
+      btn.classList.add('password');
+    } else {
+      btn.textContent = 'Seguridad SSH';
+      btn.title = 'Comprobar o cambiar la política de autenticación SSH.';
+    }
+  }
+  function consultarSeguridadSSH(nombre, btn, forzar){
+    var ahora = Date.now(), c = sshSeguridadCache[nombre];
+    if (!forzar && c && ahora-c.t < 30000){ rotularSeguridadSSH(btn,c.modo); return; }
+    api('/api/ssh-seguridad/estado?nombre='+encodeURIComponent(nombre)).then(function(r){
+      var modo = r.modo || 'unknown';
+      sshSeguridadCache[nombre] = {modo:modo,t:Date.now()};
+      if (btn && document.body.contains(btn)) rotularSeguridadSSH(btn,modo);
+    }).catch(function(){ if(btn && document.body.contains(btn)) rotularSeguridadSSH(btn,'unknown'); });
+  }
+  function alternarSeguridadSSH(nombre, btn){
+    var modo = btn.dataset.modo || 'unknown';
+    if (modo === 'secure'){
+      if (!confirm('¿Volver a permitir autenticación por contraseña para usuarios normales?\n\nRoot seguirá permitido solo mediante key.')) return;
+      var sudoPass = prompt('Contraseña del usuario para sudo/verificación (si estás conectado como root, puedes dejarla vacía):','');
+      if (sudoPass === null) return;
+      btn.disabled=true; btn.textContent='Aplicando…';
+      api('/api/ssh-seguridad/permitir-password',{method:'POST',body:JSON.stringify({nombre:nombre,password:sudoPass})}).then(function(r){
+        if (r.error){ aviso(r.error,false); return; }
+        sshSeguridadCache[nombre]={modo:'password',t:Date.now()};
+        rotularSeguridadSSH(btn,'password');
+        aviso(r.passwordProbado ? 'Acceso por contraseña habilitado y verificado. Root sigue solo por key.' : 'PasswordAuthentication habilitado. Root sigue solo por key.',true);
+      }).catch(function(){ aviso('Error de comunicación al cambiar la seguridad SSH.',false); }).finally(function(){ btn.disabled=false; });
+      return;
+    }
+    var pass = prompt('Escribe la contraseña SSH actual. Gateway la usa para sudo y para comprobar que, después del cambio, una conexión nueva por contraseña sea rechazada:','');
+    if (pass === null) return;
+    if (!pass){ aviso('Necesito la contraseña actual para verificar de forma real que el login por password queda bloqueado.',false); return; }
+    if (!confirm('Gateway comprobará primero la key, desactivará el login por contraseña y mantendrá root solo por key. ¿Continuar?')) return;
+    btn.disabled=true; btn.textContent='Asegurando…';
+    api('/api/asegurar-ssh',{method:'POST',body:JSON.stringify({nombre:nombre,password:pass})}).then(function(r){
+      if (r.error){ aviso(r.error,false); return; }
+      sshSeguridadCache[nombre]={modo:'secure',t:Date.now()};
+      rotularSeguridadSSH(btn,'secure');
+      aviso('SSH asegurado y verificado. Contraseña bloqueada; root queda solo por key.',true);
+    }).catch(function(){ aviso('Error de comunicación al asegurar SSH.',false); }).finally(function(){ btn.disabled=false; });
+  }
   function pintarConexiones(e){
     $('ver').textContent = 'v' + (e.version||'');
     var pv = $('pie-ver'); if (pv) pv.textContent = 'v' + (e.version||'');
@@ -551,6 +607,10 @@
       bArch.title = 'Archivos';
       bArch.onclick = function(){ abrirArchivos(c.servidor); };
       fila.appendChild(bArch);
+      var bSSH = nodo('button', 'ssh-seg', 'Seguridad SSH');
+      bSSH.onclick = function(){ alternarSeguridadSSH(c.servidor, bSSH); };
+      fila.appendChild(bSSH);
+      consultarSeguridadSSH(c.servidor, bSSH, false);
       var bDesc = nodo('button', '', 'Desconectar');
       bDesc.style.marginLeft = '8px';
       bDesc.onclick = function(){

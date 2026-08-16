@@ -512,16 +512,20 @@ PermitRootLogin prohibit-password
 	config64 := base64.StdEncoding.EncodeToString([]byte(config))
 	aplicar := fmt.Sprintf(`set -u
 CFG=/etc/ssh/sshd_config
-BAK=/etc/ssh/sshd_config.gateway-wisp.bak
+ORIG=/etc/ssh/sshd_config.gateway-wisp.original.bak
+BAK=/etc/ssh/sshd_config.gateway-wisp.last.bak
 TMP="$(mktemp)" || exit 30
 STRIPPED="$(mktemp)" || { rm -f "$TMP"; exit 30; }
 cleanup(){ rm -f "$TMP" "$STRIPPED"; }
 trap cleanup EXIT
 [ -f "$CFG" ] || { echo __GATEWAY_NO_CONFIG__; exit 31; }
-[ -f "$BAK" ] || cp -p "$CFG" "$BAK" || exit 32
+[ -f "$ORIG" ] || cp -p "$CFG" "$ORIG" || exit 32
+cp -p "$CFG" "$BAK" || exit 32
 awk '
   $0 == "# BEGIN GATEWAY-WISP-HARDENING" {skip=1; next}
   $0 == "# END GATEWAY-WISP-HARDENING" {skip=0; next}
+  $0 == "# BEGIN GATEWAY-WISP-PASSWORD-ACCESS" {skip=1; next}
+  $0 == "# END GATEWAY-WISP-PASSWORD-ACCESS" {skip=0; next}
   !skip {print}
 ' "$CFG" > "$STRIPPED" || exit 33
 printf %%s %s | base64 -d > "$TMP" || exit 34
@@ -570,7 +574,7 @@ echo __GATEWAY_OK__
 	}
 
 	rollback := fmt.Sprintf(`CFG=/etc/ssh/sshd_config
-BAK=/etc/ssh/sshd_config.gateway-wisp.bak
+BAK=/etc/ssh/sshd_config.gateway-wisp.last.bak
 [ -f "$BAK" ] && cp -p "$BAK" "$CFG"
 sshd -t || exit 50
 %s
@@ -605,6 +609,215 @@ sshd -t || exit 50
 		"pubkeyAuthentication":   true,
 		"rootLogin":              "key-only",
 		"passwordProbado":        true,
-		"backup":                 "/etc/ssh/sshd_config.gateway-wisp.bak",
+		"backup":                 "/etc/ssh/sshd_config.gateway-wisp.last.bak",
+	})
+}
+
+// estadoSeguridadSSH inspecciona el bloque gestionado por Gateway en una
+// conexion ya abierta. El estado "desconocido" evita afirmar que un servidor
+// esta seguro solo por una heuristica.
+func estadoSeguridadSSH(cli *ssh.Client) (string, error) {
+	out, err := ejecutarSesion(cli, `CFG=/etc/ssh/sshd_config
+[ -r "$CFG" ] || { echo unknown; exit 0; }
+if grep -Fq '# BEGIN GATEWAY-WISP-HARDENING' "$CFG"; then
+  echo secure
+elif grep -Fq '# BEGIN GATEWAY-WISP-PASSWORD-ACCESS' "$CFG"; then
+  echo password
+else
+  echo unknown
+fi`, "")
+	if err != nil {
+		return "unknown", err
+	}
+	switch strings.TrimSpace(out) {
+	case "secure", "password":
+		return strings.TrimSpace(out), nil
+	default:
+		return "unknown", nil
+	}
+}
+
+func clienteConexionActiva(nombre string) (*ssh.Client, error) {
+	mu.Lock()
+	c := conexiones[nombre]
+	mu.Unlock()
+	if c == nil || c.cliente == nil {
+		return nil, fmt.Errorf("el servidor no esta conectado")
+	}
+	return c.cliente, nil
+}
+
+// manejarEstadoSeguridadSSH devuelve el estado del bloque administrado por
+// Gateway. No modifica nada y se usa para rotular el boton discreto de cada
+// servidor conectado.
+func manejarEstadoSeguridadSSH(w http.ResponseWriter, r *http.Request) {
+	nombre := strings.TrimSpace(r.URL.Query().Get("nombre"))
+	if nombre == "" {
+		responderError(w, fmt.Errorf("falta el nombre del servidor"))
+		return
+	}
+	cli, err := clienteConexionActiva(nombre)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	modo, err := estadoSeguridadSSH(cli)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	responder(w, map[string]any{"ok": true, "modo": modo})
+}
+
+func scriptQuitarBloquesGateway() string {
+	return `awk '
+  $0 == "# BEGIN GATEWAY-WISP-HARDENING" {skip=1; next}
+  $0 == "# END GATEWAY-WISP-HARDENING" {skip=0; next}
+  $0 == "# BEGIN GATEWAY-WISP-PASSWORD-ACCESS" {skip=1; next}
+  $0 == "# END GATEWAY-WISP-PASSWORD-ACCESS" {skip=0; next}
+  !skip {print}
+' "$CFG" > "$STRIPPED"`
+}
+
+// manejarPermitirPasswordSSH vuelve a permitir PasswordAuthentication para
+// cuentas normales, pero mantiene root exclusivamente por key. El cambio se
+// hace con backup, sshd -t, comprobacion efectiva y rollback si falla.
+func manejarPermitirPasswordSSH(w http.ResponseWriter, r *http.Request) {
+	var pet struct {
+		Nombre   string `json:"nombre"`
+		Password string `json:"password"`
+	}
+	if err := decodificar(r, &pet); err != nil {
+		responderError(w, err)
+		return
+	}
+	pet.Nombre = strings.TrimSpace(pet.Nombre)
+	if pet.Nombre == "" {
+		responderError(w, fmt.Errorf("falta el nombre del servidor"))
+		return
+	}
+
+	mu.Lock()
+	lista := cargar()
+	p := buscar(lista, pet.Nombre)
+	if p == nil {
+		mu.Unlock()
+		responderError(w, fmt.Errorf("servidor no encontrado"))
+		return
+	}
+	servidor := *p
+	mu.Unlock()
+
+	// La key debe seguir siendo util antes de modificar sshd.
+	cli, err := conectarPerfilSoloKey(servidor)
+	if err != nil {
+		responderError(w, fmt.Errorf("no voy a cambiar SSH porque la key no funciona: %v", err))
+		return
+	}
+	defer cli.Close()
+
+	config := `# BEGIN GATEWAY-WISP-PASSWORD-ACCESS
+# Gestionado por Gateway WISP Access. Password para usuarios normales; root solo por key.
+PubkeyAuthentication yes
+PasswordAuthentication yes
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PermitRootLogin prohibit-password
+# END GATEWAY-WISP-PASSWORD-ACCESS
+`
+	config64 := base64.StdEncoding.EncodeToString([]byte(config))
+	quitar := scriptQuitarBloquesGateway()
+	aplicar := fmt.Sprintf(`set -u
+CFG=/etc/ssh/sshd_config
+BAK=/etc/ssh/sshd_config.gateway-wisp.before-password.bak
+TMP="$(mktemp)" || exit 30
+STRIPPED="$(mktemp)" || { rm -f "$TMP"; exit 30; }
+cleanup(){ rm -f "$TMP" "$STRIPPED"; }
+trap cleanup EXIT
+[ -f "$CFG" ] || { echo __GATEWAY_NO_CONFIG__; exit 31; }
+cp -p "$CFG" "$BAK" || exit 32
+%s || exit 33
+printf %%s %s | base64 -d > "$TMP" || exit 34
+cat "$STRIPPED" >> "$TMP" || exit 35
+chmod --reference="$CFG" "$TMP" 2>/dev/null || chmod 600 "$TMP"
+chown --reference="$CFG" "$TMP" 2>/dev/null || chown root:root "$TMP"
+cat "$TMP" > "$CFG" || exit 36
+if ! sshd -t; then
+  cp -p "$BAK" "$CFG"
+  echo __GATEWAY_CONFIG_INVALID__
+  exit 40
+fi
+EFF="$(sshd -T 2>/dev/null)"
+echo "$EFF" | grep -q '^pubkeyauthentication yes$' || { cp -p "$BAK" "$CFG"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
+echo "$EFF" | grep -q '^passwordauthentication yes$' || { cp -p "$BAK" "$CFG"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
+ROOTMODE="$(echo "$EFF" | awk '$1=="permitrootlogin" {print $2; exit}')"
+case "$ROOTMODE" in
+  prohibit-password|without-password) ;;
+  *) cp -p "$BAK" "$CFG"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41 ;;
+esac
+%s
+if [ "$reload_ok" -ne 1 ]; then
+  cp -p "$BAK" "$CFG"
+  echo __GATEWAY_RELOAD_FAILED__
+  exit 42
+fi
+echo __GATEWAY_OK__
+`, quitar, config64, scriptRecargarSSH())
+
+	salida, err := ejecutarComoRoot(cli, pet.Password, aplicar)
+	if err != nil {
+		switch {
+		case strings.Contains(salida, "__GATEWAY_NO_CONFIG__"):
+			responderError(w, fmt.Errorf("no existe /etc/ssh/sshd_config en este servidor"))
+		case strings.Contains(salida, "__GATEWAY_CONFIG_INVALID__"):
+			responderError(w, fmt.Errorf("la configuracion SSH no paso sshd -t; se restauro el archivo anterior"))
+		case strings.Contains(salida, "__GATEWAY_NOT_EFFECTIVE__"):
+			responderError(w, fmt.Errorf("OpenSSH no aplico PasswordAuthentication yes; se restauro el archivo anterior"))
+		case strings.Contains(salida, "__GATEWAY_RELOAD_FAILED__"):
+			responderError(w, fmt.Errorf("no pude recargar SSH; se restauro el archivo anterior"))
+		default:
+			responderError(w, fmt.Errorf("no pude permitir contraseña: %v", err))
+		}
+		return
+	}
+
+	rollback := fmt.Sprintf(`CFG=/etc/ssh/sshd_config
+BAK=/etc/ssh/sshd_config.gateway-wisp.before-password.bak
+[ -f "$BAK" ] && cp -p "$BAK" "$CFG"
+sshd -t || exit 50
+%s
+`, scriptRecargarSSH())
+
+	prueba, err := conectarPerfilSoloKey(servidor)
+	if err != nil {
+		_, _ = ejecutarComoRoot(cli, pet.Password, rollback)
+		responderError(w, fmt.Errorf("la key dejo de funcionar; Gateway restauro la configuracion anterior: %v", err))
+		return
+	}
+	_ = prueba.Close()
+
+	// Para usuarios no-root, si se proporciono contraseña, comprobamos que una
+	// conexion nueva por password funcione. Root permanece intencionalmente key-only.
+	verificado := false
+	if servidor.Usuario != "root" && strings.TrimSpace(pet.Password) != "" {
+		acepta, e := probarPasswordRemoto(servidor, pet.Password)
+		if e != nil || !acepta {
+			_, _ = ejecutarComoRoot(cli, pet.Password, rollback)
+			if e != nil {
+				responderError(w, fmt.Errorf("no pude verificar el acceso por contraseña; restaure el cambio: %v", e))
+			} else {
+				responderError(w, fmt.Errorf("PasswordAuthentication quedo habilitado, pero la contraseña indicada no autentico; restaure el cambio"))
+			}
+			return
+		}
+		verificado = true
+	}
+
+	responder(w, map[string]any{
+		"ok":                     true,
+		"passwordAuthentication": true,
+		"pubkeyAuthentication":   true,
+		"rootLogin":              "key-only",
+		"passwordProbado":        verificado,
 	})
 }

@@ -3,6 +3,21 @@
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
 A partir de ahora, cada nueva versión se añade al inicio de este mismo archivo en lugar de crear un `RELEASE_NOTES_vX.X.X.md` nuevo.
 
+## v2.9.2
+
+### Control reversible de seguridad SSH
+
+- Añadido un botón discreto en cada servidor conectado para consultar y cambiar la política SSH administrada por Gateway.
+- Cuando el servidor está endurecido, el botón muestra **SSH seguro** y permite volver a habilitar `PasswordAuthentication` para usuarios normales.
+- Cuando Gateway tiene habilitado acceso por contraseña, el botón muestra **SSH password** y permite volver a endurecer el servidor.
+- Al volver a permitir contraseña se mantiene `PermitRootLogin prohibit-password`: root continúa entrando únicamente por key.
+- Cada cambio valida `sshd -t`, comprueba los valores efectivos, recarga `ssh`/`sshd` y confirma que la key continúa funcionando.
+- Para usuarios no-root, cuando se proporciona la contraseña, Gateway verifica además una conexión real por password antes de confirmar que el acceso quedó reabierto.
+- El hardening ahora elimina también cualquier bloque previo de “password access” administrado por Gateway antes de aplicar la política segura.
+- Los rollbacks ahora usan un backup transaccional de la configuración inmediatamente anterior, evitando restaurar por accidente un estado demasiado antiguo después de alternar varias veces.
+- Se conserva además un backup original de referencia antes del primer endurecimiento.
+- Sincronizada la versión de aplicación y metadatos de Windows a **2.9.2**.
+
 ## v2.9.1
 
 ### Estado de actualizaciones

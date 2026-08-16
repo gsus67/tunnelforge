@@ -293,3 +293,5 @@ Copyright (c) 2026 Gsus — Licencia MIT (ver [LICENSE](LICENSE)).
 En **Agregar / editar servidor**, completa nombre, host, usuario y la contraseña SSH actual y pulsa **Crear e instalar Key**. Gateway genera una ED25519, instala solo la clave pública en `~/.ssh/authorized_keys`, guarda la privada localmente y **comprueba una conexión nueva usando esa key** antes de actualizar el perfil.
 
 Cuando la comprobación termina, Gateway pregunta si quieres **asegurar SSH**. Si aceptas, desactiva la autenticación por contraseña e interactiva, mantiene el acceso por claves y deja `root` en modo **solo key**. No usa `PermitRootLogin no` porque eso bloquearía un perfil que necesite administrar el servidor como root.
+
+En cada **servidor conectado** hay además un botón discreto de seguridad SSH. Desde ahí puedes endurecer otra vez el servidor o volver a permitir `PasswordAuthentication` para usuarios normales. Al reabrir contraseña, `root` permanece deliberadamente en modo **solo key** (`PermitRootLogin prohibit-password`). Gateway valida la configuración y conserva rollback antes de confirmar el cambio.
