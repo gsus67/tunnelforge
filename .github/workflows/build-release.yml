@@ -1,0 +1,94 @@
+name: build-release
+
+on:
+  push:
+    branches: ['main']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Instalar compilador cruzado de Windows
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+
+      - name: Generar recurso de Windows
+        working-directory: conectar-gateway
+        run: |
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+          $(go env GOPATH)/bin/goversioninfo -icon=icono.ico -manifest=app.manifest \
+            -o=rsrc_windows_amd64.syso versioninfo.json
+
+      - name: Compilar binarios
+        working-directory: conectar-gateway
+        run: |
+          CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ \
+            CGO_CXXFLAGS="-I${PWD}/winhdr" GOOS=windows GOARCH=amd64 \
+            go build -trimpath -ldflags "-s -w -H windowsgui" -o ../Conectar-Gateway.exe .
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -trimpath -ldflags "-s -w" -o ../conectar-gateway-linux .
+
+      - name: Verificar versión del tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          APP_VERSION="$(./conectar-gateway-linux --version | awk '{print $2}')"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          test "$APP_VERSION" = "$TAG_VERSION" || { echo "version.go/main.go=$APP_VERSION pero tag=$TAG_VERSION"; exit 1; }
+
+      - name: Crear y firmar manifest de actualización
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          UPDATE_SIGNING_PRIVATE_KEY_PEM: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY_PEM }}
+          EXPECTED_UPDATE_PUBLIC_KEY_B64: 6SpruRdmfhfJk0i0oLMM4onShah2733MFsKMNycOFrk=
+        run: |
+          test -n "$UPDATE_SIGNING_PRIVATE_KEY_PEM" || { echo "Falta el secret UPDATE_SIGNING_PRIVATE_KEY_PEM"; exit 1; }
+          umask 077
+          printf '%s\n' "$UPDATE_SIGNING_PRIVATE_KEY_PEM" > /tmp/update-signing-key.pem
+          DERIVED="$(openssl pkey -in /tmp/update-signing-key.pem -pubout -outform DER | tail -c 32 | base64 -w0)"
+          test "$DERIVED" = "$EXPECTED_UPDATE_PUBLIC_KEY_B64" || { echo "La clave de firma no corresponde a la pública embebida en la app"; exit 1; }
+          python3 - <<'PY'
+          import hashlib,json,os
+          def meta(path):
+              data=open(path,'rb').read()
+              return {'name':os.path.basename(path),'sha256':hashlib.sha256(data).hexdigest(),'size':len(data)}
+          tag=os.environ['GITHUB_REF_NAME']
+          manifest={
+              'version':tag.removeprefix('v'),
+              'tag':tag,
+              'assets':{
+                  'windows-amd64':meta('Conectar-Gateway.exe'),
+                  'linux-amd64':meta('conectar-gateway-linux'),
+              },
+          }
+          with open('update-manifest.json','w',newline='\n') as f:
+              json.dump(manifest,f,separators=(',',':'),sort_keys=True)
+              f.write('\n')
+          PY
+          openssl pkeyutl -sign -rawin -inkey /tmp/update-signing-key.pem \
+            -in update-manifest.json -out update-manifest.sig
+          rm -f /tmp/update-signing-key.pem
+          sha256sum Conectar-Gateway.exe conectar-gateway-linux update-manifest.json > SHA256SUMS.txt
+
+      - name: Publicar en el Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            Conectar-Gateway.exe
+            conectar-gateway-linux
+            update-manifest.json
+            update-manifest.sig
+            SHA256SUMS.txt

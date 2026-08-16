@@ -3,6 +3,22 @@
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
 A partir de ahora, cada nueva versión se añade al inicio de este mismo archivo en lugar de crear un `RELEASE_NOTES_vX.X.X.md` nuevo.
 
+## v2.9.0
+
+### Actualizaciones automáticas seguras
+
+- Añadido actualizador integrado para Releases de un repositorio privado de GitHub.
+- La credencial de GitHub la proporciona el usuario; no existe ningún token personal embebido en el ejecutable.
+- En Windows el token se protege con **DPAPI**, ligado a la cuenta de Windows que lo guardó.
+- Compatible con un **fine-grained personal access token** limitado a este repositorio y `Contents: read`.
+- Las Releases deben incluir `update-manifest.json` y `update-manifest.sig`; la app verifica una firma **Ed25519** con una clave pública embebida antes de confiar en la versión o en sus hashes.
+- El ejecutable descargado se valida además por **SHA-256** y tamaño contra el manifest firmado.
+- El workflow genera y firma automáticamente el manifest al publicar un tag `v*`; la clave privada vive únicamente en el secret `UPDATE_SIGNING_PRIVATE_KEY_PEM` de GitHub Actions.
+- La app rechaza downgrades automáticos y solo ofrece instalar una versión superior.
+- En Windows la actualización usa un proceso auxiliar temporal para reemplazar el `.exe`, conserva brevemente el anterior como rollback y vuelve a abrir la app.
+- Añadida opción para buscar actualizaciones al iniciar, mostrar las notas de la Release, borrar el token y actualizar con un clic.
+- Sincronizada la versión de aplicación y metadatos de Windows a **2.9.0**.
+
 ## v2.8.1
 
 ### Terminal SSH

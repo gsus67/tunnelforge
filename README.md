@@ -162,14 +162,28 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
 
 ### Actualizaciones de la app
 
-El repositorio es **privado**. Revisar versiones nuevas por la API de GitHub
-requeriría un token embebido en el ejecutable — y eso es un riesgo real:
-cualquiera puede extraer texto de un binario distribuido. Por eso la app
-**no lleva ninguna credencial**: el botón *Ver versiones en GitHub* abre la
-pestaña Releases en tu navegador, que ya tiene tu sesión iniciada. Ahí ves si
-hay una versión nueva y **las notas se generan solas** a partir de los
-mensajes de commit desde la versión anterior (activado en el workflow con
-`generate_release_notes: true`).
+Gateway puede actualizarse desde las **Releases privadas** del repositorio sin
+incluir credenciales personales dentro del ejecutable. La primera vez configura
+un **fine-grained personal access token** de GitHub con acceso solamente a
+`gsus67/gateway-wisp-access` y permiso de repositorio **Contents: read**. En
+Windows el token se guarda protegido con **DPAPI**, ligado a tu cuenta de Windows.
+
+El actualizador no confía únicamente en GitHub ni en un SHA-256 publicado al lado
+del binario. Cada Release lleva un `update-manifest.json` firmado con **Ed25519**;
+la aplicación contiene solo la clave pública y rechaza cualquier manifest cuya
+firma no sea válida. Después comprueba el SHA-256 y tamaño del ejecutable contra
+ese manifest firmado antes de instalarlo.
+
+Para publicar Releases firmadas, el repositorio necesita una sola vez el secret
+de Actions `UPDATE_SIGNING_PRIVATE_KEY_PEM`. La clave privada de firma **no debe
+subirse al repositorio ni incluirse en el ejecutable**. El workflow comprueba que
+el secret corresponde a la clave pública embebida antes de publicar.
+
+En Windows, **Actualizar ahora** descarga y verifica el nuevo ejecutable, arranca
+un actualizador auxiliar, cierra Gateway, reemplaza el `.exe` y vuelve a abrirlo.
+La app no instala automáticamente versiones inferiores a la actual. En Linux, por
+ahora, la comprobación de Releases funciona pero el reemplazo automático del
+binario está deshabilitado.
 
 ### Dónde se guardan tus datos
 

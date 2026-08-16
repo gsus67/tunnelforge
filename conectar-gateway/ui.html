@@ -175,6 +175,12 @@
   .updapp{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .updapp .txt{flex:1;min-width:200px;font-size:13.5px;color:var(--suave)}
   .updapp .txt b{color:var(--texto);font-family:'JetBrains Mono',monospace}
+  .updapp .acciones{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%}
+  .updapp .token{display:flex;gap:8px;flex:1;min-width:320px}
+  .updapp .token input{flex:1;min-width:180px}
+  .updapp .estado{width:100%;font-size:12.5px;color:var(--suave);line-height:1.5;white-space:pre-wrap}
+  .updapp .estado.ok{color:var(--verde)} .updapp .estado.err{color:var(--rojo)}
+  .updapp .notas{width:100%;max-height:150px;overflow:auto;padding:9px 11px;border:1px solid var(--linea);border-radius:7px;background:var(--fondo);font-size:12px;white-space:pre-wrap;display:none}
 
   /* terminal integrado */
   .term-velo{position:fixed;inset:0;background:rgba(6,13,17,.96);display:none;flex-direction:column;z-index:20}
@@ -308,10 +314,20 @@
   <div class="seccion">Actualizaciones de la app</div>
   <div class="updapp">
     <div class="txt">Versión instalada: <b id="app-ver">—</b><br>
-    El repositorio es privado: por seguridad, esta app no lleva ninguna
-    credencial embebida para revisar versiones. El botón abre GitHub en tu
-    navegador (ya con tu sesión) — ahí ves si hay una versión nueva y qué trae.</div>
-    <button id="btn-releases">Ver versiones en GitHub</button>
+    Repo privado: usa un token <b>fine-grained</b> con acceso únicamente a este repositorio y permiso <b>Contents: read</b>.
+    En Windows el token se protege con DPAPI y queda ligado a tu usuario de Windows. Las actualizaciones además deben pasar firma Ed25519 + SHA-256.</div>
+    <div class="acciones">
+      <div class="token"><input type="password" id="upd-token" autocomplete="off" placeholder="github_pat_… (solo se usa contra api.github.com)">
+      <button class="principal" id="upd-guardar">Guardar token</button></div>
+      <button id="upd-token-web">Crear token</button>
+      <button id="upd-borrar">Borrar token</button>
+      <button id="upd-buscar">Buscar actualización</button>
+      <button id="btn-releases">Ver Releases</button>
+      <button class="principal" id="upd-instalar" style="display:none">Actualizar ahora</button>
+    </div>
+    <div class="check" style="width:100%"><input type="checkbox" id="upd-inicio"><label for="upd-inicio" style="margin:0">Buscar actualizaciones al iniciar</label></div>
+    <div class="estado" id="upd-estado">Configura el token una sola vez para habilitar las actualizaciones privadas.</div>
+    <div class="notas" id="upd-notas"></div>
   </div>
 
   <div class="pie">
@@ -975,11 +991,50 @@
     lector.readAsText(archivo);
   };
 
-  // ── Actualizaciones de la app ─────────────────────────────────
+  // ── Actualizaciones privadas y firmadas ───────────────────────
+  var updUltima = null;
+  function updEstado(texto, tipo){
+    var e=$('upd-estado'); e.textContent=texto; e.className='estado'+(tipo?' '+tipo:'');
+  }
+  function updBuscar(silencioso){
+    if(!silencioso) updEstado('Buscando la última Release privada…','');
+    return api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'buscar'})}).then(function(r){
+      if(r.error){ if(!silencioso) updEstado(r.error,'err'); return; }
+      updUltima=r;
+      $('upd-instalar').style.display=r.disponible?'inline-block':'none';
+      $('upd-notas').textContent=r.notas||''; $('upd-notas').style.display=r.notas?'block':'none';
+      if(r.disponible) updEstado('Nueva versión v'+r.nueva+' disponible. Firma verificada.','ok');
+      else updEstado('Estás al día: v'+r.actual+'. Firma de la Release verificada.','ok');
+    }).catch(function(){ if(!silencioso) updEstado('No pude consultar GitHub.','err'); });
+  }
   api('/api/version').then(function(v){
-    document.getElementById('app-ver').textContent = 'v' + v.version;
-    document.getElementById('btn-releases').onclick = function(){ abrirFuera(v.releasesURL); };
+    $('app-ver').textContent='v'+v.version;
+    $('btn-releases').onclick=function(){ abrirFuera(v.releasesURL); };
   }).catch(function(){});
+  api('/api/actualizaciones').then(function(c){
+    $('upd-inicio').checked=!!c.buscarAlInicio;
+    updEstado(c.tokenConfigurado?'Token configurado de forma segura.':'Configura el token una sola vez para habilitar las actualizaciones privadas.',c.tokenConfigurado?'ok':'');
+    if(c.tokenConfigurado && c.buscarAlInicio) updBuscar(true);
+  }).catch(function(){});
+  $('upd-guardar').onclick=function(){
+    var token=$('upd-token').value.trim(); if(!token){updEstado('Pega primero el token de GitHub.','err');return;}
+    var b=this;b.disabled=true;updEstado('Guardando y comprobando acceso al repo privado…','');
+    api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'guardar-token',token:token})}).then(function(r){
+      $('upd-token').value=''; if(r.error){updEstado(r.error,'err');return;} updEstado('Token guardado y acceso verificado.','ok'); updBuscar(false);
+    }).finally(function(){b.disabled=false;});
+  };
+  $('upd-token-web').onclick=function(){ abrirFuera('https://github.com/settings/personal-access-tokens/new'); };
+  $('upd-borrar').onclick=function(){ api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'borrar-token'})}).then(function(r){ if(r.error){updEstado(r.error,'err');return;} $('upd-instalar').style.display='none';$('upd-notas').style.display='none';updEstado('Token borrado.','ok'); }); };
+  $('upd-buscar').onclick=function(){updBuscar(false);};
+  $('upd-inicio').onchange=function(){api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'preferencias',buscarAlInicio:this.checked})});};
+  $('upd-instalar').onclick=function(){
+    if(!updUltima||!updUltima.disponible)return;
+    if(!window.confirm('Instalar Gateway WISP Access v'+updUltima.nueva+' ahora? La app se cerrará y volverá a abrir sola.'))return;
+    var b=this;b.disabled=true;updEstado('Descargando, verificando firma y SHA-256…','');
+    api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'instalar'})}).then(function(r){
+      if(r.error){updEstado(r.error,'err');b.disabled=false;return;} updEstado('Actualización verificada. Reiniciando en v'+r.version+'…','ok');
+    }).catch(function(){updEstado('La app se está reiniciando para completar la actualización…','ok');});
+  };
 
   // ── Abrir enlaces en el navegador del sistema ─────────────────
   function abrirFuera(url){
