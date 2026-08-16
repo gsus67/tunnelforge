@@ -3,6 +3,16 @@
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
 A partir de ahora, cada nueva versión se añade al inicio de este mismo archivo en lugar de crear un `RELEASE_NOTES_vX.X.X.md` nuevo.
 
+## v2.7.2
+
+### Build y Releases
+
+- Se mantiene la corrección de los túneles predeterminados usando campos nombrados, evitando `too few values in struct literal`.
+- El workflow ahora compila también cada `push` a `main` y puede ejecutarse manualmente con `workflow_dispatch`.
+- La publicación en GitHub Release se ejecuta únicamente cuando el build corresponde a un tag `v*`.
+- Esto permite detectar errores de compilación antes de crear una versión/tag y evita confundir un re-run de un tag viejo con el código actual de `main`.
+- Sincronizada la versión de aplicación y los metadatos de Windows a **2.7.2**.
+
 ## v2.7.1
 
 ### Correcciones
