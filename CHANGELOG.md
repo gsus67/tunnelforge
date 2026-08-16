@@ -1,3 +1,12 @@
+## v3.1.2
+
+### Cambios
+
+- Corrección visual de bordes fríos para evitar el aspecto gris marcado de la interfaz.
+- Logo lateral rediseñado con un estilo más limpio y cercano al mockup aprobado.
+- Iconografía del sidebar y dashboard rehecha con un lenguaje visual más consistente.
+- Ajustes de contraste y bordes en paneles, tarjetas y botones para un acabado más premium.
+
 ## v3.1.1
 
 ### Cambios

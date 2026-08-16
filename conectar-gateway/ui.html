@@ -409,21 +409,55 @@
   @media (max-width:1120px){.dash-grid{grid-template-columns:1fr}.dashboard-updates{grid-column:auto}.servidores{grid-template-columns:1fr 1fr}.conexiones{max-height:none}.servidores{max-height:none}}
   @media (max-width:900px){.app-shell{grid-template-columns:1fr}.servidores{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}.dashboard-updates .du-body{grid-template-columns:1fr}}
 
+
+  /* v3.1.2 border/logo/icon refinement */
+  :root{--borde-frio:rgba(77,134,184,.20);--borde-frio-2:rgba(77,134,184,.12);--borde-activo:rgba(77,225,154,.26);}
+  body{padding:10px;background:radial-gradient(circle at top, #233445 0%, #152230 45%, #101a25 100%)}
+  .app-shell{min-height:calc(100vh - 20px);height:calc(100vh - 20px);border:1px solid rgba(53,91,124,.34);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.38);background:linear-gradient(180deg, rgba(6,17,29,.98), rgba(5,15,26,.99))}
+  .sidebar{border-right:1px solid rgba(41,76,107,.42);background:linear-gradient(180deg, rgba(6,18,30,.99), rgba(5,15,26,.99))}
+  .content-shell{background:linear-gradient(180deg, rgba(5,17,28,.985), rgba(6,16,26,.985));padding:18px 20px 22px}
+  .content-shell::before{background:radial-gradient(circle at 22% 18%, rgba(24,91,173,.18), transparent 28%),radial-gradient(circle at 82% 28%, rgba(31,123,185,.14), transparent 24%),linear-gradient(90deg, rgba(0,115,255,.05), transparent 16%, transparent 84%, rgba(0,115,255,.04))}
+  .brand-card,.side-status,.panel,.srv,.cnx,.update-page-status,.info-card,.toolbar-btn,.nav-item .ni,.panel-title .ico,.view-switch button,input[type=text],input[type=password],input[type=number],select,.buscador input{border-color:var(--borde-frio)!important}
+  .panel,.srv,.cnx,.side-status,.update-page-status,.info-card{box-shadow:0 10px 24px rgba(0,0,0,.16);}
+  .panel,.srv,.cnx{background:linear-gradient(180deg, rgba(7,19,32,.88), rgba(7,17,28,.82))}
+  .panel-title .ico,.nav-item .ni{background:rgba(12,27,43,.72)!important}
+  .nav-item{border-color:transparent;background:transparent}
+  .nav-item:hover{background:rgba(21,43,64,.46)}
+  .nav-item.activo{background:linear-gradient(90deg, rgba(40,128,91,.46), rgba(25,81,66,.34));border-color:rgba(77,225,154,.18)}
+  .nav-item .ni,.panel-title .ico,.tb-ico,.brand-logo{position:relative;color:transparent;font-size:0;background-repeat:no-repeat;background-position:center;background-size:18px 18px}
+  .brand-logo{width:48px;height:48px;border-radius:16px;background-color:rgba(10,29,46,.86);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2339d198' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2l6 2.8v6.1c0 4.1-2.4 7.8-6 9.1-3.6-1.3-6-5-6-9.1V4.8L12 2z'/%3E%3Crect x='8.8' y='11' width='6.4' height='5' rx='1.1'/%3E%3Cpath d='M10.2 11V9.7a1.8 1.8 0 0 1 3.6 0V11'/%3E%3C/svg%3E");background-size:28px 28px;box-shadow:inset 0 0 0 1px rgba(57,209,152,.10), 0 6px 14px rgba(0,0,0,.22)}
+  .brand-card{padding:14px 13px;border-radius:18px;background:linear-gradient(180deg, rgba(7,25,39,.96), rgba(6,17,30,.92));border-color:rgba(54,141,164,.24)!important}
+  .brand-text{font-size:14px;line-height:1.2} .brand-text small{font-size:11px;color:#92a8bc}
+  .ico-dashboard{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce8f3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='6' height='6' rx='1.3'/%3E%3Crect x='14' y='4' width='6' height='6' rx='1.3'/%3E%3Crect x='4' y='14' width='6' height='6' rx='1.3'/%3E%3Crect x='14' y='14' width='6' height='6' rx='1.3'/%3E%3C/svg%3E")} .ico-profile{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce8f3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19h16'/%3E%3Cpath d='M7 19v-2a5 5 0 0 1 10 0v2'/%3E%3Ccircle cx='12' cy='9' r='3'/%3E%3C/svg%3E")} .ico-copy{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce8f3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='10' height='12' rx='2'/%3E%3Cpath d='M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1'/%3E%3C/svg%3E")} .ico-update{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce8f3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 11a8 8 0 1 0 2 5.3'/%3E%3Cpath d='M20 4v7h-7'/%3E%3C/svg%3E")} .ico-info{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce8f3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 10v6'/%3E%3Cpath d='M12 7h.01'/%3E%3C/svg%3E")}
+  .ico-saved{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce8f3' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='5' width='16' height='6' rx='1.6'/%3E%3Crect x='4' y='13' width='16' height='6' rx='1.6'/%3E%3Cpath d='M8 8h.01M8 16h.01M12 8h4M12 16h4'/%3E%3C/svg%3E")} .ico-connected{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2339d198' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12a7 7 0 0 1 14 0'/%3E%3Cpath d='M8 12a4 4 0 0 1 8 0'/%3E%3Cpath d='M12 12h.01'/%3E%3C/svg%3E")} .ico-update-big{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce8f3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 11a8 8 0 1 0 2 5.3'/%3E%3Cpath d='M20 4v7h-7'/%3E%3C/svg%3E")}
+  .ico-import{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce8f3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V4'/%3E%3Cpath d='M8 8l4-4 4 4'/%3E%3Cpath d='M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4'/%3E%3C/svg%3E")} .ico-plus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23092115' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E")}
+  .tb-ico{display:inline-block;width:16px;height:16px;flex:none;background-size:16px 16px;opacity:.95}
+  .toolbar-btn{border-radius:12px;background:rgba(11,27,42,.78)} .toolbar-btn.primary{background:linear-gradient(90deg, rgba(70,200,145,.92), rgba(55,180,130,.82));color:#0a2017}
+  .topbar{margin-bottom:14px} .hero-title h1{font-size:30px} .hero-title p{font-size:13.5px;color:#9fb2c4}
+  .panel-title h3{font-size:17px} .panel-title p{color:#8ea5ba}
+  .srv .nombre{font-size:19px} .srv .detalle{font-family:Inter,system-ui,sans-serif;color:#a6b8c8} .srv .metodo{background:rgba(13,28,44,.72);border-color:var(--borde-frio-2)!important}
+  .tag{background:rgba(11,27,42,.72);border-color:var(--borde-frio-2)!important;color:#b8c9d7}
+  .tag.key{color:#92c4ff} .tag.pass{color:#d4be91} .tag.fingerprint{color:#8edcad}
+  .cnx .txt b{font-size:17px} .cnx .trafico{color:#92a9bc} .cnx .enlaces a{background:rgba(10,25,38,.78);border-color:var(--borde-frio-2)!important}
+  .dashboard-updates .du-body,.dashboard-updates .du-col+.du-col{border-color:var(--borde-frio-2)!important}
+  .dashboard-updates .du-main{font-size:24px} .dashboard-updates .du-sub{color:#9eb1c1}
+  button{background:rgba(11,27,42,.78);border-color:var(--borde-frio)!important} button.principal{background:linear-gradient(90deg, rgba(70,200,145,.92), rgba(55,180,130,.82))} button:hover{background:rgba(17,35,52,.88)}
+
 </style>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand-card">
-      <div class="brand-logo">⌁</div>
+      <div class="brand-logo" aria-hidden="true"></div>
       <div class="brand-text">Gateway WISP Access<small>SSH · túneles · archivos</small></div>
     </div>
     <nav class="side-nav">
-      <a class="nav-item activo" href="#dashboard" data-nav="dashboard"><span class="ni">▦</span><span>Dashboard</span></a>
-      <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni">⌁</span><span>Perfiles</span></a>
-      <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni">⇩</span><span>Copias</span></a>
-      <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni">↻</span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
-      <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni">ⓘ</span><span>Info</span></a>
+      <a class="nav-item activo" href="#dashboard" data-nav="dashboard"><span class="ni ico-dashboard" aria-hidden="true"></span><span>Dashboard</span></a>
+      <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni ico-profile" aria-hidden="true"></span><span>Perfiles</span></a>
+      <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni ico-copy" aria-hidden="true"></span><span>Copias</span></a>
+      <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni ico-update" aria-hidden="true"></span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
+      <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni ico-info" aria-hidden="true"></span><span>Info</span></a>
     </nav>
     <div class="side-spacer"></div>
     <div class="side-status">
@@ -452,8 +486,8 @@
         <p id="view-subtitle">Resumen de conexiones y herramientas.</p>
       </div>
       <div class="top-actions">
-        <button class="toolbar-btn" id="btn-import-toolbar">⇪ Importar servidor</button>
-        <button class="toolbar-btn primary" id="btn-new-toolbar">＋ Nuevo servidor <span class="caret">▾</span></button>
+        <button class="toolbar-btn" id="btn-import-toolbar"><span class="tb-ico ico-import" aria-hidden="true"></span>Importar servidor</button>
+        <button class="toolbar-btn primary" id="btn-new-toolbar"><span class="tb-ico ico-plus" aria-hidden="true"></span>Nuevo servidor <span class="caret">▾</span></button>
       </div>
     </div>
 
@@ -462,7 +496,7 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              <div class="ico">▤</div>
+              <div class="ico ico-saved" aria-hidden="true"></div>
               <div>
                 <h3>Servidores guardados</h3>
                 <p>Perfiles de conexión SSH listos para conectar o editar.</p>
@@ -486,7 +520,7 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              <div class="ico">◉</div>
+              <div class="ico ico-connected" aria-hidden="true"></div>
               <div>
                 <h3>Servidores conectados</h3>
                 <p>Conexiones activas</p>
@@ -502,7 +536,7 @@
         <section class="panel dashboard-updates">
           <div class="du-head">
             <div class="panel-title">
-              <div class="ico">↻</div>
+              <div class="ico ico-update-big" aria-hidden="true"></div>
               <div>
                 <h3>Actualizaciones de la app</h3>
                 <p>Estado y comprobación rápida</p>
