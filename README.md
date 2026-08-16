@@ -160,7 +160,9 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
   `keys/` mediante rutas manipuladas, y los túneles importados pasan las mismas
   validaciones de puertos y duplicados que los creados desde la interfaz.
 
-### Actualizaciones de la app
+### Actualizaciones
+
+El panel aparece plegado y muestra un semáforo de estado: verde (al día), amarillo (pendiente/no comprobado) y rojo (actualización disponible). de la app
 
 Gateway puede actualizarse desde las **Releases privadas** del repositorio sin
 incluir credenciales personales dentro del ejecutable. La primera vez configura

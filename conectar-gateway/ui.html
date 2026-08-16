@@ -181,6 +181,10 @@
   .updapp .estado{width:100%;font-size:12.5px;color:var(--suave);line-height:1.5;white-space:pre-wrap}
   .updapp .estado.ok{color:var(--verde)} .updapp .estado.err{color:var(--rojo)}
   .updapp .notas{width:100%;max-height:150px;overflow:auto;padding:9px 11px;border:1px solid var(--linea);border-radius:7px;background:var(--fondo);font-size:12px;white-space:pre-wrap;display:none}
+  .upd-punto{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none;background:var(--suave);box-shadow:0 0 0 2px rgba(255,255,255,.04)}
+  .upd-punto.verde{background:var(--verde);box-shadow:0 0 8px rgba(50,210,130,.45)}
+  .upd-punto.amarillo{background:var(--ambar);box-shadow:0 0 8px rgba(255,185,65,.40)}
+  .upd-punto.rojo{background:var(--rojo);box-shadow:0 0 8px rgba(255,80,80,.40)}
 
   /* terminal integrado */
   .term-velo{position:fixed;inset:0;background:rgba(6,13,17,.96);display:none;flex-direction:column;z-index:20}
@@ -311,8 +315,13 @@
     contraseña el archivo es ilegible: <b>guárdala bien, no hay forma de recuperarla</b>.</div>
   </div>
 
-  <div class="seccion">Actualizaciones de la app</div>
-  <div class="updapp">
+  <div class="seccion desplegable" id="upd-cabecera">
+    <span class="flecha">▶</span>
+    <span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones"></span>
+    <span>Actualizaciones de la app</span>
+    <span class="cuenta" id="upd-resumen">— sin comprobar</span>
+  </div>
+  <div class="updapp plegable" id="upd-caja">
     <div class="txt">Versión instalada: <b id="app-ver">—</b><br>
     Repo privado: usa un token <b>fine-grained</b> con acceso únicamente a este repositorio y permiso <b>Contents: read</b>.
     En Windows el token se protege con DPAPI y queda ligado a tu usuario de Windows. Las actualizaciones además deben pasar firma Ed25519 + SHA-256.</div>
@@ -430,7 +439,7 @@
       <div>✓ <b>KbdInteractiveAuthentication no</b> — bloquea autenticación interactiva.</div>
       <div>✓ <b>PermitRootLogin prohibit-password</b> — root queda permitido solo mediante key.</div>
     </div>
-    <p class="nota">No se desactiva root por completo porque un perfil que use <b>root</b> se bloquearía. Con esta configuración root no puede entrar con contraseña, solo con una key válida. Si la validación o la recarga de SSH falla, Gateway revierte el cambio.</p>
+    <p class="nota">Gateway crea un respaldo de <b>/etc/ssh/sshd_config</b>, aplica el bloque seguro con prioridad, valida con <b>sshd -t</b>, recarga SSH y hace una prueba real intentando autenticarse otra vez con contraseña. Solo confirma el endurecimiento si la key funciona y la contraseña ya es rechazada. Root no se desactiva por completo: queda disponible solo con key.</p>
     <div class="botones">
       <button id="seg-no">Ahora no</button>
       <button class="principal" id="seg-si">Sí, asegurar SSH</button>
@@ -736,7 +745,7 @@
     api('/api/asegurar-ssh',{method:'POST',body:JSON.stringify(datos)}).then(function(r){
       if(r.error){ aviso(r.error,false); return; }
       cerrarModalSeguridad();
-      aviso('SSH asegurado: contraseñas desactivadas y root permitido solo con key.',true);
+      aviso('SSH asegurado y verificado: una conexión nueva con contraseña fue rechazada; root queda solo por key.',true);
     }).catch(function(){ aviso('Error de comunicación al asegurar SSH.',false); }).finally(function(){ b.disabled=false; b.textContent='Sí, asegurar SSH'; });
   };
 
@@ -993,19 +1002,25 @@
 
   // ── Actualizaciones privadas y firmadas ───────────────────────
   var updUltima = null;
+  function updSemaforo(estado, resumen){
+    var p=$('upd-punto');
+    p.className='upd-punto '+estado;
+    $('upd-resumen').textContent=resumen;
+    p.title=resumen;
+  }
   function updEstado(texto, tipo){
     var e=$('upd-estado'); e.textContent=texto; e.className='estado'+(tipo?' '+tipo:'');
   }
   function updBuscar(silencioso){
-    if(!silencioso) updEstado('Buscando la última Release privada…','');
+    if(!silencioso) updEstado('Buscando la última Release privada…',''); updSemaforo('amarillo','comprobando…');
     return api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'buscar'})}).then(function(r){
-      if(r.error){ if(!silencioso) updEstado(r.error,'err'); return; }
+      if(r.error){ if(!silencioso) updEstado(r.error,'err'); updSemaforo('amarillo','no se pudo comprobar'); return; }
       updUltima=r;
       $('upd-instalar').style.display=r.disponible?'inline-block':'none';
       $('upd-notas').textContent=r.notas||''; $('upd-notas').style.display=r.notas?'block':'none';
-      if(r.disponible) updEstado('Nueva versión v'+r.nueva+' disponible. Firma verificada.','ok');
-      else updEstado('Estás al día: v'+r.actual+'. Firma de la Release verificada.','ok');
-    }).catch(function(){ if(!silencioso) updEstado('No pude consultar GitHub.','err'); });
+      if(r.disponible){ updEstado('Nueva versión v'+r.nueva+' disponible. Firma verificada.','err'); updSemaforo('rojo','v'+r.nueva+' disponible'); }
+      else { updEstado('Estás al día: v'+r.actual+'. Firma de la Release verificada.','ok'); updSemaforo('verde','estás al día'); }
+    }).catch(function(){ if(!silencioso) updEstado('No pude consultar GitHub.','err'); updSemaforo('amarillo','sin comprobar'); });
   }
   api('/api/version').then(function(v){
     $('app-ver').textContent='v'+v.version;
@@ -1014,17 +1029,18 @@
   api('/api/actualizaciones').then(function(c){
     $('upd-inicio').checked=!!c.buscarAlInicio;
     updEstado(c.tokenConfigurado?'Token configurado de forma segura.':'Configura el token una sola vez para habilitar las actualizaciones privadas.',c.tokenConfigurado?'ok':'');
+    updSemaforo('amarillo', c.tokenConfigurado?'pendiente de comprobar':'token no configurado');
     if(c.tokenConfigurado && c.buscarAlInicio) updBuscar(true);
   }).catch(function(){});
   $('upd-guardar').onclick=function(){
     var token=$('upd-token').value.trim(); if(!token){updEstado('Pega primero el token de GitHub.','err');return;}
     var b=this;b.disabled=true;updEstado('Guardando y comprobando acceso al repo privado…','');
     api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'guardar-token',token:token})}).then(function(r){
-      $('upd-token').value=''; if(r.error){updEstado(r.error,'err');return;} updEstado('Token guardado y acceso verificado.','ok'); updBuscar(false);
+      $('upd-token').value=''; if(r.error){updEstado(r.error,'err');updSemaforo('amarillo','token sin verificar');return;} updEstado('Token guardado y acceso verificado.','ok'); updSemaforo('amarillo','pendiente de comprobar'); updBuscar(false);
     }).finally(function(){b.disabled=false;});
   };
   $('upd-token-web').onclick=function(){ abrirFuera('https://github.com/settings/personal-access-tokens/new'); };
-  $('upd-borrar').onclick=function(){ api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'borrar-token'})}).then(function(r){ if(r.error){updEstado(r.error,'err');return;} $('upd-instalar').style.display='none';$('upd-notas').style.display='none';updEstado('Token borrado.','ok'); }); };
+  $('upd-borrar').onclick=function(){ api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'borrar-token'})}).then(function(r){ if(r.error){updEstado(r.error,'err');return;} $('upd-instalar').style.display='none';$('upd-notas').style.display='none';updEstado('Token borrado.','ok');updSemaforo('amarillo','token no configurado'); }); };
   $('upd-buscar').onclick=function(){updBuscar(false);};
   $('upd-inicio').onchange=function(){api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'preferencias',buscarAlInicio:this.checked})});};
   $('upd-instalar').onclick=function(){
@@ -1069,6 +1085,7 @@
   plegar('srv-cabecera','srv-caja');
   plegar('form-cabecera','form');
   plegar('tun-cabecera-form','tun-caja-form');
+  plegar('upd-cabecera','upd-caja');
 
   function abrirFormulario(){
     document.getElementById('form-cabecera').classList.add('abierta');

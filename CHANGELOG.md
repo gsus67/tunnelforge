@@ -3,6 +3,25 @@
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
 A partir de ahora, cada nueva versión se añade al inicio de este mismo archivo en lugar de crear un `RELEASE_NOTES_vX.X.X.md` nuevo.
 
+## v2.9.1
+
+### Estado de actualizaciones
+
+- **Actualizaciones de la app** aparece plegado por defecto, igual que los demás menús secundarios.
+- Añadido un indicador circular visible desde el encabezado: verde = al día, amarillo = pendiente/no comprobado, rojo = hay una actualización disponible.
+- El encabezado muestra también un resumen corto del estado sin necesidad de desplegar el menú.
+
+### Seguridad SSH
+
+- Corregido el endurecimiento SSH en servidores donde la prioridad de `sshd_config`/`Include` hacía que un drop-in no desactivara realmente la contraseña.
+- Gateway ahora conserva `/etc/ssh/sshd_config.gateway-wisp.bak` y coloca un bloque gestionado al principio de `/etc/ssh/sshd_config`, evitando que una directiva anterior gane por precedencia.
+- Se mantiene `PubkeyAuthentication yes`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no` y `PermitRootLogin prohibit-password`.
+- Antes de confirmar el cambio se valida con `sshd -t`, se comprueba la configuración efectiva y se recarga `ssh`/`sshd`.
+- Después de la recarga se verifica que la key todavía abre una conexión independiente.
+- Añadida una prueba negativa real: Gateway intenta una conexión nueva usando solo contraseña/keyboard-interactive y **solo informa éxito si el servidor la rechaza**.
+- Si la key deja de funcionar, la contraseña todavía funciona o no se puede verificar de forma fiable, Gateway restaura el backup y recarga SSH.
+- Sincronizada la versión de aplicación y metadatos de Windows a **2.9.1**.
+
 ## v2.9.0
 
 ### Actualizaciones automáticas seguras

@@ -378,6 +378,47 @@ func conectarPerfilSoloKey(s Servidor) (*ssh.Client, error) {
 	return ssh.Dial("tcp", fmt.Sprintf("%s:%d", s.Host, s.Puerto), cfg)
 }
 
+// probarPasswordRemoto intenta autenticar deliberadamente SIN ninguna key.
+// Devuelve true si el servidor todavía acepta la contraseña por PasswordAuthentication
+// o keyboard-interactive. Se usa como prueba real después del hardening: no basta
+// con confiar en sshd -T porque Match/Include pueden variar entre distribuciones.
+func probarPasswordRemoto(s Servidor, password string) (bool, error) {
+	if strings.TrimSpace(password) == "" {
+		return false, fmt.Errorf("no hay contraseña para comprobar que el login por contraseña quedó cerrado")
+	}
+	cfg := &ssh.ClientConfig{
+		User: s.Usuario,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+			ssh.KeyboardInteractive(func(_, _ string, qs []string, _ []bool) ([]string, error) {
+				a := make([]string, len(qs))
+				for i := range a {
+					a[i] = password
+				}
+				return a, nil
+			}),
+		},
+		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
+			vista := ssh.FingerprintSHA256(key)
+			if vista != s.Huella {
+				return fmt.Errorf("la huella SSH cambió: esperada %s, recibida %s", s.Huella, vista)
+			}
+			return nil
+		},
+		Timeout: 8 * time.Second,
+	}
+	cli, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", s.Host, s.Puerto), cfg)
+	if err != nil {
+		msg := strings.ToLower(err.Error())
+		if strings.Contains(msg, "unable to authenticate") || strings.Contains(msg, "no supported methods") || strings.Contains(msg, "permission denied") {
+			return false, nil
+		}
+		return false, err
+	}
+	_ = cli.Close()
+	return true, nil
+}
+
 // ejecutarComoRoot ejecuta un script fijo como root. Si el usuario remoto no
 // es root, usa sudo -S con la contraseña que el usuario acaba de utilizar para
 // instalar la key. El script completo viaja codificado en base64 para evitar
@@ -448,8 +489,7 @@ func manejarAsegurarSSH(w http.ResponseWriter, r *http.Request) {
 	servidor := *p
 	mu.Unlock()
 
-	// Primera comprobación: antes de tocar sshd, la key debe abrir una conexión
-	// nueva por sí sola.
+	// La key debe funcionar ANTES de tocar sshd.
 	cli, err := conectarPerfilSoloKey(servidor)
 	if err != nil {
 		responderError(w, fmt.Errorf("no voy a cerrar contraseñas porque la key no superó la comprobación previa: %v", err))
@@ -457,38 +497,55 @@ func manejarAsegurarSSH(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cli.Close()
 
-	config := `# Gestionado por Gateway WISP Access
-# La key se comprobó antes de aplicar este archivo.
+	// OpenSSH usa el primer valor obtenido para muchas directivas. Para no
+	// depender de la posición de Include/sshd_config.d, Gateway coloca un bloque
+	// gestionado al principio del archivo principal y conserva un backup.
+	config := `# BEGIN GATEWAY-WISP-HARDENING
+# Gestionado por Gateway WISP Access. No editar dentro de este bloque.
 PubkeyAuthentication yes
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 ChallengeResponseAuthentication no
 PermitRootLogin prohibit-password
+# END GATEWAY-WISP-HARDENING
 `
 	config64 := base64.StdEncoding.EncodeToString([]byte(config))
 	aplicar := fmt.Sprintf(`set -u
-DIR=/etc/ssh/sshd_config.d
-FILE="$DIR/00-gateway-wisp-hardening.conf"
-mkdir -p "$DIR" || exit 30
-printf %%s %s | base64 -d > "$FILE" || exit 31
-chmod 600 "$FILE" || exit 32
+CFG=/etc/ssh/sshd_config
+BAK=/etc/ssh/sshd_config.gateway-wisp.bak
+TMP="$(mktemp)" || exit 30
+STRIPPED="$(mktemp)" || { rm -f "$TMP"; exit 30; }
+cleanup(){ rm -f "$TMP" "$STRIPPED"; }
+trap cleanup EXIT
+[ -f "$CFG" ] || { echo __GATEWAY_NO_CONFIG__; exit 31; }
+[ -f "$BAK" ] || cp -p "$CFG" "$BAK" || exit 32
+awk '
+  $0 == "# BEGIN GATEWAY-WISP-HARDENING" {skip=1; next}
+  $0 == "# END GATEWAY-WISP-HARDENING" {skip=0; next}
+  !skip {print}
+' "$CFG" > "$STRIPPED" || exit 33
+printf %%s %s | base64 -d > "$TMP" || exit 34
+cat "$STRIPPED" >> "$TMP" || exit 35
+chmod --reference="$CFG" "$TMP" 2>/dev/null || chmod 600 "$TMP"
+chown --reference="$CFG" "$TMP" 2>/dev/null || chown root:root "$TMP"
+cat "$TMP" > "$CFG" || exit 36
 if ! sshd -t; then
-  rm -f "$FILE"
+  cp -p "$BAK" "$CFG"
   echo __GATEWAY_CONFIG_INVALID__
   exit 40
 fi
 EFF="$(sshd -T 2>/dev/null)"
-echo "$EFF" | grep -q '^pubkeyauthentication yes$' || { rm -f "$FILE"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
-echo "$EFF" | grep -q '^passwordauthentication no$' || { rm -f "$FILE"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
-echo "$EFF" | grep -q '^kbdinteractiveauthentication no$' || { rm -f "$FILE"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
+echo "$EFF" | grep -q '^pubkeyauthentication yes$' || { cp -p "$BAK" "$CFG"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
+echo "$EFF" | grep -q '^passwordauthentication no$' || { cp -p "$BAK" "$CFG"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
+echo "$EFF" | grep -q '^kbdinteractiveauthentication no$' || { cp -p "$BAK" "$CFG"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41; }
 ROOTMODE="$(echo "$EFF" | awk '$1=="permitrootlogin" {print $2; exit}')"
 case "$ROOTMODE" in
   prohibit-password|without-password) ;;
-  *) rm -f "$FILE"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41 ;;
+  *) cp -p "$BAK" "$CFG"; echo __GATEWAY_NOT_EFFECTIVE__; exit 41 ;;
 esac
 %s
 if [ "$reload_ok" -ne 1 ]; then
-  rm -f "$FILE"
+  cp -p "$BAK" "$CFG"
   echo __GATEWAY_RELOAD_FAILED__
   exit 42
 fi
@@ -498,36 +555,56 @@ echo __GATEWAY_OK__
 	salida, err := ejecutarComoRoot(cli, pet.Password, aplicar)
 	if err != nil {
 		switch {
+		case strings.Contains(salida, "__GATEWAY_NO_CONFIG__"):
+			responderError(w, fmt.Errorf("no existe /etc/ssh/sshd_config en este servidor"))
 		case strings.Contains(salida, "__GATEWAY_CONFIG_INVALID__"):
-			responderError(w, fmt.Errorf("la configuración SSH no pasó 'sshd -t'; no se aplicó ningún cambio"))
+			responderError(w, fmt.Errorf("la configuración SSH no pasó 'sshd -t'; se restauró el archivo anterior"))
 		case strings.Contains(salida, "__GATEWAY_NOT_EFFECTIVE__"):
-			responderError(w, fmt.Errorf("el servidor tiene otra regla SSH con mayor prioridad; Gateway revirtió el cambio para evitar un bloqueo"))
+			responderError(w, fmt.Errorf("OpenSSH no aplicó los valores seguros esperados; Gateway restauró la configuración anterior"))
 		case strings.Contains(salida, "__GATEWAY_RELOAD_FAILED__"):
-			responderError(w, fmt.Errorf("la configuración era válida, pero no pude recargar el servicio SSH; el archivo de endurecimiento fue retirado"))
+			responderError(w, fmt.Errorf("la configuración era válida, pero no pude recargar SSH; Gateway restauró el archivo anterior"))
 		default:
 			responderError(w, fmt.Errorf("no pude asegurar SSH: %v", err))
 		}
 		return
 	}
 
-	// Segunda comprobación: ya con sshd recargado, abrimos otra conexión con la
-	// key. Si algo inesperado falla, revertimos mientras esta sesión sigue viva.
-	prueba, err := conectarPerfilSoloKey(servidor)
-	if err != nil {
-		rollback := fmt.Sprintf(`rm -f /etc/ssh/sshd_config.d/00-gateway-wisp-hardening.conf
+	rollback := fmt.Sprintf(`CFG=/etc/ssh/sshd_config
+BAK=/etc/ssh/sshd_config.gateway-wisp.bak
+[ -f "$BAK" ] && cp -p "$BAK" "$CFG"
 sshd -t || exit 50
 %s
 `, scriptRecargarSSH())
+
+	// La key debe seguir funcionando DESPUÉS de recargar.
+	prueba, err := conectarPerfilSoloKey(servidor)
+	if err != nil {
 		_, _ = ejecutarComoRoot(cli, pet.Password, rollback)
-		responderError(w, fmt.Errorf("la key dejó de poder abrir una conexión después del cambio; Gateway intentó revertir el endurecimiento: %v", err))
+		responderError(w, fmt.Errorf("la key dejó de funcionar después del cambio; Gateway restauró la configuración anterior: %v", err))
 		return
 	}
 	_ = prueba.Close()
+
+	// Prueba negativa REAL: la contraseña ya no debe abrir una conexión nueva,
+	// tampoco mediante keyboard-interactive.
+	aceptaPassword, err := probarPasswordRemoto(servidor, pet.Password)
+	if err != nil {
+		_, _ = ejecutarComoRoot(cli, pet.Password, rollback)
+		responderError(w, fmt.Errorf("no pude verificar de forma fiable que el login por contraseña quedó cerrado; restauré la configuración: %v", err))
+		return
+	}
+	if aceptaPassword {
+		_, _ = ejecutarComoRoot(cli, pet.Password, rollback)
+		responderError(w, fmt.Errorf("el servidor TODAVÍA aceptó una conexión nueva con contraseña; Gateway restauró el cambio para no dar una falsa sensación de seguridad"))
+		return
+	}
 
 	responder(w, map[string]any{
 		"ok":                     true,
 		"passwordAuthentication": false,
 		"pubkeyAuthentication":   true,
 		"rootLogin":              "key-only",
+		"passwordProbado":        true,
+		"backup":                 "/etc/ssh/sshd_config.gateway-wisp.bak",
 	})
 }
