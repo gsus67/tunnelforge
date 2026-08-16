@@ -499,7 +499,9 @@ func manejarAsegurarSSH(w http.ResponseWriter, r *http.Request) {
 
 	// OpenSSH usa el primer valor obtenido para muchas directivas. Para no
 	// depender de la posición de Include/sshd_config.d, Gateway coloca un bloque
-	// gestionado al principio del archivo principal y conserva un backup.
+	// gestionado al principio del archivo principal. También comenta las
+	// directivas globales conflictivas preexistentes para que el resultado sea
+	// legible, pero deja intactos los bloques Match.
 	config := `# BEGIN GATEWAY-WISP-HARDENING
 # Gestionado por Gateway WISP Access. No editar dentro de este bloque.
 PubkeyAuthentication yes
@@ -521,13 +523,7 @@ trap cleanup EXIT
 [ -f "$CFG" ] || { echo __GATEWAY_NO_CONFIG__; exit 31; }
 [ -f "$ORIG" ] || cp -p "$CFG" "$ORIG" || exit 32
 cp -p "$CFG" "$BAK" || exit 32
-awk '
-  $0 == "# BEGIN GATEWAY-WISP-HARDENING" {skip=1; next}
-  $0 == "# END GATEWAY-WISP-HARDENING" {skip=0; next}
-  $0 == "# BEGIN GATEWAY-WISP-PASSWORD-ACCESS" {skip=1; next}
-  $0 == "# END GATEWAY-WISP-PASSWORD-ACCESS" {skip=0; next}
-  !skip {print}
-' "$CFG" > "$STRIPPED" || exit 33
+%s || exit 33
 printf %%s %s | base64 -d > "$TMP" || exit 34
 cat "$STRIPPED" >> "$TMP" || exit 35
 chmod --reference="$CFG" "$TMP" 2>/dev/null || chmod 600 "$TMP"
@@ -554,7 +550,7 @@ if [ "$reload_ok" -ne 1 ]; then
   exit 42
 fi
 echo __GATEWAY_OK__
-`, config64, scriptRecargarSSH())
+`, scriptNormalizarSSHGlobal(), config64, scriptRecargarSSH())
 
 	salida, err := ejecutarComoRoot(cli, pet.Password, aplicar)
 	if err != nil {
@@ -669,13 +665,37 @@ func manejarEstadoSeguridadSSH(w http.ResponseWriter, r *http.Request) {
 	responder(w, map[string]any{"ok": true, "modo": modo})
 }
 
-func scriptQuitarBloquesGateway() string {
+// scriptNormalizarSSHGlobal elimina los bloques administrados anteriormente por
+// Gateway y comenta directivas globales conflictivas del archivo principal.
+// Deliberadamente deja intacto todo lo que aparezca desde el primer Match para
+// no alterar reglas condicionales por usuario, grupo, red, etc.
+func scriptNormalizarSSHGlobal() string {
 	return `awk '
   $0 == "# BEGIN GATEWAY-WISP-HARDENING" {skip=1; next}
   $0 == "# END GATEWAY-WISP-HARDENING" {skip=0; next}
   $0 == "# BEGIN GATEWAY-WISP-PASSWORD-ACCESS" {skip=1; next}
   $0 == "# END GATEWAY-WISP-PASSWORD-ACCESS" {skip=0; next}
-  !skip {print}
+  skip {next}
+  {
+    line=$0
+    trimmed=line
+    sub(/^[[:space:]]+/, "", trimmed)
+    low=tolower(trimmed)
+    if (low ~ /^match[[:space:]]+/) in_match=1
+    if (!in_match && trimmed !~ /^#/ && trimmed != "") {
+      split(trimmed, parts, /[[:space:]]+/)
+      key=tolower(parts[1])
+      if (key == "pubkeyauthentication" ||
+          key == "passwordauthentication" ||
+          key == "kbdinteractiveauthentication" ||
+          key == "challengeresponseauthentication" ||
+          key == "permitrootlogin") {
+        print "# Gateway WISP previous: " line
+        next
+      }
+    }
+    print line
+  }
 ' "$CFG" > "$STRIPPED"`
 }
 
@@ -726,7 +746,7 @@ PermitRootLogin prohibit-password
 # END GATEWAY-WISP-PASSWORD-ACCESS
 `
 	config64 := base64.StdEncoding.EncodeToString([]byte(config))
-	quitar := scriptQuitarBloquesGateway()
+	normalizar := scriptNormalizarSSHGlobal()
 	aplicar := fmt.Sprintf(`set -u
 CFG=/etc/ssh/sshd_config
 BAK=/etc/ssh/sshd_config.gateway-wisp.before-password.bak
@@ -762,7 +782,7 @@ if [ "$reload_ok" -ne 1 ]; then
   exit 42
 fi
 echo __GATEWAY_OK__
-`, quitar, config64, scriptRecargarSSH())
+`, normalizar, config64, scriptRecargarSSH())
 
 	salida, err := ejecutarComoRoot(cli, pet.Password, aplicar)
 	if err != nil {

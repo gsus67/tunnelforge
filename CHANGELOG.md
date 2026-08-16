@@ -3,6 +3,17 @@
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
 A partir de ahora, cada nueva versión se añade al inicio de este mismo archivo en lugar de crear un `RELEASE_NOTES_vX.X.X.md` nuevo.
 
+## v2.9.4
+
+### Normalización de `sshd_config`
+
+- Al asegurar SSH, Gateway ya no se limita a anteponer su bloque: comenta las directivas globales conflictivas preexistentes de `PubkeyAuthentication`, `PasswordAuthentication`, `KbdInteractiveAuthentication`, `ChallengeResponseAuthentication` y `PermitRootLogin`.
+- Las líneas anteriores quedan visibles como `# Gateway WISP previous: ...`, por lo que el archivo sigue siendo auditable y no se pierde la configuración original.
+- Gateway deja intacto todo lo que aparezca desde el primer bloque `Match`, evitando modificar reglas condicionales por usuario, grupo, red u otras condiciones.
+- La misma normalización se aplica al volver a permitir contraseña, manteniendo un único bloque administrado por Gateway y `root` en modo solo-key.
+- Se mantienen los backups transaccionales, `sshd -t`, verificación efectiva, recarga, prueba de key y prueba real de autenticación por contraseña.
+- Sincronizada la versión de aplicación y metadatos de Windows a **2.9.4**.
+
 ## v2.9.3
 
 ### Corrección del panel de actualizaciones
