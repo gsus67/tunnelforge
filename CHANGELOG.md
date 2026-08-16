@@ -1,3 +1,11 @@
+## v3.1.3
+
+### Cambios
+
+- Reajuste del dashboard general a un estilo más cuadrado para no romper la composición visual.
+- Reducción de radios en contenedor principal, paneles, tarjetas y botones.
+- Conservados únicamente radios redondos donde sí aportan: indicadores, franjas y puntos de estado.
+
 ## v3.1.2
 
 ### Cambios
