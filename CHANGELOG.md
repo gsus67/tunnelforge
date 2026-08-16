@@ -1,3 +1,11 @@
+## v3.1.4
+
+### Cambios
+
+- Eliminado el marco gris exterior: la interfaz ahora ocupa completamente la ventana de la app.
+- Eliminado padding exterior, borde principal y sombra del contenedor raíz para adaptarlo mejor a WebView/HTML UI.
+- Fondo exterior unificado con el fondo interno para evitar que el diseño se "rompa" visualmente.
+
 ## v3.1.3
 
 ### Cambios
