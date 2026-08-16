@@ -3,6 +3,16 @@
 Este archivo concentra los cambios de cada versión de **Conectar Gateway / Gateway WISP Access**.  
 A partir de ahora, cada nueva versión se añade al inicio de este mismo archivo en lugar de crear un `RELEASE_NOTES_vX.X.X.md` nuevo.
 
+## v2.9.3
+
+### Corrección del panel de actualizaciones
+
+- Corregido el panel **Actualizaciones de la app** para que realmente permanezca plegado por defecto.
+- Corregida la prioridad CSS que hacía que `.updapp { display:flex }` anulase el estado oculto de `.plegable`.
+- El encabezado sigue mostrando el indicador de estado y el resumen aunque el contenido esté cerrado.
+- Al hacer clic en el encabezado, el panel ahora alterna correctamente entre abierto y cerrado.
+- Sincronizada la versión de aplicación y metadatos de Windows a **2.9.3**.
+
 ## v2.9.2
 
 ### Control reversible de seguridad SSH
