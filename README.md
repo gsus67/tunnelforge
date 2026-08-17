@@ -20,18 +20,25 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 ---
 
 
-## Monitoreo / Grafana (3.2.0)
+## Monitoreo / Grafana
 
 Gateway WISP Access puede preparar un servidor central con **Prometheus + Grafana OSS** y monitorizar únicamente los perfiles que el usuario seleccione. Los agentes `node_exporter` quedan ligados a `127.0.0.1:9100`; Prometheus accede a ellos mediante túneles SSH persistentes administrados por la aplicación.
 
 - Puertos locales de túnel asignados automáticamente (rango 19100–19999 configurable).
 - Grafana embebida dentro de la ventana de la aplicación.
 - CPU, RAM y tráfico de red en Mbit/s.
-- Métricas de peers WireGuard: RX/TX en Mbit/s y último handshake.
+- Vista compacta de peers WireGuard, un peer por fila, con nombre amigable, RX/TX en Mbit/s y último handshake.
+- Búsqueda y orden de peers por nombre, descarga, subida o actividad.
+- Diagnóstico por servidor para comprobar SSH, node_exporter, túnel y Prometheus sin cambiar la configuración.
+- Progreso visible durante la preparación de Prometheus/Grafana y al aplicar targets, para saber qué paso está ejecutándose.
 - Configuración y credenciales de Monitoreo cifradas localmente.
 - La copia `.cgw` puede transportar también la configuración de Monitoreo/Grafana.
 
-La instalación automática inicial está deliberadamente limitada a **Debian/Ubuntu** para evitar aplicar comandos de paquetes no verificados sobre distribuciones distintas. Consulte `TERCEROS.md` para las licencias de Grafana, Prometheus, node_exporter y WireGuard tools.
+La preparación muestra ahora cada etapa en la propia interfaz. La instalación automática inicial está deliberadamente limitada a **Debian/Ubuntu** para evitar aplicar comandos de paquetes no verificados sobre distribuciones distintas. Consulte `TERCEROS.md` para las licencias de Grafana, Prometheus, node_exporter y WireGuard tools.
+
+### Evolución de la interfaz
+
+La versión estable continúa usando la UI WebView actual. El repositorio incluye además `frontend-next/`, una base TypeScript aislada para la migración progresiva a **Go + Wails + TypeScript**. Esta base todavía no sustituye la interfaz de producción, por lo que no altera el build ni el comportamiento estable en Windows/Linux.
 
 ## Qué hace
 

@@ -30,3 +30,7 @@ Gateway WISP Access instala **Grafana OSS**, no Grafana Enterprise. Los dashboar
 La interfaz puede mostrar Grafana mediante un proxy local sobre SSH. Grafana sigue ejecutándose como un servicio independiente en el servidor de monitoreo y no se enlaza con el código de Gateway WISP Access.
 
 Las fuentes de la interfaz (Barlow Condensed, JetBrains Mono) se cargan desde Google Fonts bajo SIL Open Font License.
+
+## Migración futura de interfaz
+
+El directorio `frontend-next/` contiene únicamente código TypeScript propio y documentación de migración. **Wails todavía no forma parte del binario distribuido en esta versión**, por lo que no se declara como dependencia enlazada hasta que la migración pase a producción.

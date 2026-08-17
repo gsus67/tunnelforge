@@ -1,3 +1,15 @@
+## v3.2.1
+
+### Monitoreo · pulido y diagnóstico
+
+- El apartado se muestra simplemente como **Monitoreo**, sin distintivo de versión en la interfaz.
+- Progreso visible con etapa, porcentaje y registro resumido durante preparación y aplicación de targets.
+- Vista compacta nativa de peers WireGuard con nombre amigable, RX/TX en Mbit/s y handshake.
+- Buscador de peers y orden por nombre, descarga, subida o actividad.
+- Diagnóstico por servidor monitorizado: comprueba SSH, node_exporter, túnel SSH y visibilidad desde Prometheus sin modificar la configuración.
+- Base aislada `frontend-next/` para la futura migración Go + Wails + TypeScript; todavía no forma parte del build estable.
+- README, Info, CHANGELOG y documentación de terceros mantenidos al día.
+
 ## v3.2.0
 
 ### Monitoreo / Grafana
@@ -14,6 +26,11 @@
 - Configuración de Monitoreo y credenciales de Grafana cifradas localmente con la clave privada de Gateway WISP Access.
 - Los backups `.cgw` pueden incluir toda la configuración de Monitoreo/Grafana junto con servidores, túneles y claves SSH.
 - Atribuciones y licencias actualizadas para Grafana OSS (AGPL-3.0-only), Prometheus/node_exporter (Apache-2.0) y WireGuard tools (GPLv2).
+- Eliminado el distintivo visual `3.2` del menú: el apartado se llama simplemente **Monitoreo**.
+- Preparación y aplicación de targets muestran progreso, etapa actual y registro resumido mientras trabajan.
+- Nueva vista compacta nativa de peers WireGuard: un peer por fila con nombre amigable, servidor, RX/TX en Mbit/s y antigüedad del handshake.
+- El collector intenta recuperar el nombre asignado al peer desde comentarios de la configuración WireGuard (`Name`, `Nombre`, `Client` o `Cliente`) y mantiene IP/clave corta como fallback.
+- Añadida base aislada `frontend-next/` para avanzar la futura migración a Go + Wails + TypeScript sin reemplazar la UI estable.
 
 ## v3.1.14
 

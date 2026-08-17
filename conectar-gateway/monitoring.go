@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -49,6 +50,69 @@ type MonitoringConfig struct {
 	Targets       []MonitoringTarget `json:"targets"`
 	Preparado     bool               `json:"preparado"`
 	Actualizado   string             `json:"actualizado,omitempty"`
+}
+
+// MonitoringProgress permite que la UI muestre qué está ocurriendo durante
+// instalaciones que pueden tardar varios minutos.
+type MonitoringProgress struct {
+	Operacion  string   `json:"operacion"`
+	Etapa      string   `json:"etapa"`
+	Porcentaje int      `json:"porcentaje"`
+	Activo     bool     `json:"activo"`
+	Mostrar    bool     `json:"mostrar"`
+	Log        []string `json:"log"`
+}
+
+var monProgress = struct {
+	sync.Mutex
+	P MonitoringProgress
+}{}
+
+func monitoringProgresoInicio(op, etapa string) {
+	monProgress.Lock()
+	monProgress.P = MonitoringProgress{Operacion: op, Etapa: etapa, Porcentaje: 3, Activo: true, Mostrar: true, Log: []string{etapa}}
+	monProgress.Unlock()
+}
+func monitoringProgreso(etapa string, pct int) {
+	monProgress.Lock()
+	if pct < 0 {
+		pct = 0
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	monProgress.P.Etapa = etapa
+	monProgress.P.Porcentaje = pct
+	monProgress.P.Mostrar = true
+	if len(monProgress.P.Log) == 0 || monProgress.P.Log[len(monProgress.P.Log)-1] != etapa {
+		monProgress.P.Log = append(monProgress.P.Log, etapa)
+	}
+	if len(monProgress.P.Log) > 12 {
+		monProgress.P.Log = monProgress.P.Log[len(monProgress.P.Log)-12:]
+	}
+	monProgress.Unlock()
+}
+func monitoringProgresoFin(etapa string, ok bool) {
+	monProgress.Lock()
+	monProgress.P.Etapa = etapa
+	monProgress.P.Porcentaje = 100
+	monProgress.P.Activo = false
+	monProgress.P.Mostrar = true
+	if !ok {
+		monProgress.P.Porcentaje = 100
+	}
+	monProgress.P.Log = append(monProgress.P.Log, etapa)
+	if len(monProgress.P.Log) > 12 {
+		monProgress.P.Log = monProgress.P.Log[len(monProgress.P.Log)-12:]
+	}
+	monProgress.Unlock()
+}
+func manejarMonitoringProgreso(w http.ResponseWriter, r *http.Request) {
+	monProgress.Lock()
+	p := monProgress.P
+	p.Log = append([]string(nil), monProgress.P.Log...)
+	monProgress.Unlock()
+	responder(w, p)
 }
 
 func monitoringDefault() MonitoringConfig {
@@ -229,7 +293,7 @@ func monitoringInstallerMonitor(cfg MonitoringConfig) string {
 	// ligada a 127.0.0.1 para no exponer ni Grafana ni Prometheus a Internet.
 	return fmt.Sprintf(`set -eu
 if ! command -v apt-get >/dev/null 2>&1; then
-  echo "Por seguridad, la instalación automática de 3.2.0 soporta Debian/Ubuntu en esta primera versión." >&2
+  echo "Por seguridad, la instalación automática de 3.2.1 soporta Debian/Ubuntu en esta primera versión." >&2
   exit 42
 fi
 export DEBIAN_FRONTEND=noninteractive
@@ -334,7 +398,7 @@ func dashboardOverviewJSON() string {
 }
 
 func dashboardWireGuardJSON() string {
-	return `{"annotations":{"list":[]},"editable":true,"graphTooltip":1,"panels":[{"type":"stat","title":"Peers con handshake reciente","id":1,"gridPos":{"h":4,"w":6,"x":0,"y":0},"targets":[{"expr":"count((time() - gateway_wisp_wireguard_peer_latest_handshake_seconds) < 180)","refId":"A"}]},{"type":"timeseries","title":"RX por peer (Mbit/s)","id":2,"gridPos":{"h":9,"w":12,"x":0,"y":4},"targets":[{"expr":"irate(gateway_wisp_wireguard_peer_receive_bytes_total[30s]) * 8 / 1000000","legendFormat":"{{server}} · {{allowed_ips}}","refId":"A"}]},{"type":"timeseries","title":"TX por peer (Mbit/s)","id":3,"gridPos":{"h":9,"w":12,"x":12,"y":4},"targets":[{"expr":"irate(gateway_wisp_wireguard_peer_transmit_bytes_total[30s]) * 8 / 1000000","legendFormat":"{{server}} · {{allowed_ips}}","refId":"A"}]},{"type":"table","title":"Peers WireGuard","id":4,"gridPos":{"h":10,"w":24,"x":0,"y":13},"targets":[{"expr":"gateway_wisp_wireguard_peer_latest_handshake_seconds","format":"table","instant":true,"refId":"A"}]}],"refresh":"5s","schemaVersion":39,"tags":["gateway-wisp-access","wireguard"],"templating":{"list":[]},"time":{"from":"now-3h","to":"now"},"title":"Gateway WISP - WireGuard Peers","uid":"gateway-wisp-wireguard","version":1}`
+	return `{"annotations":{"list":[]},"editable":true,"graphTooltip":1,"panels":[{"type":"stat","title":"Peers con handshake reciente","id":1,"gridPos":{"h":4,"w":6,"x":0,"y":0},"targets":[{"expr":"count((time() - gateway_wisp_wireguard_peer_latest_handshake_seconds) < 180)","refId":"A"}]},{"type":"timeseries","title":"RX por peer (Mbit/s)","id":2,"gridPos":{"h":9,"w":12,"x":0,"y":4},"targets":[{"expr":"irate(gateway_wisp_wireguard_peer_receive_bytes_total[30s]) * 8 / 1000000","legendFormat":"{{server}} · {{peer_name}}","refId":"A"}]},{"type":"timeseries","title":"TX por peer (Mbit/s)","id":3,"gridPos":{"h":9,"w":12,"x":12,"y":4},"targets":[{"expr":"irate(gateway_wisp_wireguard_peer_transmit_bytes_total[30s]) * 8 / 1000000","legendFormat":"{{server}} · {{peer_name}}","refId":"A"}]},{"type":"table","title":"Peers WireGuard","id":4,"gridPos":{"h":10,"w":24,"x":0,"y":13},"targets":[{"expr":"gateway_wisp_wireguard_peer_latest_handshake_seconds","format":"table","instant":true,"refId":"A"}]}],"refresh":"5s","schemaVersion":39,"tags":["gateway-wisp-access","wireguard"],"templating":{"list":[]},"time":{"from":"now-3h","to":"now"},"title":"Gateway WISP - WireGuard Peers","uid":"gateway-wisp-wireguard","version":1}`
 }
 
 func monitoringEscribirDashboards(cfg MonitoringConfig) error {
@@ -373,6 +437,29 @@ set -eu
 OUT=/var/lib/node_exporter/textfile_collector/wireguard.prom.tmp
 FINAL=/var/lib/node_exporter/textfile_collector/wireguard.prom
 mkdir -p "$(dirname "$FINAL")"
+esc(){ printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+peer_name(){
+  key="$1"; fallback="$2"; found=""
+  for f in /etc/wireguard/*.conf; do
+    [ -r "$f" ] || continue
+    n=$(awk -v k="$key" '
+      BEGIN{name=""}
+      /^[[:space:]]*#/ {
+        x=$0; sub(/^[[:space:]]*#[[:space:]]*/,"",x)
+        if (x ~ /^(Name|Nombre|Client|Cliente)[[:space:]]*[:=]/) { sub(/^[^:=]*[:=][[:space:]]*/,"",x); name=x }
+        else if (x != "" && x !~ /^[-=]+$/) name=x
+        next
+      }
+      /^[[:space:]]*\[Peer\]/ { peer=1; next }
+      peer && /^[[:space:]]*PublicKey[[:space:]]*=/ {
+        x=$0; sub(/^[^=]*=[[:space:]]*/,"",x)
+        if (x==k) { print name; exit }
+        peer=0; name=""
+      }' "$f" 2>/dev/null || true)
+    [ -n "$n" ] && { found="$n"; break; }
+  done
+  [ -n "$found" ] && printf '%s' "$found" || printf '%s' "$fallback"
+}
 {
  echo '# HELP gateway_wisp_wireguard_peer_receive_bytes_total Bytes recibidos por peer WireGuard.'
  echo '# TYPE gateway_wisp_wireguard_peer_receive_bytes_total counter'
@@ -380,7 +467,15 @@ mkdir -p "$(dirname "$FINAL")"
  echo '# TYPE gateway_wisp_wireguard_peer_transmit_bytes_total counter'
  echo '# HELP gateway_wisp_wireguard_peer_latest_handshake_seconds Timestamp Unix del último handshake.'
  echo '# TYPE gateway_wisp_wireguard_peer_latest_handshake_seconds gauge'
- wg show all dump 2>/dev/null | awk 'BEGIN{FS="\t"} NF>=8 && $1 !~ /^private-key$/ {gsub(/\\/,"\\\\",$1); gsub(/"/,"\\\"",$1); gsub(/\\/,"\\\\",$2); gsub(/"/,"\\\"",$2); gsub(/\\/,"\\\\",$5); gsub(/"/,"\\\"",$5); print "gateway_wisp_wireguard_peer_receive_bytes_total{interface=\""$1"\",peer=\""$2"\",allowed_ips=\""$5"\"} "$7; print "gateway_wisp_wireguard_peer_transmit_bytes_total{interface=\""$1"\",peer=\""$2"\",allowed_ips=\""$5"\"} "$8; print "gateway_wisp_wireguard_peer_latest_handshake_seconds{interface=\""$1"\",peer=\""$2"\",allowed_ips=\""$5"\"} "$6}'
+ wg show all dump 2>/dev/null | awk 'BEGIN{FS="\t"} NF>=8 && $1 !~ /^private-key$/ {print $1 "\t" $2 "\t" $5 "\t" $6 "\t" $7 "\t" $8}' | while IFS="$(printf '\t')" read -r iface peer allowed hs rx tx; do
+   short=$(printf '%s' "$peer" | cut -c1-8)
+   name=$(peer_name "$peer" "$allowed")
+   [ -n "$name" ] || name="peer-$short"
+   ei=$(esc "$iface"); ep=$(esc "$peer"); ea=$(esc "$allowed"); en=$(esc "$name")
+   printf 'gateway_wisp_wireguard_peer_receive_bytes_total{interface="%s",peer="%s",peer_name="%s",allowed_ips="%s"} %s\n' "$ei" "$ep" "$en" "$ea" "$rx"
+   printf 'gateway_wisp_wireguard_peer_transmit_bytes_total{interface="%s",peer="%s",peer_name="%s",allowed_ips="%s"} %s\n' "$ei" "$ep" "$en" "$ea" "$tx"
+   printf 'gateway_wisp_wireguard_peer_latest_handshake_seconds{interface="%s",peer="%s",peer_name="%s",allowed_ips="%s"} %s\n' "$ei" "$ep" "$en" "$ea" "$hs"
+ done
 } > "$OUT"
 mv "$OUT" "$FINAL"
 WGEOF
@@ -552,13 +647,18 @@ func monitoringAplicarTarget(cfg *MonitoringConfig, nombre string) error {
 	if target.Huella == "" {
 		return fmt.Errorf("%s no tiene huella SSH verificada", nombre)
 	}
+	var yaExiste bool
 	for _, t := range cfg.Targets {
 		if t.Servidor == nombre {
-			return nil
+			yaExiste = true
+			break
 		}
 	}
 	if err := monitoringInstalarAgente(nombre); err != nil {
 		return fmt.Errorf("instalando agente en %s: %w", nombre, err)
+	}
+	if yaExiste {
+		return nil
 	}
 	if nombre == cfg.MonitorServer {
 		cfg.Targets = append(cfg.Targets, MonitoringTarget{Servidor: nombre, LocalPort: 9100, RemotePort: 9100, PeerWG: true})
@@ -693,6 +793,7 @@ func manejarMonitoringConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func manejarMonitoringPreparar(w http.ResponseWriter, r *http.Request) {
+	monitoringProgresoInicio("Preparar monitor", "Validando configuración y conexión SSH…")
 	cfg := cargarMonitoring()
 	if cfg.MonitorServer == "" {
 		responderError(w, fmt.Errorf("configura el servidor de monitoreo"))
@@ -706,24 +807,32 @@ func manejarMonitoringPreparar(w http.ResponseWriter, r *http.Request) {
 		}
 		cfg.GrafanaPass = p
 	}
+	monitoringProgreso("Instalando Prometheus, node_exporter y dependencias…", 18)
+	monitoringProgreso("Instalando y configurando Grafana OSS…", 42)
 	out, err := monitoringRoot(cfg.MonitorServer, monitoringInstallerMonitor(cfg))
 	if err != nil {
+		monitoringProgresoFin("Falló la preparación del servidor de monitoreo.", false)
 		responderError(w, fmt.Errorf("preparando monitor: %v — %s", err, out))
 		return
 	}
+	monitoringProgreso("Provisionando datasource y dashboards…", 78)
 	cfg.Preparado = true
 	if err := guardarMonitoring(cfg); err != nil {
 		responderError(w, err)
 		return
 	}
 	if err := monitoringEscribirDashboards(cfg); err != nil {
+		monitoringProgresoFin("Servicios instalados, pero falló el dashboard.", false)
 		responderError(w, fmt.Errorf("instalado, pero falló el dashboard: %v", err))
 		return
 	}
+	monitoringProgreso("Comprobando servicios locales…", 94)
+	monitoringProgresoFin("Prometheus y Grafana preparados correctamente.", true)
 	responder(w, map[string]any{"ok": true, "mensaje": "Prometheus y Grafana quedaron preparados en localhost del servidor monitor."})
 }
 
 func manejarMonitoringTargets(w http.ResponseWriter, r *http.Request) {
+	monitoringProgresoInicio("Aplicar monitoreo", "Calculando cambios de targets…")
 	var pet struct {
 		Servidores []string `json:"servidores"`
 	}
@@ -742,6 +851,7 @@ func manejarMonitoringTargets(w http.ResponseWriter, r *http.Request) {
 	actuales := append([]MonitoringTarget(nil), cfg.Targets...)
 	for _, t := range actuales {
 		if !deseados[t.Servidor] {
+			monitoringProgreso("Quitando monitoreo de "+t.Servidor+"…", 12)
 			if t.Servidor != cfg.MonitorServer {
 				_ = monitoringQuitarTunel(cfg, t.Servidor)
 			}
@@ -760,16 +870,25 @@ func manejarMonitoringTargets(w http.ResponseWriter, r *http.Request) {
 		nombres = append(nombres, n)
 	}
 	sort.Strings(nombres)
-	for _, n := range nombres {
+	for i, n := range nombres {
+		pct := 20
+		if len(nombres) > 0 {
+			pct = 20 + ((i+1)*65)/len(nombres)
+		}
+		monitoringProgreso("Preparando agente y túnel SSH para "+n+"…", pct)
 		if err := monitoringAplicarTarget(&cfg, n); err != nil {
+			monitoringProgresoFin("Falló al configurar "+n+".", false)
 			responderError(w, err)
 			return
 		}
 	}
+	monitoringProgreso("Regenerando y validando configuración de Prometheus…", 92)
 	if err := monitoringRegenerarPrometheus(cfg); err != nil {
+		monitoringProgresoFin("Prometheus rechazó la nueva configuración.", false)
 		responderError(w, err)
 		return
 	}
+	monitoringProgresoFin("Selección aplicada y verificada.", true)
 	responder(w, map[string]any{"ok": true, "targets": cfg.Targets})
 }
 
@@ -780,6 +899,129 @@ func manejarMonitoringCredenciales(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	responder(w, map[string]any{"ok": true, "usuario": cfg.GrafanaUser, "password": cfg.GrafanaPass})
+}
+
+type prometheusVectorResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Result []struct {
+			Metric map[string]string `json:"metric"`
+			Value  []any             `json:"value"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
+func monitoringPromQuery(cfg MonitoringConfig, query string) ([]struct {
+	Metric map[string]string
+	Value  float64
+}, error) {
+	mu.Lock()
+	con := conexiones[cfg.MonitorServer]
+	mu.Unlock()
+	if con == nil {
+		return nil, fmt.Errorf("conecta el servidor de monitoreo")
+	}
+	q := url.QueryEscape(query)
+	c, err := con.cliente.Dial("tcp", "127.0.0.1:9090")
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+	_ = c.SetDeadline(time.Now().Add(4 * time.Second))
+	fmt.Fprintf(c, "GET /api/v1/query?query=%s HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n", q)
+	resp, err := http.ReadResponse(bufio.NewReader(c), nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Prometheus respondió %s", resp.Status)
+	}
+	var pr prometheusVectorResponse
+	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+		return nil, err
+	}
+	out := make([]struct {
+		Metric map[string]string
+		Value  float64
+	}, 0, len(pr.Data.Result))
+	for _, r := range pr.Data.Result {
+		if len(r.Value) < 2 {
+			continue
+		}
+		f, e := strconv.ParseFloat(fmt.Sprint(r.Value[1]), 64)
+		if e != nil {
+			continue
+		}
+		out = append(out, struct {
+			Metric map[string]string
+			Value  float64
+		}{r.Metric, f})
+	}
+	return out, nil
+}
+
+func manejarMonitoringPeers(w http.ResponseWriter, r *http.Request) {
+	cfg := cargarMonitoring()
+	if cfg.MonitorServer == "" || !cfg.Preparado {
+		responderError(w, fmt.Errorf("prepara primero el monitoreo"))
+		return
+	}
+	rx, err := monitoringPromQuery(cfg, `irate(gateway_wisp_wireguard_peer_receive_bytes_total[30s]) * 8 / 1000000`)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	tx, _ := monitoringPromQuery(cfg, `irate(gateway_wisp_wireguard_peer_transmit_bytes_total[30s]) * 8 / 1000000`)
+	hs, _ := monitoringPromQuery(cfg, `time() - gateway_wisp_wireguard_peer_latest_handshake_seconds`)
+	type peer struct {
+		Nombre, Servidor, Interfaz, AllowedIPs, Key string
+		RxMbit, TxMbit, HandshakeAge                float64
+	}
+	m := map[string]*peer{}
+	keyOf := func(mm map[string]string) string {
+		return mm["server"] + "\x00" + mm["interface"] + "\x00" + mm["peer"]
+	}
+	ensure := func(mm map[string]string) *peer {
+		k := keyOf(mm)
+		p := m[k]
+		if p == nil {
+			name := strings.TrimSpace(mm["peer_name"])
+			if name == "" {
+				name = strings.TrimSpace(mm["allowed_ips"])
+			}
+			if name == "" {
+				pk := mm["peer"]
+				if len(pk) > 8 {
+					pk = pk[:8]
+				}
+				name = "peer-" + pk
+			}
+			p = &peer{Nombre: name, Servidor: mm["server"], Interfaz: mm["interface"], AllowedIPs: mm["allowed_ips"], Key: mm["peer"]}
+			m[k] = p
+		}
+		return p
+	}
+	for _, v := range rx {
+		ensure(v.Metric).RxMbit = v.Value
+	}
+	for _, v := range tx {
+		ensure(v.Metric).TxMbit = v.Value
+	}
+	for _, v := range hs {
+		ensure(v.Metric).HandshakeAge = v.Value
+	}
+	peers := make([]peer, 0, len(m))
+	for _, p := range m {
+		peers = append(peers, *p)
+	}
+	sort.Slice(peers, func(i, j int) bool {
+		if peers[i].Servidor == peers[j].Servidor {
+			return strings.ToLower(peers[i].Nombre) < strings.ToLower(peers[j].Nombre)
+		}
+		return strings.ToLower(peers[i].Servidor) < strings.ToLower(peers[j].Servidor)
+	})
+	responder(w, map[string]any{"ok": true, "peers": peers})
 }
 
 // Proxy de Grafana dentro de la propia WebView. El primer request requiere el
@@ -852,4 +1094,67 @@ func monitoringServicioOnline(cfg MonitoringConfig, puerto int) bool {
 	buf := make([]byte, 64)
 	n, _ := c.Read(buf)
 	return n > 0 && strings.Contains(string(buf[:n]), "HTTP/")
+}
+
+// manejarMonitoringDiagnostico comprueba la cadena de monitoreo sin modificarla:
+// sesión SSH, node_exporter, túnel persistente y visibilidad desde Prometheus.
+func manejarMonitoringDiagnostico(w http.ResponseWriter, r *http.Request) {
+	cfg := cargarMonitoring()
+	var pet struct {
+		Servidor string `json:"servidor"`
+	}
+	if r.Method == http.MethodPost {
+		_ = json.NewDecoder(r.Body).Decode(&pet)
+	}
+	if strings.TrimSpace(pet.Servidor) == "" {
+		responderError(w, fmt.Errorf("selecciona un servidor para diagnosticar"))
+		return
+	}
+	var target *MonitoringTarget
+	for i := range cfg.Targets {
+		if cfg.Targets[i].Servidor == pet.Servidor {
+			target = &cfg.Targets[i]
+			break
+		}
+	}
+	if target == nil {
+		responderError(w, fmt.Errorf("%s no está monitorizado", pet.Servidor))
+		return
+	}
+	pasos := []map[string]any{}
+	mu.Lock()
+	conTarget := conexiones[pet.Servidor]
+	conMonitor := conexiones[cfg.MonitorServer]
+	mu.Unlock()
+	sshOK := conTarget != nil
+	pasos = append(pasos, map[string]any{"nombre": "SSH", "ok": sshOK})
+	nodeOK := false
+	if conTarget != nil {
+		if c, e := conTarget.cliente.Dial("tcp", "127.0.0.1:9100"); e == nil {
+			nodeOK = true
+			_ = c.Close()
+		}
+	}
+	pasos = append(pasos, map[string]any{"nombre": "node_exporter", "ok": nodeOK})
+	tunnelOK := false
+	if conMonitor != nil {
+		if c, e := conMonitor.cliente.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", target.LocalPort)); e == nil {
+			tunnelOK = true
+			_ = c.Close()
+		}
+	}
+	pasos = append(pasos, map[string]any{"nombre": "Túnel SSH", "ok": tunnelOK})
+	promOK := false
+	if cfg.Preparado {
+		if vals, e := monitoringPromQuery(cfg, fmt.Sprintf(`up{server=%q}`, pet.Servidor)); e == nil {
+			for _, v := range vals {
+				if v.Value > 0 {
+					promOK = true
+					break
+				}
+			}
+		}
+	}
+	pasos = append(pasos, map[string]any{"nombre": "Prometheus", "ok": promOK})
+	responder(w, map[string]any{"ok": true, "servidor": pet.Servidor, "saludable": sshOK && nodeOK && tunnelOK && promOK, "pasos": pasos})
 }
