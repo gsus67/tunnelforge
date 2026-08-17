@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "3.3.0"
+const version = "3.4.0"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -905,6 +905,18 @@ func main() {
 	mux.HandleFunc("/api/monitoring/peers", proteger(manejarMonitoringPeers))
 	mux.HandleFunc("/api/monitoring/resumen", proteger(manejarMonitoringResumen))
 	mux.HandleFunc("/api/monitoring/diagnostico", proteger(manejarMonitoringDiagnostico))
+	mux.HandleFunc("/api/wireguard/perfiles", proteger(manejarWGProfiles))
+	mux.HandleFunc("/api/wireguard/eliminar", proteger(manejarWGDelete))
+	mux.HandleFunc("/api/wireguard/generar-key", proteger(manejarWGGenerateKey))
+	mux.HandleFunc("/api/wireguard/generar-psk", proteger(manejarWGGeneratePSK))
+	mux.HandleFunc("/api/wireguard/importar", proteger(manejarWGImport))
+	mux.HandleFunc("/api/wireguard/revelar", proteger(manejarWGReveal))
+	mux.HandleFunc("/api/wireguard/exportar", proteger(manejarWGExport))
+	mux.HandleFunc("/api/wireguard/motor", proteger(manejarWGEngine))
+	mux.HandleFunc("/api/wireguard/motor/instalar", proteger(manejarWGInstallEngine))
+	mux.HandleFunc("/api/wireguard/conectar", proteger(manejarWGConnect))
+	mux.HandleFunc("/api/wireguard/desconectar", proteger(manejarWGDisconnect))
+	mux.HandleFunc("/api/wireguard/estado", proteger(manejarWGStatus))
 
 	// Reordenar servidores (arrastrar en la interfaz): recibe la lista de
 	// nombres en el nuevo orden y reescribe el archivo respetando ese orden.
@@ -1123,6 +1135,7 @@ func main() {
 	wsBase := "ws://" + escucha.Addr().String()
 	fmt.Println("Backend local:", backend)
 	go func() { _ = http.Serve(escucha, mux) }()
+	go wireguardAutoConnect()
 
 	if os.Getenv("CG_NO_BROWSER") != "" {
 		select {} // modo servicio (pruebas): solo la API

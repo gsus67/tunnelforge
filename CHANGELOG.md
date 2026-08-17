@@ -1,3 +1,21 @@
+## v3.4.0
+
+### Cliente WireGuard local
+
+- Nuevo apartado global **Cliente WireGuard** para Windows y Linux, integrado en la interfaz Wails/TypeScript.
+- Perfiles múltiples con importar/exportar `.conf`, crear/editar/eliminar, búsqueda, autoconexión y estado en vivo.
+- Generación local de pares PrivateKey/PublicKey y PresharedKey; las claves privadas y PSK se almacenan cifradas.
+- Soporte de múltiples peers por perfil con nombre, Endpoint, AllowedIPs y PersistentKeepalive.
+- Ajustes de interfaz: Address, DNS, MTU, ListenPort, Table, notas y túnel completo IPv4/IPv6.
+- Hooks PreUp/PostUp/PreDown/PostDown se importan pero permanecen deshabilitados hasta autorización explícita.
+- Tráfico RX/TX agregado en Mbit/s, bytes totales, último handshake y telemetría por peer cuando `wg` la expone.
+- Windows utiliza la instalación oficial WireGuard for Windows y sus servicios de túnel; Linux utiliza `wireguard-tools`/`wg-quick`. No se empaqueta un driver VPN propio.
+- El nombre interno de interfaz `gwa-*` se limita para respetar el tamaño máximo de interfaz de Linux.
+- Backups `.cgw` pueden incluir perfiles WireGuard y secretos dentro del contenedor portable cifrado; al restaurar se vuelven a cifrar en almacenamiento local.
+- Añadida protección de `.gitignore` para `wireguard.json` y `wireguard-runtime/` para evitar commits accidentales de secretos.
+- Eliminada metadata legacy `app.manifest`/`versioninfo.json`; Wails queda como único responsable de los recursos Windows.
+- README, Info, CHANGELOG y documentación legal actualizados para v3.4.0.
+
 ## v3.3.0
 
 ### Correcciones de compilación

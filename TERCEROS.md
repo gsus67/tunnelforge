@@ -31,6 +31,22 @@ Los scripts y métricas `gateway_wisp_*` generados por Gateway WISP Access son c
 
 Las fuentes de la interfaz (Barlow Condensed, JetBrains Mono) se cargan desde Google Fonts bajo SIL Open Font License.
 
+## Cliente WireGuard local
+
+Desde v3.4.0 la aplicación puede administrar túneles WireGuard locales. La interfaz y el almacenamiento de perfiles son código de Gateway WISP Access, pero el motor de VPN se mantiene como software externo del sistema operativo:
+
+| Componente | Uso | Distribución/licencia |
+|---|---|---|
+| [WireGuard for Windows](https://git.zx2c4.com/wireguard-windows/) | Motor oficial en Windows, servicio de túnel y `wg.exe` | **No se redistribuye dentro de Gateway WISP Access**; conserva las licencias y términos del proyecto WireGuard |
+| [wireguard-tools](https://git.zx2c4.com/wireguard-tools/) | `wg` / `wg-quick` en Linux | GPL-2.0; se instala como paquete independiente del sistema |
+| [embeddable-dll-service / main.go](https://git.zx2c4.com/wireguard-windows/tree/embeddable-dll-service/main.go) | Referencia para la generación local de pares de claves Curve25519 | MIT © WireGuard LLC; la pequeña adaptación incluida conserva atribución en el código fuente |
+
+Gateway WISP Access **no incorpora ni redistribuye WireGuardNT ni el instalador/driver de WireGuard for Windows**. En Windows abre el canal oficial de instalación si el motor no está disponible y luego controla los servicios con la CLI oficial. En Linux utiliza las herramientas instaladas por la distribución.
+
+Los hooks `PreUp`, `PostUp`, `PreDown` y `PostDown` de un `.conf` pueden ejecutar comandos. Por seguridad la aplicación los conserva al importar pero no los activa sin una acción explícita del usuario.
+
+**Marca/nombre:** Gateway WISP Access no es el cliente oficial de WireGuard. El término “WireGuard” se utiliza únicamente para identificar compatibilidad con el protocolo y el software externo correspondiente.
+
 ## Interfaz de escritorio
 
 Desde v3.3.0 Gateway WISP Access usa **Wails v2.13.0** en producción. Se eligió la rama estable de Wails para evitar depender de Wails v3 mientras siga publicado como prerelease. Wails conserva su licencia MIT y utiliza WebView2 en Windows y WebKitGTK en Linux como componentes del sistema.

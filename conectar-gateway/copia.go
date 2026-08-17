@@ -41,6 +41,7 @@ type Paquete struct {
 	Tuneles    []Tunel                 `json:"tuneles"`
 	Keys       map[string]KeyExportada `json:"keys,omitempty"` // ruta original -> contenido
 	Monitoring *MonitoringConfig       `json:"monitoring,omitempty"`
+	WireGuard  *WGBackup               `json:"wireguard,omitempty"`
 }
 
 type sobre struct {
@@ -137,6 +138,7 @@ func manejarExportar(w http.ResponseWriter, r *http.Request) {
 		IncluirClaves    bool // contraseñas de los servidores
 		IncluirKeys      bool // contenido de las claves SSH privadas
 		IncluirMonitoreo bool // Prometheus, targets y puertos
+		IncluirWireGuard bool // perfiles WireGuard y secretos dentro del backup cifrado
 	}
 	if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
 		responderError(w, err)
@@ -161,6 +163,9 @@ func manejarExportar(w http.ResponseWriter, r *http.Request) {
 	if pet.IncluirMonitoreo {
 		m := cargarMonitoring()
 		p.Monitoring = &m
+	}
+	if pet.IncluirWireGuard {
+		p.WireGuard = wgExportForBackup()
 	}
 
 	var omitidas []string
@@ -213,6 +218,7 @@ func manejarExportar(w http.ResponseWriter, r *http.Request) {
 		"servidores": len(p.Servidores), "tuneles": len(p.Tuneles),
 		"keys": len(p.Keys), "omitidas": omitidas,
 		"monitoring": p.Monitoring != nil,
+		"wireguard":  p.WireGuard != nil,
 	})
 }
 
@@ -354,10 +360,11 @@ func manejarImportar(w http.ResponseWriter, r *http.Request) {
 			monitoringRestaurado = true
 		}
 	}
+	wireGuardRestaurado := wgImportFromBackup(p.WireGuard, pet.Modo == "reemplazar")
 
 	responder(w, map[string]any{
 		"ok": true, "nuevos": nuevos, "actualizados": actualizados,
-		"tuneles": tuneles, "keys": len(rutasNuevas), "monitoring": monitoringRestaurado,
+		"tuneles": tuneles, "keys": len(rutasNuevas), "monitoring": monitoringRestaurado, "wireguard": wireGuardRestaurado,
 		"creado": p.Creado, "version": p.Version,
 	})
 }

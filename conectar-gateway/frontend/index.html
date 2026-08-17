@@ -22,6 +22,7 @@
       <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='8.2' r='3.2'/><path d='M5 19a7 7 0 0 1 14 0'/></svg></span><span>Perfiles</span></a>
       <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='8' y='8' width='10' height='12' rx='2'/><path d='M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1'/></svg></span><span>Copias</span></a>
       <a class="nav-item" href="#monitoring-panel" data-nav="monitoring"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg></span><span>Monitoreo</span></a>
+      <a class="nav-item" href="#wireguard-panel" data-nav="wireguard"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12c2.2-4.8 5-7.2 8-7.2s5.8 2.4 8 7.2c-2.2 4.8-5 7.2-8 7.2S6.2 16.8 4 12z"/><path d="M8 12h8M12 8v8"/></svg></span><span>Cliente WireGuard</span></a>
       <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M20 11a8 8 0 1 0 2 5.3'/><path d='M20 4v7h-7'/></svg></span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
       <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M12 10v6'/><path d='M12 7h.01'/></svg></span><span>Info</span></a>
     </nav>
@@ -173,6 +174,8 @@
                   <label for="exp-keys" style="margin:0">Incluir claves SSH privadas</label></div>
                 <div class="check"><input type="checkbox" id="exp-monitoring" checked>
                   <label for="exp-monitoring" style="margin:0">Incluir Monitoreo</label></div>
+                <div class="check"><input type="checkbox" id="exp-wireguard" checked>
+                  <label for="exp-wireguard" style="margin:0">Incluir perfiles WireGuard Client</label></div>
                 <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar…</button>
                 <div class="res" id="exp-res"></div>
               </div>
@@ -239,6 +242,85 @@
           </div>
         </section>
 
+        <section class="app-view wgclient-view" id="wireguard-panel" data-view="wireguard">
+          <div class="wgclient-layout">
+            <aside class="panel wgclient-sidebar">
+              <div class="wgclient-engine">
+                <div class="wgclient-engine-head"><div><span class="wgclient-label">Motor VPN</span><b id="wgc-engine-name">WireGuard</b></div><span class="wgclient-engine-dot" id="wgc-engine-dot"></span></div>
+                <small id="wgc-engine-msg">Comprobando motor oficial…</small>
+                <button id="wgc-engine-install" class="wgclient-secondary" hidden>Instalar motor oficial</button>
+              </div>
+              <div class="wgclient-side-actions">
+                <button class="principal" id="wgc-new">+ Nuevo perfil</button>
+                <button id="wgc-import">Importar .conf</button>
+                <input type="file" id="wgc-import-file" accept=".conf,text/plain" hidden>
+              </div>
+              <div class="wgclient-search"><input id="wgc-search" type="search" placeholder="Buscar perfil…"></div>
+              <div class="wgclient-profile-list" id="wgc-profile-list"><div class="wgclient-empty">No hay perfiles WireGuard.</div></div>
+            </aside>
+
+            <section class="panel wgclient-main">
+              <div class="wgclient-main-head">
+                <div>
+                  <span class="wgclient-label">Cliente WireGuard</span>
+                  <h2 id="wgc-title">Nuevo perfil</h2>
+                  <p id="wgc-subtitle">Configura un túnel o importa un archivo .conf.</p>
+                </div>
+                <div class="wgclient-head-actions">
+                  <span class="wgclient-state" id="wgc-state">Desconectado</span>
+                  <button class="principal" id="wgc-connect">Conectar</button>
+                  <button id="wgc-disconnect" hidden>Desconectar</button>
+                </div>
+              </div>
+
+              <div class="wgclient-metrics" id="wgc-metrics">
+                <div><span>Descarga</span><b id="wgc-rx">0.00 Mbit/s</b><small id="wgc-rx-total">0 B total</small></div>
+                <div><span>Subida</span><b id="wgc-tx">0.00 Mbit/s</b><small id="wgc-tx-total">0 B total</small></div>
+                <div><span>Handshake</span><b id="wgc-handshake">—</b><small>último peer activo</small></div>
+                <div><span>Interfaz</span><b id="wgc-interface">—</b><small id="wgc-endpoint-summary">sin endpoint</small></div>
+              </div>
+
+              <form id="wgc-form" class="wgclient-form" onsubmit="return false">
+                <div class="wgclient-section-title"><div><b>Interfaz</b><small>Identidad y red local del cliente.</small></div><div class="wgclient-form-actions"><button type="button" id="wgc-reveal">Mostrar secretos</button><button type="button" id="wgc-generate">Generar keys</button></div></div>
+                <div class="wgclient-grid">
+                  <div><label>Nombre del perfil</label><input id="wgc-name" type="text" placeholder="Casa / Gateway Norte"></div>
+                  <div><label>Dirección(es)</label><input id="wgc-address" type="text" placeholder="10.8.0.2/32, fd00::2/128"></div>
+                  <div class="span2"><label>Clave privada</label><input id="wgc-private" type="password" autocomplete="off" placeholder="Guardada cifrada · déjala vacía para conservarla"></div>
+                  <div class="span2"><label>Clave pública</label><div class="wgclient-copy-row"><input id="wgc-public" type="text" readonly placeholder="Se calcula desde la privada"><button type="button" id="wgc-copy-public">Copiar</button></div></div>
+                  <div><label>DNS</label><input id="wgc-dns" type="text" placeholder="1.1.1.1, 1.0.0.1"></div>
+                  <div><label>MTU</label><input id="wgc-mtu" type="number" min="0" max="65535" placeholder="Automático"></div>
+                </div>
+
+                <div class="wgclient-section-title peers"><div><b>Peers</b><small>Servidor(es) y rutas permitidas.</small></div><button type="button" id="wgc-add-peer">+ Agregar peer</button></div>
+                <div id="wgc-peers" class="wgclient-peers"></div>
+
+                <details class="wgclient-advanced">
+                  <summary>Opciones avanzadas</summary>
+                  <div class="wgclient-grid advanced-grid">
+                    <div><label>ListenPort</label><input id="wgc-listen" type="number" min="0" max="65535" placeholder="Automático"></div>
+                    <div><label>Table</label><input id="wgc-table" type="text" placeholder="auto / off / 123"></div>
+                    <div class="span2"><label>Notas</label><textarea id="wgc-notes" rows="2" placeholder="Descripción opcional del túnel"></textarea></div>
+                    <div class="span2 wgclient-hook-warning"><label class="check"><input id="wgc-hooks-allow" type="checkbox"><span>Permitir hooks PreUp/PostUp/PreDown/PostDown</span></label><small>Desactivados por defecto. Un .conf importado puede contener comandos con privilegios: actívalos solo si confías en el archivo.</small></div>
+                    <div class="span2"><label>PreUp</label><textarea id="wgc-preup" rows="2"></textarea></div>
+                    <div class="span2"><label>PostUp</label><textarea id="wgc-postup" rows="2"></textarea></div>
+                    <div class="span2"><label>PreDown</label><textarea id="wgc-predown" rows="2"></textarea></div>
+                    <div class="span2"><label>PostDown</label><textarea id="wgc-postdown" rows="2"></textarea></div>
+                  </div>
+                </details>
+
+                <div class="wgclient-options">
+                  <label class="check"><input id="wgc-auto" type="checkbox"><span>Autoconectar este perfil</span></label>
+                  <button type="button" id="wgc-full-tunnel">Usar túnel completo (0.0.0.0/0 + ::/0)</button>
+                </div>
+                <div class="wgclient-savebar">
+                  <div id="wgc-note" class="wgclient-note">Las claves privadas y PresharedKey se guardan cifradas. El archivo .conf exportado sí contiene secretos.</div>
+                  <div><button type="button" id="wgc-delete" class="danger" hidden>Eliminar</button><button type="button" id="wgc-export" hidden>Exportar .conf</button><button type="button" class="principal" id="wgc-save">Guardar perfil</button></div>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
+
         <section class="panel app-view" id="upd-panel" data-view="updates">
           <div class="update-page-status" id="upd-cabecera">
             <span>Estado</span><b id="upd-resumen">— sin comprobar</b>
@@ -294,6 +376,7 @@
                 <li>Tráfico de red real del servidor en el Dashboard, expresado en Mbit/s.</li>
                 <li>Monitoreo centralizado con preparación por fases, verificación de servicios y resumen nativo responsive de CPU, RAM, disco y tráfico.</li>
                 <li>Peers WireGuard en lista compacta con nombres de WGDashboard/configuración WireGuard, RX/TX en Mbit/s y último handshake en tiempo real.</li>
+                <li>Cliente WireGuard integrado para Windows y Linux con perfiles, importación/exportación .conf, múltiples peers, autoconexión, generación de keys/PSK y tráfico en tiempo real mediante el motor WireGuard del sistema.</li>
               </ul>
             </section>
             <section class="info-block">
@@ -302,6 +385,7 @@
                 <li>Keys ED25519 y verificación TOFU de la huella del host.</li>
                 <li>Hardening SSH reversible con validación antes de aplicar cambios.</li>
                 <li>Contraseñas guardadas cifradas localmente.</li>
+                <li>PrivateKey y PresharedKey de WireGuard cifradas en almacenamiento local y en backups portables; hooks importados desactivados hasta autorización explícita.</li>
                 <li>Updates privados verificados con firma Ed25519 y SHA-256.</li>
               </ul>
             </section>
@@ -334,6 +418,7 @@
             <a href="https://github.com/wailsapp/wails" target="_blank">Wails</a>
             <a href="https://www.typescriptlang.org/" target="_blank">TypeScript</a>
 <a href="https://github.com/prometheus/prometheus" target="_blank">Prometheus · Apache-2.0</a>
+            <a href="https://www.wireguard.com/" target="_blank">WireGuard · motor oficial</a>
           </div>
         </div>
       </div>

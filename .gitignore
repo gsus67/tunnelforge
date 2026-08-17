@@ -17,3 +17,7 @@ conectar-gateway/frontend/dist/*
 conectar-gateway/frontend/node_modules/
 conectar-gateway/frontend/wailsjs/
 conectar-gateway/build/bin/
+
+# Cliente WireGuard local: puede contener claves privadas o configs runtime
+conectar-gateway/wireguard.json
+conectar-gateway/wireguard-runtime/
