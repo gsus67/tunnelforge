@@ -40,6 +40,7 @@ type Paquete struct {
 	Servidores []Servidor              `json:"servidores"`
 	Tuneles    []Tunel                 `json:"tuneles"`
 	Keys       map[string]KeyExportada `json:"keys,omitempty"` // ruta original -> contenido
+	Monitoring *MonitoringConfig       `json:"monitoring,omitempty"`
 }
 
 type sobre struct {
@@ -132,9 +133,10 @@ func carpetaDescargas() string {
 
 func manejarExportar(w http.ResponseWriter, r *http.Request) {
 	var pet struct {
-		Password      string
-		IncluirClaves bool // contraseñas de los servidores
-		IncluirKeys   bool // contenido de las claves SSH privadas
+		Password         string
+		IncluirClaves    bool // contraseñas de los servidores
+		IncluirKeys      bool // contenido de las claves SSH privadas
+		IncluirMonitoreo bool // Prometheus/Grafana, targets, puertos y credenciales
 	}
 	if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
 		responderError(w, err)
@@ -155,6 +157,10 @@ func manejarExportar(w http.ResponseWriter, r *http.Request) {
 		Creado:  time.Now().Format("2006-01-02 15:04"),
 		Tuneles: tuneles,
 		Keys:    map[string]KeyExportada{},
+	}
+	if pet.IncluirMonitoreo {
+		m := cargarMonitoring()
+		p.Monitoring = &m
 	}
 
 	var omitidas []string
@@ -206,6 +212,7 @@ func manejarExportar(w http.ResponseWriter, r *http.Request) {
 		"ok": true, "ruta": ruta,
 		"servidores": len(p.Servidores), "tuneles": len(p.Tuneles),
 		"keys": len(p.Keys), "omitidas": omitidas,
+		"monitoring": p.Monitoring != nil,
 	})
 }
 
@@ -335,10 +342,22 @@ func manejarImportar(w http.ResponseWriter, r *http.Request) {
 			tuneles = len(validosTuneles)
 		}
 	}
+	monitoringRestaurado := false
+	if p.Monitoring != nil && p.Monitoring.Formato == monitoringFormato {
+		mc := *p.Monitoring
+		// El backup conserva asignaciones, pero los servicios remotos se revalidan
+		// cuando el usuario vuelve a aplicar la selección en Monitoreo.
+		if mc.PortStart < 1024 || mc.PortEnd > 65535 || mc.PortEnd < mc.PortStart {
+			mc.PortStart, mc.PortEnd = monitoringPuertoInicio, monitoringPuertoFin
+		}
+		if guardarMonitoring(mc) == nil {
+			monitoringRestaurado = true
+		}
+	}
 
 	responder(w, map[string]any{
 		"ok": true, "nuevos": nuevos, "actualizados": actualizados,
-		"tuneles": tuneles, "keys": len(rutasNuevas),
+		"tuneles": tuneles, "keys": len(rutasNuevas), "monitoring": monitoringRestaurado,
 		"creado": p.Creado, "version": p.Version,
 	})
 }

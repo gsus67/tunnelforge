@@ -2,24 +2,24 @@
   "FixedFileInfo": {
     "FileVersion": {
       "Major": 3,
-      "Minor": 1,
-      "Patch": 14,
+      "Minor": 2,
+      "Patch": 0,
       "Build": 0
     },
     "ProductVersion": {
       "Major": 3,
-      "Minor": 1,
-      "Patch": 14,
+      "Minor": 2,
+      "Patch": 0,
       "Build": 0
     }
   },
   "StringFileInfo": {
     "ProductName": "Conectar Gateway",
-    "FileDescription": "Tuneles SSH y terminal para gateways WISP",
+    "FileDescription": "SSH, administración y monitoreo para gateways WISP",
     "LegalCopyright": "Copyright (c) 2026 Gsus - Licencia MIT",
     "CompanyName": "Gsus",
-    "FileVersion": "3.1.14",
-    "ProductVersion": "3.1.14",
+    "FileVersion": "3.2.0",
+    "ProductVersion": "3.2.0",
     "InternalName": "conectar-gateway",
     "OriginalFilename": "Conectar-Gateway.exe"
   },

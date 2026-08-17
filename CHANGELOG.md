@@ -1,3 +1,20 @@
+## v3.2.0
+
+### Monitoreo / Grafana
+
+- Nuevo apartado global **Monitoreo** sin modificar el flujo existente de servidores y Herramientas.
+- Selección de los servidores que se desean monitorizar.
+- Preparación guiada de un servidor central con **Prometheus + Grafana OSS**.
+- Grafana se visualiza embebida dentro de Gateway WISP Access mediante el enlace SSH existente; no se abre un navegador externo.
+- `node_exporter` escucha únicamente en `127.0.0.1:9100` en los servidores gestionados.
+- Túneles SSH persistentes desde el servidor Prometheus a los targets, con asignación automática de puertos en un rango configurable (19100-19999 por defecto).
+- Dashboard de infraestructura con CPU, RAM y tráfico de red en Mbit/s.
+- Dashboard dedicado de **WireGuard peers** con RX/TX por peer en Mbit/s y último handshake.
+- Los contadores de WireGuard se publican mediante un collector propio hacia el textfile collector de node_exporter, sin añadir un exporter de terceros adicional.
+- Configuración de Monitoreo y credenciales de Grafana cifradas localmente con la clave privada de Gateway WISP Access.
+- Los backups `.cgw` pueden incluir toda la configuración de Monitoreo/Grafana junto con servidores, túneles y claves SSH.
+- Atribuciones y licencias actualizadas para Grafana OSS (AGPL-3.0-only), Prometheus/node_exporter (Apache-2.0) y WireGuard tools (GPLv2).
+
 ## v3.1.14
 
 ### Integración Gateway WISP y SSH

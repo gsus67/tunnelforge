@@ -19,6 +19,20 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 ---
 
+
+## Monitoreo / Grafana (3.2.0)
+
+Gateway WISP Access puede preparar un servidor central con **Prometheus + Grafana OSS** y monitorizar únicamente los perfiles que el usuario seleccione. Los agentes `node_exporter` quedan ligados a `127.0.0.1:9100`; Prometheus accede a ellos mediante túneles SSH persistentes administrados por la aplicación.
+
+- Puertos locales de túnel asignados automáticamente (rango 19100–19999 configurable).
+- Grafana embebida dentro de la ventana de la aplicación.
+- CPU, RAM y tráfico de red en Mbit/s.
+- Métricas de peers WireGuard: RX/TX en Mbit/s y último handshake.
+- Configuración y credenciales de Monitoreo cifradas localmente.
+- La copia `.cgw` puede transportar también la configuración de Monitoreo/Grafana.
+
+La instalación automática inicial está deliberadamente limitada a **Debian/Ubuntu** para evitar aplicar comandos de paquetes no verificados sobre distribuciones distintas. Consulte `TERCEROS.md` para las licencias de Grafana, Prometheus, node_exporter y WireGuard tools.
+
 ## Qué hace
 
 - **Guarda tus servidores** con key SSH o contraseña, y conecta con un clic
