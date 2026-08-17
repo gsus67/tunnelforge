@@ -19,7 +19,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"embed"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -27,6 +26,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	neturl "net/url"
 	"os"
 	"os/exec"
@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "3.2.3"
+const version = "3.3.0"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -111,12 +111,6 @@ func validarTuneles(lista []Tunel) ([]Tunel, error) {
 	}
 	return validados, nil
 }
-
-//go:embed ui.html
-var interfaz embed.FS
-
-//go:embed static
-var estaticos embed.FS
 
 // ---------------------------------------------------------------------------
 // Modelo y almacenamiento
@@ -752,14 +746,6 @@ func main() {
 		}
 	}
 
-	mux.HandleFunc("/", proteger(func(w http.ResponseWriter, r *http.Request) {
-		datos, _ := interfaz.ReadFile("ui.html")
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(datos)
-	}))
-
-	// Recursos estaticos del terminal (xterm.js) — sin token: solo assets
-	mux.Handle("/static/", http.FileServer(http.FS(estaticos)))
 	// Terminal SSH integrado (WebSocket, protegido por token)
 	mux.HandleFunc("/ws/terminal", proteger(manejarTerminal))
 
@@ -1118,7 +1104,9 @@ func main() {
 		// Reutilizamos su sesion guardada y abrimos su interfaz, en vez de
 		// dejar una segunda copia dando vueltas.
 		if datos, e := os.ReadFile(filepath.Join(baseDir, "sesion")); e == nil && len(datos) > 0 {
-			mostrarVentana(fmt.Sprintf("http://127.0.0.1:%s/?t=%s", puertoGUI, string(datos)))
+			destino, _ := neturl.Parse("http://127.0.0.1:" + puertoGUI)
+			proxy := httputil.NewSingleHostReverseProxy(destino)
+			mostrarVentana(string(datos), "ws://127.0.0.1:"+puertoGUI, proxy)
 			os.Exit(0)
 		}
 		escucha, err = net.Listen("tcp", "127.0.0.1:0")
@@ -1131,14 +1119,15 @@ func main() {
 		_ = os.WriteFile(filepath.Join(baseDir, "sesion"), []byte(token), 0600)
 		defer os.Remove(filepath.Join(baseDir, "sesion"))
 	}
-	url := fmt.Sprintf("http://%s/?t=%s", escucha.Addr().String(), token)
-	fmt.Println("Interfaz en:", url)
+	backend := "http://" + escucha.Addr().String()
+	wsBase := "ws://" + escucha.Addr().String()
+	fmt.Println("Backend local:", backend)
 	go func() { _ = http.Serve(escucha, mux) }()
 
 	if os.Getenv("CG_NO_BROWSER") != "" {
 		select {} // modo servicio (pruebas): solo la API
 	}
-	mostrarVentana(url) // ventana nativa en Windows; navegador en otros
+	mostrarVentana(token, wsBase, mux) // Wails: misma UI nativa en Windows y Linux
 
 	// Ventana cerrada: cerrar tuneles y terminar el proceso de verdad.
 	// Sin el Exit, el servidor HTTP y las goroutines seguirian vivos y

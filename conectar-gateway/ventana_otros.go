@@ -11,12 +11,6 @@ import (
 	"strings"
 )
 
-// En Linux/macOS: abrir el navegador y mantener el servidor vivo.
-func mostrarVentana(url string) {
-	abrirNavegador(url)
-	select {}
-}
-
 // seleccionarDestinoCopia usa el selector gráfico disponible en el escritorio.
 // No cae silenciosamente a Descargas: si no hay selector, avisa al usuario.
 func seleccionarDestinoCopia(nombre string) (string, bool, error) {

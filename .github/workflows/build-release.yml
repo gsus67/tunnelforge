@@ -10,45 +10,110 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-windows:
+    name: Windows amd64
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.25.x'
+          cache-dependency-path: conectar-gateway/go.sum
 
-      - name: Instalar compilador cruzado de Windows
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar Wails estable
+        shell: pwsh
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+
+      - name: Descargar dependencias Go
+        working-directory: conectar-gateway
+        run: go mod download
+
+      - name: Compilar Windows
+        working-directory: conectar-gateway
+        shell: pwsh
+        run: |
+          wails build -clean -o Conectar-Gateway
+          Copy-Item "build/bin/Conectar-Gateway.exe" "../Conectar-Gateway.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: Conectar-Gateway.exe
+          if-no-files-found: error
+
+  build-linux:
+    name: Linux amd64
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: conectar-gateway/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Dependencias Wails Linux
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+          sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
 
-      - name: Generar recurso de Windows
+      - name: Instalar Wails estable
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+
+      - name: Descargar dependencias Go
+        working-directory: conectar-gateway
+        run: go mod download
+
+      - name: Compilar Linux
         working-directory: conectar-gateway
         run: |
-          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
-          $(go env GOPATH)/bin/goversioninfo -icon=icono.ico -manifest=app.manifest \
-            -o=rsrc_windows_amd64.syso versioninfo.json
+          wails build -clean -tags webkit2_41 -o conectar-gateway-linux
+          cp build/bin/conectar-gateway-linux ../conectar-gateway-linux
+          chmod +x ../conectar-gateway-linux
 
-      - name: Compilar binarios
-        working-directory: conectar-gateway
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64
+          path: conectar-gateway-linux
+          if-no-files-found: error
+
+  release:
+    name: Publicar release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Preparar binarios
         run: |
-          CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ \
-            CGO_CXXFLAGS="-I${PWD}/winhdr" GOOS=windows GOARCH=amd64 \
-            go build -trimpath -ldflags "-s -w -H windowsgui" -o ../Conectar-Gateway.exe .
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-            go build -trimpath -ldflags "-s -w" -o ../conectar-gateway-linux .
+          cp artifacts/Conectar-Gateway.exe ./Conectar-Gateway.exe
+          cp artifacts/conectar-gateway-linux ./conectar-gateway-linux
+          chmod +x conectar-gateway-linux
+          ls -lh Conectar-Gateway.exe conectar-gateway-linux
 
       - name: Verificar versión del tag
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          APP_VERSION="$(./conectar-gateway-linux --version | awk '{print $2}')"
+          APP_VERSION="$(sed -n 's/^const version = "\([^"]*\)"/\1/p' conectar-gateway/main.go)"
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          test "$APP_VERSION" = "$TAG_VERSION" || { echo "version.go/main.go=$APP_VERSION pero tag=$TAG_VERSION"; exit 1; }
+          test -n "$APP_VERSION" || { echo "No pude leer la versión de main.go"; exit 1; }
+          test "$APP_VERSION" = "$TAG_VERSION" || { echo "app=$APP_VERSION pero tag=$TAG_VERSION"; exit 1; }
 
       - name: Crear y firmar manifest de actualización
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           UPDATE_SIGNING_PRIVATE_KEY_PEM: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY_PEM }}
           EXPECTED_UPDATE_PUBLIC_KEY_B64: 6SpruRdmfhfJk0i0oLMM4onShah2733MFsKMNycOFrk=
@@ -57,7 +122,7 @@ jobs:
           umask 077
           printf '%s\n' "$UPDATE_SIGNING_PRIVATE_KEY_PEM" > /tmp/update-signing-key.pem
           DERIVED="$(openssl pkey -in /tmp/update-signing-key.pem -pubout -outform DER | tail -c 32 | base64 -w0)"
-          test "$DERIVED" = "$EXPECTED_UPDATE_PUBLIC_KEY_B64" || { echo "La clave de firma no corresponde a la pública embebida en la app"; exit 1; }
+          test "$DERIVED" = "$EXPECTED_UPDATE_PUBLIC_KEY_B64" || { echo "La clave de firma no corresponde a la pública embebida"; exit 1; }
           python3 - <<'PY'
           import hashlib,json,os
           def meta(path):
@@ -82,31 +147,16 @@ jobs:
           sha256sum Conectar-Gateway.exe conectar-gateway-linux update-manifest.json > SHA256SUMS.txt
 
       - name: Publicar en el Release
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="$GITHUB_REF_NAME"
-          ASSETS=(
-            Conectar-Gateway.exe
-            conectar-gateway-linux
-            update-manifest.json
-            update-manifest.sig
-            SHA256SUMS.txt
-          )
-
+          ASSETS=(Conectar-Gateway.exe conectar-gateway-linux update-manifest.json update-manifest.sig SHA256SUMS.txt)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG ya existe; reemplazando assets..."
             gh release upload "$TAG" "${ASSETS[@]}" --clobber
             IS_DRAFT="$(gh release view "$TAG" --json isDraft --jq '.isDraft')"
-            if [ "$IS_DRAFT" = "true" ]; then
-              gh release edit "$TAG" --draft=false
-            fi
+            if [ "$IS_DRAFT" = "true" ]; then gh release edit "$TAG" --draft=false; fi
           else
-            echo "Creando Release $TAG..."
-            gh release create "$TAG" "${ASSETS[@]}" \
-              --verify-tag \
-              --generate-notes \
-              --title "$TAG"
+            gh release create "$TAG" "${ASSETS[@]}" --verify-tag --generate-notes --title "$TAG"
           fi

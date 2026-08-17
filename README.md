@@ -1,10 +1,9 @@
-# Conectar Gateway
+# Gateway WISP Access
 
 Cliente SSH de escritorio para administrar gateways: abre los túneles a los
 paneles del servidor de un clic y trae terminal SSH integrado.
 
-Un solo ejecutable, **sin dependencias**: trae su propio motor SSH y su propia
-interfaz. No necesita PuTTY, ni el cliente OpenSSH del sistema, ni instalación.
+Un solo ejecutable de la aplicación: trae su propio motor SSH y toda la interfaz. No necesita PuTTY ni el cliente OpenSSH del sistema. En Windows usa WebView2 (incluido normalmente en Windows 10/11) y en Linux usa WebKitGTK del sistema.
 
 Pensado para los gateways de [`gateway-wisp-wireguard`](https://github.com/gsus67/gateway-wisp-wireguard),
 pero sirve para **cualquier servidor SSH**: los túneles son configurables.
@@ -38,9 +37,13 @@ Desde **v3.2.3 Grafana ya no es necesario ni se instala por la aplicación**: la
 
 La instalación automática inicial está deliberadamente limitada a **Debian/Ubuntu** para evitar aplicar comandos de paquetes no verificados sobre distribuciones distintas. Consulte `TERCEROS.md` para las licencias de Prometheus, node_exporter y WireGuard tools.
 
-### Evolución de la interfaz
+### Arquitectura de escritorio
 
-La versión estable continúa usando la UI WebView actual. `frontend-next/` conserva la base TypeScript para la migración progresiva a **Go + Wails + TypeScript**, que se completa por etapas sin sustituir funciones estables antes de validarlas.
+Desde **v3.3.0** la interfaz de producción está migrada a **Go + Wails + TypeScript**. Wails reemplaza el wrapper `webview_go` y ofrece la misma ventana nativa en Windows y Linux; el backend Go conserva SSH, SFTP, túneles, cifrado, updater, Gateway WISP y Monitoreo. El frontend vive en `conectar-gateway/frontend/` y se compila desde TypeScript antes de generar el binario.
+
+La API existente se reutiliza dentro del `AssetServer` de Wails para reducir regresiones; únicamente la Terminal mantiene un WebSocket loopback en `127.0.0.1`, protegido por token y con el origen interno de Wails autorizado explícitamente.
+
+La API loopback protegida sigue existiendo únicamente como canal interno para el WebSocket de Terminal y compatibilidad de los módulos ya estabilizados; la UI ya no se sirve desde `127.0.0.1` ni se abre en un navegador.
 
 ## Qué hace
 
@@ -65,7 +68,7 @@ La versión estable continúa usando la UI WebView actual. `frontend-next/` cons
 - **Avisa si una conexión se cae** sola (sin que la hayas cerrado tú)
 - Atajos: `Esc` cierra modales y terminal, `Ctrl+Enter` guarda el formulario
   o confirma la contraseña
-- Todo local: la interfaz solo escucha en `127.0.0.1`
+- Todo local: la UI vive dentro de Wails; solo el canal interno/terminal mantiene un listener protegido en `127.0.0.1`
 
 ---
 
@@ -80,8 +83,7 @@ Descarga el ejecutable de la pestaña **[Releases](../../releases)**:
 
 Ponlo donde quieras y ábrelo. **No hay instalador ni dependencias.**
 
-En Windows se abre en su propia ventana; en Linux, en el navegador
-(`http://127.0.0.1:8787`).
+En **Windows y Linux** se abre en su propia ventana Wails. En Windows se requiere Microsoft WebView2 (normalmente ya instalado). En Linux se requiere GTK3 + WebKitGTK 4.1; en Debian/Ubuntu modernos se cubre con los paquetes `libgtk-3-0` y `libwebkit2gtk-4.1-0`.
 
 ---
 
@@ -244,40 +246,37 @@ y los datos se guardarán a su lado — útil para llevarlo en un USB o un NAS.
 | Pieza | Librería |
 |---|---|
 | Motor SSH: conexión, túneles y terminal | [`golang.org/x/crypto/ssh`](https://pkg.go.dev/golang.org/x/crypto/ssh) |
-| Ventana nativa (usa el WebView2 de Windows) | [webview](https://github.com/webview/webview_go) |
+| Ventana nativa Windows/Linux | [Wails v2.13](https://github.com/wailsapp/wails) |
 | Terminal de la interfaz (el mismo de VS Code) | [xterm.js](https://github.com/xtermjs/xterm.js) |
 | Canal del terminal | [coder/websocket](https://github.com/coder/websocket) |
 
-Todo va **embebido en el ejecutable**: no descarga nada en tiempo de ejecución.
-Detalle de licencias en [TERCEROS.md](TERCEROS.md).
-
-Si WebView2 no estuviera disponible, la app cae al navegador en lugar de fallar.
+La lógica Go, el frontend TypeScript compilado y xterm.js van **embebidos en el ejecutable**. Wails utiliza el motor web del sistema: WebView2 en Windows y WebKitGTK en Linux. Detalle de licencias en [TERCEROS.md](TERCEROS.md).
 
 ---
 
 ## Compilar desde el código
 
-Requiere **Go 1.22+**. Para Windows, además, el compilador cruzado de C/C++
-(la ventana nativa usa CGO):
+Requiere **Go 1.25+**, Node.js y **Wails v2.13.0**. El proyecto fija Go 1.25 porque el módulo de Wails v2.13.0 declara esa versión de Go:
 
 ```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 cd conectar-gateway
-
-# Windows (ventana nativa, icono y metadatos)
-CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ \
-  CGO_CXXFLAGS="-I$PWD/winhdr" GOOS=windows GOARCH=amd64 \
-  go build -trimpath -ldflags "-s -w -H windowsgui" -o Conectar-Gateway.exe .
-
-# Linux
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-  go build -trimpath -ldflags "-s -w" -o conectar-gateway-linux .
 ```
 
-En Debian/Ubuntu, el compilador cruzado se instala con:
-`sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64`
+Windows:
 
-Los binarios que salen son idénticos a los de Releases: GitHub Actions ejecuta
-estos mismos comandos.
+```powershell
+wails build -clean -o Conectar-Gateway
+```
+
+Linux (Debian/Ubuntu moderno):
+
+```bash
+sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+wails build -clean -tags webkit2_41 -o conectar-gateway-linux
+```
+
+`wails build` ejecuta primero la compilación del frontend TypeScript y después genera el binario nativo. GitHub Actions construye Windows y Linux en runners nativos separados y reúne ambos artefactos para el Release firmado.
 
 ---
 
@@ -285,17 +284,23 @@ estos mismos comandos.
 
 ```
 conectar-gateway/
-  main.go              Servidor local, API, conexión SSH y túneles
+  main.go              API interna, conexión SSH y túneles
+  wails_shell.go       Ventana Wails y puente Go ↔ frontend
+  frontend/            UI de producción en TypeScript
+    src/main.ts         Controlador de interfaz
+    index.html          Estructura visual
+    style.css           Estilos
+    public/static/      xterm.js
+    dist/               Frontend compilado y embebido
   terminal.go          Terminal SSH sobre WebSocket
-  ventana_windows.go   Ventana nativa (Windows)
-  ventana_otros.go     Navegador (Linux/macOS)
+  ventana_windows.go   Diálogo nativo Guardar como… de Windows
+  ventana_otros.go     Diálogo Guardar como… de Linux/macOS
   copia.go             Exportar / importar configuración cifrada
   historial.go         Historial de comandos del terminal, por servidor
   claves.go            Carga y diagnóstico de claves SSH
   archivos.go          Gestor de archivos SFTP y explorador local
-  version.go           Info de versión para el botón de actualizaciones
-  ui.html              Interfaz
-  static/              xterm.js embebido
+  monitoring.go        Prometheus, servidores y WireGuard peers
+  wails.json           Configuración de build de Wails
   icono.ico            Icono e identidad del ejecutable
 herramientas/          Scripts de apoyo para trabajar con los repos
 ```

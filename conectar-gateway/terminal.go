@@ -25,7 +25,12 @@ func manejarTerminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ws, err := websocket.Accept(w, r, nil)
+	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		// Wails sirve la UI desde su origen interno wails.localhost mientras
+		// el PTY sigue en el listener loopback. Autorizamos únicamente ese
+		// origen, además del mismo host que coder/websocket permite por defecto.
+		OriginPatterns: []string{"wails.localhost"},
+	})
 	if err != nil {
 		return
 	}

@@ -1,3 +1,23 @@
+## v3.3.0
+
+### Migración Go + Wails + TypeScript
+
+- La aplicación de escritorio migra de `webview_go` a **Wails v2.13.0** estable.
+- La UI de producción deja de ser un `ui.html` embebido y pasa a `conectar-gateway/frontend/`, compilada desde TypeScript.
+- Misma ventana nativa en Windows y Linux; Linux deja de abrir la interfaz en el navegador.
+- Se conserva el backend Go existente para SSH, SFTP, túneles, herramientas, Gateway WISP, updater, backups y Monitoreo.
+- El puente Wails entrega a la UI únicamente configuración efímera (token de sesión, WebSocket local y versión).
+- La API HTTP interna se monta como `AssetsHandler` de Wails; el listener `127.0.0.1` queda para Terminal/WebSocket y compatibilidad interna.
+- Segunda instancia conserva el comportamiento de reutilizar la sesión existente mediante un proxy local, sin crear otro conjunto de conexiones SSH.
+- Build de GitHub Actions separado por plataforma: Windows nativo y Linux nativo con WebKitGTK 4.1; el job de release reúne y firma ambos binarios.
+- Toolchain de build actualizado a Go 1.25.x para ser compatible con Wails v2.13.0 y sus dependencias actuales.
+- Workflow conserva publicación idempotente con `gh release upload --clobber`.
+- El job de Release verifica el tag contra la versión del código fuente en lugar de ejecutar el binario Linux de Wails en un runner sin WebKitGTK.
+- Eliminados `frontend-next/`, `ui.html`, `static/` y la dependencia `webview_go` del build de producción.
+- El WebSocket de Terminal autoriza de forma explícita únicamente el origen interno `wails.localhost`, manteniendo el token de sesión y el listener loopback.
+- La migración no crea nuevos archivos Go versionados; las herramientas existentes permanecen en su archivo actual para que una actualización por reemplazo no deje implementaciones duplicadas.
+- README, Info, CHANGELOG y documentación legal actualizados para la nueva arquitectura.
+
 ## v3.2.3
 
 ### Monitoreo simplificado y WireGuard peers

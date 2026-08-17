@@ -1,0 +1,18 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Gateway WISP Access",
+  "outputfilename": "Conectar-Gateway",
+  "frontend:install": "npm install --no-audit --no-fund",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run build -- --watch",
+  "info": {
+    "companyName": "Gsus",
+    "productName": "Gateway WISP Access",
+    "productVersion": "3.3.0",
+    "copyright": "Copyright © 2026 Gsus",
+    "comments": "Administrador SSH, WISP y monitoreo para Windows y Linux"
+  },
+  "author": {
+    "name": "Gsus"
+  }
+}

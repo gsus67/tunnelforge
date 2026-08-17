@@ -8,11 +8,12 @@ Gateway WISP Access se distribuye bajo **MIT**, pero interactúa con software de
 |---|---|---|
 | [golang.org/x/crypto/ssh](https://pkg.go.dev/golang.org/x/crypto/ssh) | Motor SSH, túneles y autenticación | BSD-3-Clause © The Go Authors |
 | [xterm.js](https://github.com/xtermjs/xterm.js) | Terminal de la interfaz | MIT © The xterm.js authors |
-| [webview/webview_go](https://github.com/webview/webview_go) | Ventana nativa | MIT © Serge Zaitsev |
+| [Wails v2](https://github.com/wailsapp/wails) | Shell de escritorio nativo Windows/Linux y puente Go↔frontend | MIT © Wails contributors |
 | [coder/websocket](https://github.com/coder/websocket) | WebSocket del terminal | ISC © Coder Technologies |
 | [golang.org/x/crypto/scrypt](https://pkg.go.dev/golang.org/x/crypto/scrypt) | Derivación de clave para backups | BSD-3-Clause © The Go Authors |
 | [pkg/sftp](https://github.com/pkg/sftp) | Gestor de archivos remoto | BSD-2-Clause © The pkg/sftp authors |
 | [Go](https://go.dev) | Lenguaje y biblioteca estándar | BSD-3-Clause © The Go Authors |
+| [TypeScript](https://github.com/microsoft/TypeScript) | Compilación del frontend (dependencia de build; no se distribuye como runtime separado) | Apache-2.0 © Microsoft |
 
 ## Servicios externos que la función Monitoreo puede instalar/configurar
 
@@ -30,6 +31,6 @@ Los scripts y métricas `gateway_wisp_*` generados por Gateway WISP Access son c
 
 Las fuentes de la interfaz (Barlow Condensed, JetBrains Mono) se cargan desde Google Fonts bajo SIL Open Font License.
 
-## Migración futura de interfaz
+## Interfaz de escritorio
 
-El directorio `frontend-next/` contiene únicamente código TypeScript propio y documentación de migración. **Wails todavía no forma parte del binario distribuido en esta versión**, por lo que no se declara como dependencia enlazada hasta que la migración pase a producción.
+Desde v3.3.0 Gateway WISP Access usa **Wails v2.13.0** en producción. Se eligió la rama estable de Wails para evitar depender de Wails v3 mientras siga publicado como prerelease. Wails conserva su licencia MIT y utiliza WebView2 en Windows y WebKitGTK en Linux como componentes del sistema.

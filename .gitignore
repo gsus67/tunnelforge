@@ -8,3 +8,8 @@ conexiones.json
 
 # Recursos generados por el workflow
 *.syso
+
+# Artefactos de Wails/TypeScript
+conectar-gateway/frontend/node_modules/
+conectar-gateway/frontend/wailsjs/
+conectar-gateway/build/bin/
