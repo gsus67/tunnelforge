@@ -2,8 +2,6 @@
 
 ### Correcciones de compilación
 
-- Consolidado el recurso PE de Windows bajo Wails: icono y manifest viven únicamente en `build/windows/`; se eliminan `app.manifest` y `versioninfo.json` legacy de la raíz.
-- GitHub Actions elimina cualquier `.syso` heredado antes de ejecutar `wails build`, evitando que un recurso pre-Wails y el recurso generado por Wails produzcan `too many .rsrc sections`.
 - Se conserva un placeholder `frontend/dist/.keep` para que `go:embed` sea válido durante la generación inicial de bindings de Wails en un checkout limpio.
 - GitHub Actions ejecuta `go mod tidy` antes de compilar para completar `go.sum` con las dependencias de Wails y sus módulos transitivos.
 - El repositorio debe conservar un único workflow: `.github/workflows/build-release.yml`; workflows antiguos de la etapa pre-Wails no forman parte de 3.3.0.

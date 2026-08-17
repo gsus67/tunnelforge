@@ -281,8 +281,6 @@ wails build -clean -tags webkit2_41 -o conectar-gateway-linux
 
 GitHub Actions ejecuta `go mod tidy` antes de compilar para completar `go.sum`, construye Windows y Linux en runners nativos separados y reúne ambos artefactos para el Release firmado.
 
-En Windows, Wails es el único responsable de los recursos PE del ejecutable. El icono y manifest se mantienen en `conectar-gateway/build/windows/`; el workflow limpia cualquier `.syso` heredado de versiones pre-Wails antes de compilar para impedir recursos `.rsrc` duplicados.
-
 ---
 
 ## Estructura
