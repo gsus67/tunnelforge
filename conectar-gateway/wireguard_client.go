@@ -40,6 +40,7 @@ type WGPeer struct {
 	Endpoint            string   `json:"endpoint,omitempty"`
 	AllowedIPs          []string `json:"allowedIPs"`
 	PersistentKeepalive int      `json:"persistentKeepalive,omitempty"`
+	ExcludeLocalTraffic bool     `json:"excludeLocalTraffic,omitempty"`
 }
 
 type WGProfile struct {
@@ -214,6 +215,33 @@ func wgNormalizeList(v []string) []string {
 	return out
 }
 
+// wgEffectiveAllowedIPs conserva los AllowedIPs visibles del perfil, pero al
+// activar "Excluir tráfico local" evita los /0 exactos. WireGuard for Windows
+// usa /0 para habilitar su kill-switch; dividir la ruta por defecto en dos /1
+// mantiene el túnel completo sin bloquear las rutas locales más específicas.
+func wgEffectiveAllowedIPs(peer WGPeer) []string {
+	if !peer.ExcludeLocalTraffic {
+		return append([]string(nil), peer.AllowedIPs...)
+	}
+	out := make([]string, 0, len(peer.AllowedIPs)+2)
+	for _, raw := range peer.AllowedIPs {
+		p, err := netip.ParsePrefix(strings.TrimSpace(raw))
+		if err != nil {
+			out = append(out, raw)
+			continue
+		}
+		switch p.Masked().String() {
+		case "0.0.0.0/0":
+			out = append(out, "0.0.0.0/1", "128.0.0.0/1")
+		case "::/0":
+			out = append(out, "::/1", "8000::/1")
+		default:
+			out = append(out, raw)
+		}
+	}
+	return wgNormalizeList(out)
+}
+
 func wgValidateProfile(p *WGProfile, privatePlain string) error {
 	p.Name = strings.TrimSpace(p.Name)
 	if p.Name == "" {
@@ -292,7 +320,8 @@ func wgPublicProfile(p WGProfile) map[string]any {
 		peers = append(peers, map[string]any{
 			"name": x.Name, "publicKey": x.PublicKey, "endpoint": x.Endpoint,
 			"allowedIPs": x.AllowedIPs, "persistentKeepalive": x.PersistentKeepalive,
-			"hasPresharedKey": x.PresharedKeyCifr != "",
+			"excludeLocalTraffic": x.ExcludeLocalTraffic,
+			"hasPresharedKey":     x.PresharedKeyCifr != "",
 		})
 	}
 	return map[string]any{
@@ -364,6 +393,9 @@ func wgProfileConfig(p WGProfile) (string, error) {
 		if peer.Name != "" {
 			b.WriteString("# Name = " + strings.ReplaceAll(peer.Name, "\n", " ") + "\n")
 		}
+		if peer.ExcludeLocalTraffic {
+			b.WriteString("# ExcludeLocalTraffic = true\n")
+		}
 		b.WriteString("PublicKey = " + peer.PublicKey + "\n")
 		if peer.PresharedKeyCifr != "" {
 			ps, err := descifrar(peer.PresharedKeyCifr)
@@ -375,7 +407,7 @@ func wgProfileConfig(p WGProfile) (string, error) {
 		if peer.Endpoint != "" {
 			b.WriteString("Endpoint = " + peer.Endpoint + "\n")
 		}
-		b.WriteString("AllowedIPs = " + strings.Join(peer.AllowedIPs, ", ") + "\n")
+		b.WriteString("AllowedIPs = " + strings.Join(wgEffectiveAllowedIPs(peer), ", ") + "\n")
 		if peer.PersistentKeepalive > 0 {
 			b.WriteString(fmt.Sprintf("PersistentKeepalive = %d\n", peer.PersistentKeepalive))
 		}
@@ -403,11 +435,16 @@ func wgParseConfig(text, name string) (WGProfile, string, []string, error) {
 			c := strings.TrimSpace(strings.TrimLeft(line, "#;"))
 			if eq := strings.Index(c, "="); eq > 0 {
 				k, v := strings.ToLower(strings.TrimSpace(c[:eq])), strings.TrimSpace(c[eq+1:])
-				if k == "name" || k == "nombre" || k == "client" || k == "cliente" || k == "peer" {
+				switch k {
+				case "name", "nombre", "client", "cliente", "peer":
 					if current == "peer" && peer != nil {
 						peer.Name = v
 					} else {
 						pendingPeerName = v
+					}
+				case "excludelocaltraffic":
+					if current == "peer" && peer != nil {
+						peer.ExcludeLocalTraffic = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes") || strings.EqualFold(v, "si") || strings.EqualFold(v, "sí")
 					}
 				}
 			}
@@ -586,6 +623,7 @@ func manejarWGProfiles(w http.ResponseWriter, r *http.Request) {
 				Name, PublicKey, PresharedKey, Endpoint string
 				AllowedIPs                              []string
 				PersistentKeepalive                     int
+				ExcludeLocalTraffic                     bool
 			}
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -614,7 +652,7 @@ func manejarWGProfiles(w http.ResponseWriter, r *http.Request) {
 		p.Notes = req.Notes
 		p.Peers = make([]WGPeer, 0, len(req.Peers))
 		for i, x := range req.Peers {
-			wp := WGPeer{Name: x.Name, PublicKey: strings.TrimSpace(x.PublicKey), Endpoint: x.Endpoint, AllowedIPs: x.AllowedIPs, PersistentKeepalive: x.PersistentKeepalive}
+			wp := WGPeer{Name: x.Name, PublicKey: strings.TrimSpace(x.PublicKey), Endpoint: x.Endpoint, AllowedIPs: x.AllowedIPs, PersistentKeepalive: x.PersistentKeepalive, ExcludeLocalTraffic: x.ExcludeLocalTraffic}
 			if x.PresharedKey != "" {
 				if err := wgValidateKey(x.PresharedKey, false); err != nil {
 					responderError(w, fmt.Errorf("peer %d: %w", i+1, err))
@@ -930,6 +968,7 @@ type WGBackupPeer struct {
 	Endpoint            string   `json:"endpoint,omitempty"`
 	AllowedIPs          []string `json:"allowedIPs"`
 	PersistentKeepalive int      `json:"persistentKeepalive,omitempty"`
+	ExcludeLocalTraffic bool     `json:"excludeLocalTraffic,omitempty"`
 }
 
 type WGBackupProfile struct {
@@ -975,7 +1014,7 @@ func wgExportForBackup() *WGBackup {
 			if x.PresharedKeyCifr != "" {
 				ps, _ = descifrar(x.PresharedKeyCifr)
 			}
-			bp.Peers = append(bp.Peers, WGBackupPeer{Name: x.Name, PublicKey: x.PublicKey, PresharedKey: ps, Endpoint: x.Endpoint, AllowedIPs: x.AllowedIPs, PersistentKeepalive: x.PersistentKeepalive})
+			bp.Peers = append(bp.Peers, WGBackupPeer{Name: x.Name, PublicKey: x.PublicKey, PresharedKey: ps, Endpoint: x.Endpoint, AllowedIPs: x.AllowedIPs, PersistentKeepalive: x.PersistentKeepalive, ExcludeLocalTraffic: x.ExcludeLocalTraffic})
 		}
 		out.Profiles = append(out.Profiles, bp)
 	}
@@ -1012,7 +1051,7 @@ func wgImportFromBackup(in *WGBackup, replace bool) bool {
 			p.PublicKey, _ = wgPublicFromPrivate(bp.PrivateKey)
 		}
 		for _, x := range bp.Peers {
-			wp := WGPeer{Name: x.Name, PublicKey: x.PublicKey, Endpoint: x.Endpoint, AllowedIPs: x.AllowedIPs, PersistentKeepalive: x.PersistentKeepalive}
+			wp := WGPeer{Name: x.Name, PublicKey: x.PublicKey, Endpoint: x.Endpoint, AllowedIPs: x.AllowedIPs, PersistentKeepalive: x.PersistentKeepalive, ExcludeLocalTraffic: x.ExcludeLocalTraffic}
 			if x.PresharedKey != "" {
 				if wgValidateKey(x.PresharedKey, false) == nil {
 					wp.PresharedKeyCifr, _ = cifrar(x.PresharedKey)

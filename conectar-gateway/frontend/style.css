@@ -804,3 +804,6 @@
 .wgclient-profile-rate{white-space:pre-line}
 .wgclient-peer-head-tools{display:flex;align-items:center;gap:8px;min-width:0}.wgclient-peer-live{font:10px 'JetBrains Mono',monospace;color:#728696;white-space:nowrap}.wgclient-peer-live.up{color:#67dda7}
 @media(max-width:720px){.wgclient-peer-live{display:none}}
+
+/* v3.4.5: bypass LAN por peer + diagnóstico de telemetría WireGuard */
+.wgclient-peer-local{border-top:1px solid rgba(115,147,169,.12);padding-top:8px}.wgclient-peer-local .check{margin:0}.wgclient-peer-local small{display:block;margin:5px 0 0 24px;color:#7f93a5;line-height:1.35}.wgclient-runtime-warning{margin:-2px 0 8px;padding:8px 10px;border:1px solid rgba(232,184,91,.25);background:rgba(232,184,91,.06);border-radius:7px;color:#d5b66d;font-size:11px}

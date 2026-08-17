@@ -299,7 +299,7 @@ func wgReadWireGuardNTConfig(name, engineDir string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	freeAdapter, err := dll.FindProc("WireGuardFreeAdapter")
+	closeAdapter, err := dll.FindProc("WireGuardCloseAdapter")
 	if err != nil {
 		return nil, err
 	}
@@ -307,24 +307,16 @@ func wgReadWireGuardNTConfig(name, engineDir string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	poolW, err := syscall.UTF16PtrFromString("WireGuard")
-	if err != nil {
-		return nil, err
-	}
 	nameW, err := syscall.UTF16PtrFromString(name)
 	if err != nil {
 		return nil, err
 	}
-	handle, _, openErr := openAdapter.Call(
-		uintptr(unsafe.Pointer(poolW)),
-		uintptr(unsafe.Pointer(nameW)),
-	)
-	runtime.KeepAlive(poolW)
+	handle, _, openErr := openAdapter.Call(uintptr(unsafe.Pointer(nameW)))
 	runtime.KeepAlive(nameW)
 	if handle == 0 {
 		return nil, fmt.Errorf("WireGuardOpenAdapter: %v", openErr)
 	}
-	defer freeAdapter.Call(handle)
+	defer closeAdapter.Call(handle)
 
 	size := uint32(64 * 1024)
 	for attempt := 0; attempt < 5; attempt++ {

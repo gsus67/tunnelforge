@@ -21,16 +21,16 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 ## WireGuard
 
-> **v3.4.4** mantiene WireGuard completamente integrado en el ejecutable de Windows, conserva la corrección del host nativo de v3.4.3 y endurece la publicación de Releases frente a errores HTTP 5xx de GitHub. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
+> **v3.4.5** mantiene WireGuard completamente integrado en el ejecutable de Windows, conserva la corrección del host nativo de v3.4.3 y endurece la publicación de Releases frente a errores HTTP 5xx de GitHub. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
 
 Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. A partir de **v3.4.3**, el build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `Conectar-Gateway.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
 
 - Perfiles múltiples con búsqueda, estado conectado/desconectado y autoconexión.
 - Importación y exportación de archivos `.conf`.
 - Generación local de **PrivateKey/PublicKey** y **PresharedKey**.
-- Múltiples peers por perfil, con nombre amigable, Endpoint, AllowedIPs y PersistentKeepalive.
+- Múltiples peers por perfil, con nombre amigable, Endpoint, AllowedIPs, PersistentKeepalive y opción para excluir el tráfico local/LAN del túnel.
 - Configuración de Address, DNS, MTU, ListenPort y Table.
-- Atajo de túnel completo IPv4 + IPv6 (`0.0.0.0/0, ::/0`).
+- Atajo de túnel completo IPv4 + IPv6 (`0.0.0.0/0, ::/0`) y bypass LAN por peer usando rutas `/1` equivalentes cuando se activa **Excluir tráfico local**.
 - Tráfico RX/TX en **Mbit/s**, totales transferidos, interfaz activa y último handshake cuando el motor del sistema expone esas métricas.
 - Estado en vivo por peer cuando `wg` permite leer sus contadores.
 - PrivateKey y PresharedKey se guardan cifradas en el almacenamiento local de Gateway WISP Access.

@@ -1,3 +1,14 @@
+## v3.4.5
+
+### WireGuard — telemetría, conexión y tráfico local
+
+- Corregida la lectura de RX/TX y handshake en Windows contra la API actual de WireGuardNT 1.1: `WireGuardOpenAdapter(Name)` + `WireGuardCloseAdapter`.
+- El botón **Conectar** guarda siempre primero el formulario visible, evitando activar una configuración anterior cuando se editaron Endpoint, AllowedIPs, keys u otros campos sin pulsar **Guardar perfil**.
+- Nueva opción por peer **Excluir tráfico local del túnel**. Cuando el peer usa `/0`, la configuración efectiva usa `0.0.0.0/1 + 128.0.0.0/1` y `::/1 + 8000::/1`, manteniendo la LAN por las rutas locales más específicas y evitando el kill-switch especial de `/0` de WireGuard for Windows.
+- El estado de WireGuard muestra ahora errores de telemetría en la propia pantalla en vez de ocultarlos.
+- Backups y almacenamiento conservan la nueva opción de bypass LAN.
+- Metadata de aplicación sincronizada con v3.4.5.
+
 ## v3.4.4
 
 - Publicación de GitHub Releases resistente a errores temporales HTTP 5xx/503.
