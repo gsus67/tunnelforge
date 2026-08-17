@@ -18,8 +18,8 @@
     "FileDescription": "SSH, administración y monitoreo para gateways WISP",
     "LegalCopyright": "Copyright (c) 2026 Gsus - Licencia MIT",
     "CompanyName": "Gsus",
-    "FileVersion": "3.2.1",
-    "ProductVersion": "3.2.1",
+    "FileVersion": "3.2.2",
+    "ProductVersion": "3.2.2",
     "InternalName": "conectar-gateway",
     "OriginalFilename": "Conectar-Gateway.exe"
   },

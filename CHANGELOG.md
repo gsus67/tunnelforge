@@ -1,3 +1,19 @@
+## v3.2.2
+
+### Monitoreo
+
+- Preparación del servidor monitor dividida en 6 fases verificables con progreso y errores más claros.
+- Espera segura de bloqueos apt/dpkg y reintentos de red para reducir fallos en la primera instalación.
+- La app solo marca el monitor como preparado después de comprobar Prometheus y Grafana por HTTP local.
+- Nuevo Resumen nativo y responsive con servidores online, CPU, RAM, disco y tráfico RX/TX en Mbit/s.
+- Grafana pasa a una pestaña independiente para evitar que su layout interno controle toda la vista al redimensionar la app.
+- Peers WireGuard compactos y actualización en tiempo real.
+- Resolución de nombres de peers mejorada: WGDashboard SQLite cuando está disponible, comentarios Name/Nombre/Client/Cliente/Peer y formato WGP como fallback.
+
+### Arquitectura
+
+- La migración Wails/TypeScript permanece aislada hasta validar esta corrección de Monitoreo; no se reemplaza todavía la UI estable.
+
 ## v3.2.1
 
 ### Monitoreo · pulido y diagnóstico

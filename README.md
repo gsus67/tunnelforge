@@ -32,13 +32,16 @@ Gateway WISP Access puede preparar un servidor central con **Prometheus + Grafan
 - Diagnóstico por servidor para comprobar SSH, node_exporter, túnel y Prometheus sin cambiar la configuración.
 - Progreso visible durante la preparación de Prometheus/Grafana y al aplicar targets, para saber qué paso está ejecutándose.
 - Configuración y credenciales de Monitoreo cifradas localmente.
+- Resumen nativo responsive con CPU, RAM, disco y tráfico por servidor, sin depender del layout del dashboard de Grafana.
+- Preparación guiada por fases con verificación real de Prometheus/Grafana antes de marcar el monitor como listo.
+- Nombres de peers obtenidos de WGDashboard cuando existe una base SQLite compatible y con fallback a comentarios WireGuard.
 - La copia `.cgw` puede transportar también la configuración de Monitoreo/Grafana.
 
 La preparación muestra ahora cada etapa en la propia interfaz. La instalación automática inicial está deliberadamente limitada a **Debian/Ubuntu** para evitar aplicar comandos de paquetes no verificados sobre distribuciones distintas. Consulte `TERCEROS.md` para las licencias de Grafana, Prometheus, node_exporter y WireGuard tools.
 
 ### Evolución de la interfaz
 
-La versión estable continúa usando la UI WebView actual. El repositorio incluye además `frontend-next/`, una base TypeScript aislada para la migración progresiva a **Go + Wails + TypeScript**. Esta base todavía no sustituye la interfaz de producción, por lo que no altera el build ni el comportamiento estable en Windows/Linux.
+La versión estable continúa usando la UI WebView actual mientras se valida Monitoreo 3.2.2. `frontend-next/` conserva la base TypeScript para la migración a **Go + Wails + TypeScript**; el cambio de shell se hará después de validar esta corrección para no mezclar una migración estructural con fallos funcionales.
 
 ## Qué hace
 

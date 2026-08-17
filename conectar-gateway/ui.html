@@ -777,6 +777,26 @@
   .mon-peer-empty{padding:22px;text-align:center;color:var(--suave);font-size:11px}
   @media(max-width:1180px){.mon-peer-row{grid-template-columns:minmax(130px,1.4fr) 80px 80px 82px}.mon-peer-server{display:none}}
 
+
+  /* 3.2.2: resumen nativo responsive para Monitoreo */
+  .monitor-layout{grid-template-columns:clamp(300px,26vw,390px) minmax(0,1fr)!important;height:calc(100vh - 112px)!important;min-height:500px!important;align-items:stretch}
+  .monitor-grafana{min-width:0!important}
+  .mon-summary-view{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .mon-summary-view[hidden]{display:none!important}
+  .mon-kpis{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:8px}
+  .mon-kpi{padding:12px;border:1px solid rgba(111,159,195,.15);border-radius:9px;background:linear-gradient(145deg,rgba(13,30,45,.9),rgba(7,19,30,.88));min-width:0}
+  .mon-kpi span{display:block;color:var(--suave);font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.mon-kpi b{font-size:21px;line-height:1;color:var(--texto)}.mon-kpi small{display:block;color:var(--texto-2);font-size:9.5px;margin-top:5px}
+  .mon-summary-title{display:flex;align-items:center;justify-content:space-between;gap:8px}.mon-summary-title b{font-size:13px}.mon-summary-title small{font-size:10px;color:var(--suave)}
+  .mon-health-list{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:8px}
+  .mon-health-card{padding:10px 11px;border:1px solid rgba(111,159,195,.14);border-radius:9px;background:rgba(7,20,32,.78);display:grid;grid-template-columns:minmax(120px,1.2fr) repeat(3,minmax(62px,.55fr));gap:8px;align-items:center;min-width:0}
+  .mon-health-name{min-width:0}.mon-health-name b{display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mon-health-name small{display:block;font-size:9.5px;color:var(--suave);margin-top:3px}.mon-live-dot{width:7px;height:7px;border-radius:50%;background:#627587;flex:none}.mon-live-dot.ok{background:var(--verde);box-shadow:0 0 7px rgba(77,225,154,.35)}
+  .mon-health-metric span{display:block;font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--suave);margin-bottom:3px}.mon-health-metric b{font-size:11px;font-variant-numeric:tabular-nums}.mon-mini{height:3px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-top:4px}.mon-mini i{display:block;height:100%;background:linear-gradient(90deg,#4fe1a0,#5aa9ff);max-width:100%}
+  .mon-health-net{grid-column:1/-1;display:flex;justify-content:flex-end;gap:14px;border-top:1px solid rgba(111,159,195,.08);padding-top:6px;font-size:9.5px;color:var(--texto-2)}.mon-health-net b{font-variant-numeric:tabular-nums}.mon-health-net .rx{color:#69b7ff}.mon-health-net .tx{color:#67dda7}
+  .grafana-frame-wrap[hidden]{display:none!important}.grafana-frame-wrap iframe{min-width:0!important}
+  @media(min-width:1550px){.mon-health-list{grid-template-columns:repeat(3,minmax(280px,1fr))}.mon-kpis{grid-template-columns:repeat(4,minmax(160px,1fr))}}
+  @media(max-width:1180px){.monitor-layout{grid-template-columns:310px minmax(0,1fr)!important}.mon-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))}.mon-health-list{grid-template-columns:1fr}.mon-health-card{grid-template-columns:minmax(110px,1fr) repeat(3,60px)}}
+  @media(max-width:900px){.monitor-layout{grid-template-columns:1fr!important;height:auto!important}.monitor-control,.monitor-grafana{height:auto!important}.mon-summary-view{max-height:none}.mon-health-list{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -996,10 +1016,15 @@
             </aside>
             <section class="panel monitor-grafana">
               <div class="grafana-toolbar">
-                <div class="grafana-tabs"><button class="activo" id="mon-tab-overview">Infraestructura</button><button id="mon-tab-wg">WireGuard peers</button></div>
-                <div class="grafana-help"><span>Grafana embebida</span><button id="mon-reload">↻</button></div>
+                <div class="grafana-tabs"><button class="activo" id="mon-tab-overview">Resumen</button><button id="mon-tab-wg">WireGuard peers</button><button id="mon-tab-grafana">Grafana</button></div>
+                <div class="grafana-help"><span id="mon-view-label">Vista rápida nativa</span><button id="mon-reload">↻</button></div>
               </div>
-              <div class="grafana-frame-wrap" id="mon-grafana-wrap">
+              <div class="mon-summary-view" id="mon-summary-view">
+                <div class="mon-kpis" id="mon-kpis"><div class="mon-kpi"><span>Estado</span><b>—</b><small>Cargando métricas…</small></div></div>
+                <div class="mon-summary-title"><div><b>Servidores</b><small> · métricas en tiempo real</small></div><small>Actualización 5 s</small></div>
+                <div class="mon-health-list" id="mon-health-list"><div class="mon-peer-empty">Todavía no hay métricas.</div></div>
+              </div>
+              <div class="grafana-frame-wrap" id="mon-grafana-wrap" hidden>
                 <div class="grafana-placeholder" id="mon-placeholder"><b>Grafana todavía no está disponible.</b><span>Conecta y prepara el servidor de monitoreo. Después selecciona los servidores que quieres supervisar.</span></div>
                 <iframe id="mon-grafana-frame" title="Grafana" referrerpolicy="same-origin"></iframe>
               </div>
@@ -1007,7 +1032,7 @@
                 <div class="mon-peer-head"><div><b>Peers WireGuard</b><small>Tráfico instantáneo por peer, actualizado automáticamente.</small></div><button id="mon-peer-refresh">↻</button></div><div class="mon-peer-tools"><input id="mon-peer-search" type="search" placeholder="Buscar peer o servidor…"><select id="mon-peer-sort"><option value="name">Nombre</option><option value="rx">Mayor descarga</option><option value="tx">Mayor subida</option><option value="active">Más activos</option></select></div>
                 <div class="mon-peer-list" id="mon-peer-list"><div class="mon-peer-empty">Todavía no hay datos de peers.</div></div>
               </div>
-              <div class="wg-legend" id="mon-wg-legend">Los nombres se toman de la configuración WireGuard cuando existen; RX/TX se calculan en <b>Mbit/s</b> desde Prometheus.</div>
+              <div class="wg-legend" id="mon-wg-legend">Los nombres se buscan primero en <b>WGDashboard</b> y después en comentarios de WireGuard; RX/TX se calculan en <b>Mbit/s</b> desde Prometheus.</div>
             </section>
           </div>
         </section>
@@ -1065,8 +1090,8 @@
                 <li>Gestor SFTP para subir, bajar y administrar archivos.</li>
                 <li>Túneles locales por servidor con acceso rápido a paneles web.</li>
                 <li>Tráfico de red real del servidor en el Dashboard, expresado en Mbit/s.</li>
-                <li>Monitoreo centralizado con Prometheus/Grafana, selección de servidores y progreso visible de preparación.</li>
-                <li>Peers WireGuard en lista compacta con nombre amigable, RX/TX en Mbit/s y último handshake en tiempo real.</li>
+                <li>Monitoreo centralizado con preparación por fases, verificación de servicios y resumen nativo responsive de CPU, RAM, disco y tráfico.</li>
+                <li>Peers WireGuard en lista compacta con nombres de WGDashboard/configuración WireGuard, RX/TX en Mbit/s y último handshake en tiempo real.</li>
               </ul>
             </section>
             <section class="info-block">
@@ -2053,11 +2078,11 @@
 
 
   // ── Monitoreo ────────────────────────────────────────────────
-  var monCache=null, monDashboard='overview', monProgressTimer=null, monPeerTimer=null;
+  var monCache=null, monDashboard='overview', monProgressTimer=null, monPeerTimer=null, monSummaryTimer=null;
   function monNota(txt,tipo){ var e=$('mon-note'); if(!e)return; e.textContent=txt||''; e.className='monitor-note'+(tipo?' '+tipo:''); }
   function monGrafanaURL(){ return '/monitor/grafana/d/gateway-wisp-overview/gateway-wisp-infraestructura?t='+encodeURIComponent(TOKEN)+'&kiosk&refresh=5s'; }
   function monCargarFrame(){
-    if(monDashboard==='wg') return;
+    if(monDashboard!=='grafana') return;
     if(!monCache || !monCache.config || !monCache.config.preparado || !monCache.grafanaOnline){ $('mon-grafana-frame').classList.remove('visible'); $('mon-placeholder').classList.remove('hidden'); return; }
     var monitor=(monCache.servidores||[]).find(function(s){return s.nombre===monCache.config.monitorServer;});
     if(!monitor || !monitor.conectado){ $('mon-grafana-frame').classList.remove('visible'); $('mon-placeholder').classList.remove('hidden'); $('mon-placeholder').querySelector('b').textContent='Conecta el servidor de monitoreo para ver Grafana.'; return; }
@@ -2077,7 +2102,7 @@
     $('mon-target-count').textContent=targets.length+' target'+(targets.length===1?'':'s');
     $('mon-prom-dot').classList.toggle('ok',!!data.prometheusOnline); $('mon-graf-dot').classList.toggle('ok',!!data.grafanaOnline);
     var map=$('mon-port-map');vaciar(map); if(!targets.length)map.appendChild(nodo('div','','Sin túneles de monitoreo todavía.'));targets.forEach(function(t){map.appendChild(nodo('div','',t.servidor+' · 127.0.0.1:'+t.localPort+' → SSH → :'+t.remotePort));});
-    monCargarFrame();
+    if(monDashboard==='overview') cargarResumen(); else if(monDashboard==='grafana') monCargarFrame(); else if(monDashboard==='wg') cargarPeers();
   }
   function cargarMonitoring(){ return api('/api/monitoring/estado').then(function(r){if(r.error){monNota(r.error,'err');return;}renderMonitoring(r);}).catch(function(){monNota('No pude cargar la configuración de monitoreo.','err');}); }
   function monRenderProgress(p){
@@ -2091,6 +2116,20 @@
     var tick=function(){api('/api/monitoring/progreso').then(function(r){if(!r.error)monRenderProgress(r);});}; tick(); monProgressTimer=setInterval(tick,700);
   }
   function monStopProgress(){ if(monProgressTimer){clearInterval(monProgressTimer);monProgressTimer=null;} api('/api/monitoring/progreso').then(function(r){if(!r.error)monRenderProgress(r);}); }
+
+  function fmtPct(v){v=Number(v)||0;return v.toFixed(v<10?1:0)+'%';}
+  function fmtUptime(s){s=Number(s)||0;if(s<=0)return '—';var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600);return d?d+'d '+h+'h':h+'h';}
+  function renderResumen(r){
+    var k=$('mon-kpis');vaciar(k);
+    var cards=[['Servidores online',(r.online||0)+' / '+(r.total||0),'Targets respondiendo'],['CPU promedio',fmtPct(r.cpuPromedio),'Servidores activos'],['RAM promedio',fmtPct(r.ramPromedio),'Memoria utilizada'],['Tráfico total','↓ '+fmtPeerRate(r.rxMbit),'↑ '+fmtPeerRate(r.txMbit)]];
+    cards.forEach(function(c){var d=nodo('div','mon-kpi');d.appendChild(nodo('span','',c[0]));d.appendChild(nodo('b','',c[1]));d.appendChild(nodo('small','',c[2]));k.appendChild(d);});
+    var list=$('mon-health-list');vaciar(list);var arr=(r.servidores||[]);
+    if(!arr.length){list.appendChild(nodo('div','mon-peer-empty','Selecciona servidores y aplica el monitoreo para ver métricas.'));return;}
+    arr.forEach(function(x){var card=nodo('div','mon-health-card');var name=nodo('div','mon-health-name');var title=nodo('b','');var dot=nodo('i','mon-live-dot'+(x.online?' ok':''));title.appendChild(dot);title.appendChild(document.createTextNode(x.nombre||'Servidor'));name.appendChild(title);name.appendChild(nodo('small','',x.online?('Uptime '+fmtUptime(x.uptime)):'Sin métricas'));card.appendChild(name);
+      [['CPU',x.cpu],['RAM',x.ram],['Disco',x.disco]].forEach(function(m){var d=nodo('div','mon-health-metric');d.appendChild(nodo('span','',m[0]));d.appendChild(nodo('b','',fmtPct(m[1])));var bar=nodo('div','mon-mini');var i=document.createElement('i');i.style.width=Math.max(0,Math.min(100,Number(m[1])||0))+'%';bar.appendChild(i);d.appendChild(bar);card.appendChild(d);});
+      var net=nodo('div','mon-health-net');var rx=nodo('span','rx','↓ '+fmtPeerRate(x.rxMbit));var tx=nodo('span','tx','↑ '+fmtPeerRate(x.txMbit));net.appendChild(rx);net.appendChild(tx);card.appendChild(net);list.appendChild(card);});
+  }
+  function cargarResumen(){if(monDashboard!=='overview')return;api('/api/monitoring/resumen').then(function(r){if(r.error){var l=$('mon-health-list');vaciar(l);l.appendChild(nodo('div','mon-peer-empty',r.error));return;}renderResumen(r);});}
   function fmtPeerRate(v){v=Number(v)||0;return (v<10?v.toFixed(2):v.toFixed(1))+' Mbit/s';}
   function fmtHandshake(age){age=Number(age);if(!isFinite(age)||age<0)return '—';if(age<60)return Math.round(age)+'s';if(age<3600)return Math.floor(age/60)+'m';if(age<86400)return Math.floor(age/3600)+'h';return Math.floor(age/86400)+'d';}
   function renderPeers(data){
@@ -2100,15 +2139,19 @@
   }
   function cargarPeers(){if(monDashboard!=='wg')return;api('/api/monitoring/peers').then(function(r){if(r.error){var l=$('mon-peer-list');vaciar(l);l.appendChild(nodo('div','mon-peer-empty',r.error));return;}renderPeers(r);});}
   function monSetTab(tab){
-    monDashboard=tab;var wg=tab==='wg';$('mon-tab-wg').classList.toggle('activo',wg);$('mon-tab-overview').classList.toggle('activo',!wg);$('mon-grafana-wrap').hidden=wg;$('mon-peer-view').hidden=!wg;$('mon-wg-legend').hidden=!wg;
-    if(monPeerTimer){clearInterval(monPeerTimer);monPeerTimer=null;} if(wg){cargarPeers();monPeerTimer=setInterval(cargarPeers,3000);}else{monCargarFrame();}
+    monDashboard=tab;var wg=tab==='wg', graf=tab==='grafana', summary=tab==='overview';
+    $('mon-tab-wg').classList.toggle('activo',wg);$('mon-tab-overview').classList.toggle('activo',summary);$('mon-tab-grafana').classList.toggle('activo',graf);
+    $('mon-grafana-wrap').hidden=!graf;$('mon-peer-view').hidden=!wg;$('mon-summary-view').hidden=!summary;$('mon-wg-legend').hidden=!wg;
+    $('mon-view-label').textContent=graf?'Grafana embebida':(wg?'Peers en tiempo real':'Vista rápida nativa');
+    if(monPeerTimer){clearInterval(monPeerTimer);monPeerTimer=null;} if(monSummaryTimer){clearInterval(monSummaryTimer);monSummaryTimer=null;}
+    if(wg){cargarPeers();monPeerTimer=setInterval(cargarPeers,3000);}else if(graf){monCargarFrame();}else{cargarResumen();monSummaryTimer=setInterval(cargarResumen,5000);}
   }
   $('mon-refresh').onclick=cargarMonitoring;
   $('mon-save').onclick=function(){var b=this;b.disabled=true;monNota('Guardando configuración…','');api('/api/monitoring/config',{method:'POST',body:JSON.stringify({monitorServer:$('mon-server').value,portStart:Number($('mon-port-start').value),portEnd:Number($('mon-port-end').value),grafanaUser:$('mon-graf-user').value.trim(),grafanaPassword:$('mon-graf-pass').value})}).then(function(r){if(r.error){monNota(r.error,'err');return;}$('mon-graf-pass').value='';monNota('Configuración cifrada y guardada.','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;});};
   $('mon-prepare').onclick=function(){var b=this;b.disabled=true;monNota('Preparando servidor de monitoreo…','');monPollProgress();api('/api/monitoring/preparar',{method:'POST',body:'{}'}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota(r.mensaje||'Servidor monitor preparado.','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;monStopProgress();});};
   $('mon-apply').onclick=function(){var elegidos=[];document.querySelectorAll('#mon-server-list input[type=checkbox]:checked').forEach(function(c){elegidos.push(c.dataset.server);});var b=this;b.disabled=true;monNota('Aplicando selección…','');monPollProgress();api('/api/monitoring/targets',{method:'POST',body:JSON.stringify({servidores:elegidos})}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota('Monitoreo aplicado. Prometheus ya tiene '+(r.targets||[]).length+' target(s).','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;monStopProgress();});};
   $('mon-peer-search').oninput=cargarPeers;$('mon-peer-sort').onchange=cargarPeers;
-  $('mon-tab-overview').onclick=function(){monSetTab('overview');}; $('mon-tab-wg').onclick=function(){monSetTab('wg');}; $('mon-reload').onclick=function(){if(monDashboard==='wg')cargarPeers();else monCargarFrame();}; $('mon-peer-refresh').onclick=cargarPeers;
+  $('mon-tab-overview').onclick=function(){monSetTab('overview');}; $('mon-tab-wg').onclick=function(){monSetTab('wg');}; $('mon-tab-grafana').onclick=function(){monSetTab('grafana');}; $('mon-reload').onclick=function(){if(monDashboard==='wg')cargarPeers();else if(monDashboard==='grafana')monCargarFrame();else cargarResumen();}; $('mon-peer-refresh').onclick=cargarPeers;
   $('mon-creds').onclick=function(){api('/api/monitoring/credenciales').then(function(r){if(r.error){aviso(r.error,false);return;}window.alert('Grafana\nUsuario: '+r.usuario+'\nContraseña: '+r.password+'\n\nLa contraseña está almacenada cifrada por Gateway WISP Access.');});};
 
   // ── Actualizaciones privadas y firmadas ───────────────────────

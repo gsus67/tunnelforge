@@ -92,6 +92,25 @@ func monitoringProgreso(etapa string, pct int) {
 	}
 	monProgress.Unlock()
 }
+func monitoringProgresoLog(linea string) {
+	linea = strings.TrimSpace(linea)
+	if linea == "" {
+		return
+	}
+	monProgress.Lock()
+	monProgress.P.Mostrar = true
+	for _, l := range strings.Split(linea, "\n") {
+		l = strings.TrimSpace(l)
+		if l != "" {
+			monProgress.P.Log = append(monProgress.P.Log, l)
+		}
+	}
+	if len(monProgress.P.Log) > 18 {
+		monProgress.P.Log = monProgress.P.Log[len(monProgress.P.Log)-18:]
+	}
+	monProgress.Unlock()
+}
+
 func monitoringProgresoFin(etapa string, ok bool) {
 	monProgress.Lock()
 	monProgress.P.Etapa = etapa
@@ -287,6 +306,146 @@ func monitoringUsuarioValido(s string) bool {
 
 func monitoringGrafanaUserValido(s string) bool { return monitoringUsuarioValido(s) && len(s) <= 64 }
 
+func monitoringPreflightScript() string {
+	return `set -eu
+command -v apt-get >/dev/null 2>&1 || { echo "Sistema no soportado: preparación automática requiere Debian/Ubuntu" >&2; exit 42; }
+command -v systemctl >/dev/null 2>&1 || { echo "systemd es necesario para el monitor persistente" >&2; exit 44; }
+export DEBIAN_FRONTEND=noninteractive
+# Esperar bloqueos de apt/dpkg en vez de fallar en el primer intento.
+i=0
+while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+  i=$((i+1)); [ "$i" -lt 60 ] || { echo "apt/dpkg sigue bloqueado después de 120 s" >&2; exit 45; }
+  sleep 2
+done
+mkdir -p /etc/gateway-wisp-monitor
+printf 'PRECHECK_OK\n'
+`
+}
+
+func monitoringPackagesScript() string {
+	return `set -eu
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -o Acquire::Retries=3
+apt-get install -y prometheus prometheus-node-exporter openssh-client ca-certificates wget gnupg curl
+printf 'PACKAGES_OK\n'
+`
+}
+
+func monitoringGrafanaPackageScript() string {
+	return `set -eu
+export DEBIAN_FRONTEND=noninteractive
+install -d -m 0755 /etc/apt/keyrings
+if [ ! -s /etc/apt/keyrings/grafana.asc ]; then
+  wget -q --tries=3 --timeout=20 -O /etc/apt/keyrings/grafana.asc.tmp https://apt.grafana.com/gpg-full.key
+  mv /etc/apt/keyrings/grafana.asc.tmp /etc/apt/keyrings/grafana.asc
+fi
+chmod 0644 /etc/apt/keyrings/grafana.asc
+printf 'deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main\n' > /etc/apt/sources.list.d/grafana.list
+apt-get update -o Acquire::Retries=3
+apt-get install -y grafana
+printf 'GRAFANA_PACKAGE_OK\n'
+`
+}
+
+func monitoringConfigureScript(cfg MonitoringConfig) string {
+	return fmt.Sprintf(`set -eu
+install -d -m 0700 /var/lib/gateway-wisp-monitor
+install -d -m 0755 /etc/gateway-wisp-monitor /var/lib/gateway-wisp-prometheus
+if [ ! -s /var/lib/gateway-wisp-monitor/id_ed25519 ]; then
+  ssh-keygen -q -t ed25519 -N '' -C gateway-wisp-monitor -f /var/lib/gateway-wisp-monitor/id_ed25519
+fi
+touch /var/lib/gateway-wisp-monitor/known_hosts
+chmod 0600 /var/lib/gateway-wisp-monitor/known_hosts
+cat > /etc/gateway-wisp-monitor/prometheus.yml <<'PROM'
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+scrape_configs: []
+PROM
+cat > /etc/systemd/system/gateway-wisp-prometheus.service <<'UNIT'
+[Unit]
+Description=Gateway WISP Access Prometheus
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=prometheus
+ExecStart=/usr/bin/prometheus --config.file=/etc/gateway-wisp-monitor/prometheus.yml --storage.tsdb.path=/var/lib/gateway-wisp-prometheus --web.listen-address=127.0.0.1:9090
+Restart=on-failure
+RestartSec=3
+[Install]
+WantedBy=multi-user.target
+UNIT
+chown -R prometheus:prometheus /var/lib/gateway-wisp-prometheus /etc/gateway-wisp-monitor
+chmod 0750 /etc/gateway-wisp-monitor
+/usr/bin/promtool check config /etc/gateway-wisp-monitor/prometheus.yml
+systemctl disable --now prometheus.service >/dev/null 2>&1 || true
+systemctl daemon-reload
+systemctl enable --now gateway-wisp-prometheus.service
+mkdir -p /etc/grafana/provisioning/datasources /etc/grafana/provisioning/dashboards /var/lib/grafana/dashboards
+cat > /etc/grafana/provisioning/datasources/gateway-wisp.yml <<'DS'
+apiVersion: 1
+datasources:
+  - name: Gateway WISP Prometheus
+    uid: gateway-wisp-prometheus
+    type: prometheus
+    access: proxy
+    url: http://127.0.0.1:9090
+    isDefault: true
+    editable: false
+DS
+cat > /etc/grafana/provisioning/dashboards/gateway-wisp.yml <<'DB'
+apiVersion: 1
+providers:
+  - name: Gateway WISP Access
+    orgId: 1
+    folder: Gateway WISP
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards
+DB
+cat > /etc/grafana/grafana.ini <<'GRAF'
+[server]
+http_addr = 127.0.0.1
+http_port = 3000
+root_url = http://127.0.0.1:3000/monitor/grafana/
+serve_from_sub_path = true
+[security]
+admin_user = %s
+admin_password = %s
+cookie_secure = false
+cookie_samesite = strict
+allow_embedding = true
+[auth.anonymous]
+enabled = true
+org_role = Viewer
+[users]
+allow_sign_up = false
+[analytics]
+reporting_enabled = false
+check_for_updates = true
+GRAF
+systemctl enable grafana-server.service >/dev/null 2>&1 || true
+systemctl restart gateway-wisp-prometheus.service
+systemctl restart grafana-server.service
+printf 'CONFIG_OK\n'
+`, cfg.GrafanaUser, cfg.GrafanaPass)
+}
+
+func monitoringVerifyScript() string {
+	return `set -eu
+systemctl is-active --quiet gateway-wisp-prometheus.service
+systemctl is-active --quiet grafana-server.service
+for n in 1 2 3 4 5 6 7 8 9 10; do curl -fsS --max-time 2 http://127.0.0.1:9090/-/ready >/dev/null && break; sleep 1; done
+curl -fsS --max-time 3 http://127.0.0.1:9090/-/ready >/dev/null
+for n in 1 2 3 4 5 6 7 8 9 10; do curl -fsS --max-time 2 http://127.0.0.1:3000/api/health >/dev/null && break; sleep 1; done
+curl -fsS --max-time 3 http://127.0.0.1:3000/api/health >/dev/null
+printf 'VERIFY_OK\n'
+`
+}
+
 func monitoringInstallerMonitor(cfg MonitoringConfig) string {
 	// Grafana OSS se instala desde el repositorio oficial en Debian/Ubuntu.
 	// Prometheus usa el paquete de la distribución y corre con una unidad propia
@@ -438,26 +597,71 @@ OUT=/var/lib/node_exporter/textfile_collector/wireguard.prom.tmp
 FINAL=/var/lib/node_exporter/textfile_collector/wireguard.prom
 mkdir -p "$(dirname "$FINAL")"
 esc(){ printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+refresh_wgd_names(){
+  cache=/run/gateway-wisp-peer-names.tsv
+  stale=1
+  if [ -s "$cache" ]; then
+    now=$(date +%s); mt=$(stat -c %Y "$cache" 2>/dev/null || echo 0); [ $((now-mt)) -lt 60 ] && stale=0
+  fi
+  [ "$stale" -eq 0 ] && return 0
+  tmp="$cache.tmp"
+  : > "$tmp"
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$tmp" <<'PYWG' || true
+import glob, os, sqlite3, sys
+out=sys.argv[1]
+patterns=[
+ '/root/WGDashboard/src/db/*.db','/root/WGDashboard/src/db/*.sqlite*','/root/WGDashboard/src/*.db','/root/WGDashboard/src/*.sqlite*',
+ '/opt/WGDashboard/src/db/*.db','/opt/WGDashboard/src/db/*.sqlite*','/opt/WGDashboard/src/*.db','/opt/WGDashboard/src/*.sqlite*'
+]
+seen=set(); rows=[]
+for pat in patterns:
+ for path in glob.glob(pat):
+  if path in seen or not os.path.isfile(path): continue
+  seen.add(path)
+  try:
+   con=sqlite3.connect(f'file:{path}?mode=ro', uri=True, timeout=1)
+   for (table,) in con.execute("select name from sqlite_master where type='table'"):
+    try: cols=[r[1] for r in con.execute(f'pragma table_info("{table}")')]
+    except Exception: continue
+    norm={c.lower().replace('-','_'):c for c in cols}
+    kcol=next((norm[k] for k in ('public_key','publickey','peer_public_key','peerpublickey') if k in norm),None)
+    ncol=next((norm[k] for k in ('name','peer_name','peername','client_name','clientname') if k in norm),None)
+    if not kcol or not ncol: continue
+    try:
+     for key,name in con.execute(f'SELECT "{kcol}", "{ncol}" FROM "{table}"'):
+      if key and name and str(name).strip(): rows.append((str(key).strip(),str(name).strip()))
+    except Exception: pass
+   con.close()
+  except Exception: pass
+with open(out,'a',encoding='utf-8') as f:
+ for k,n in rows:
+  n=n.replace('\t',' ').replace('\n',' ').strip()
+  if k and n: f.write(k+'\t'+n+'\n')
+PYWG
+  fi
+  mv "$tmp" "$cache" 2>/dev/null || true
+}
 peer_name(){
   key="$1"; fallback="$2"; found=""
-  for f in /etc/wireguard/*.conf; do
-    [ -r "$f" ] || continue
-    n=$(awk -v k="$key" '
-      BEGIN{name=""}
-      /^[[:space:]]*#/ {
-        x=$0; sub(/^[[:space:]]*#[[:space:]]*/,"",x)
-        if (x ~ /^(Name|Nombre|Client|Cliente)[[:space:]]*[:=]/) { sub(/^[^:=]*[:=][[:space:]]*/,"",x); name=x }
-        else if (x != "" && x !~ /^[-=]+$/) name=x
-        next
-      }
-      /^[[:space:]]*\[Peer\]/ { peer=1; next }
-      peer && /^[[:space:]]*PublicKey[[:space:]]*=/ {
-        x=$0; sub(/^[^=]*=[[:space:]]*/,"",x)
-        if (x==k) { print name; exit }
-        peer=0; name=""
-      }' "$f" 2>/dev/null || true)
-    [ -n "$n" ] && { found="$n"; break; }
-  done
+  refresh_wgd_names
+  if [ -r /run/gateway-wisp-peer-names.tsv ]; then
+    found=$(awk -F '\t' -v k="$key" '$1==k {sub(/^[^\t]*\t/,""); print; exit}' /run/gateway-wisp-peer-names.tsv 2>/dev/null || true)
+  fi
+  if [ -z "$found" ]; then
+    for f in /etc/wireguard/*.conf; do
+      [ -r "$f" ] || continue
+      n=$(awk -v k="$key" '
+        function clean(x){sub(/^[[:space:]]*#[[:space:]]*/,"",x); sub(/^[[:space:]]+|[[:space:]]+$/,"",x); return x}
+        function maybe(x, y){y=clean(x); if(y ~ /^-?WGP-?[[:space:]]*Peer[[:space:]]*:/){sub(/^.*Peer[[:space:]]*:[[:space:]]*/,"",y);return y} if(y ~ /^(Name|Nombre|Client|Cliente|Peer)[[:space:]]*[:=]/){sub(/^[^:=]*[:=][[:space:]]*/,"",y);return y} return ""}
+        BEGIN{inpeer=0; pending=""; name=""}
+        /^[[:space:]]*#/ {v=maybe($0); if(v!=""){if(inpeer)name=v;else pending=v}; next}
+        /^[[:space:]]*\[Peer\][[:space:]]*$/ {inpeer=1; name=pending; pending=""; next}
+        inpeer && /^[[:space:]]*PublicKey[[:space:]]*=/ {x=$0;sub(/^[^=]*=[[:space:]]*/,"",x);sub(/[[:space:]]+$/,"",x); if(x==k){print name;exit}; inpeer=0;name="";next}
+      ' "$f" 2>/dev/null || true)
+      [ -n "$n" ] && { found="$n"; break; }
+    done
+  fi
   [ -n "$found" ] && printf '%s' "$found" || printf '%s' "$fallback"
 }
 {
@@ -793,42 +997,73 @@ func manejarMonitoringConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func manejarMonitoringPreparar(w http.ResponseWriter, r *http.Request) {
-	monitoringProgresoInicio("Preparar monitor", "Validando configuración y conexión SSH…")
+	monitoringProgresoInicio("Preparar monitor", "Validando configuración y privilegios…")
 	cfg := cargarMonitoring()
+	fail := func(stage, out string, err error) {
+		monitoringProgresoLog(out)
+		monitoringProgresoFin(stage, false)
+		responderError(w, fmt.Errorf("%s: %v", stage, err))
+	}
 	if cfg.MonitorServer == "" {
+		monitoringProgresoFin("Selecciona primero el servidor de monitoreo.", false)
 		responderError(w, fmt.Errorf("configura el servidor de monitoreo"))
 		return
 	}
 	if cfg.GrafanaPass == "" {
 		p, e := monitoringPassword()
 		if e != nil {
-			responderError(w, e)
+			fail("No pude generar la contraseña de Grafana", "", e)
 			return
 		}
 		cfg.GrafanaPass = p
 	}
-	monitoringProgreso("Instalando Prometheus, node_exporter y dependencias…", 18)
-	monitoringProgreso("Instalando y configurando Grafana OSS…", 42)
-	out, err := monitoringRoot(cfg.MonitorServer, monitoringInstallerMonitor(cfg))
+	monitoringProgreso("1/6 · Preflight: sistema, systemd y bloqueos de paquetes…", 8)
+	out, err := monitoringRoot(cfg.MonitorServer, monitoringPreflightScript())
+	monitoringProgresoLog(out)
 	if err != nil {
-		monitoringProgresoFin("Falló la preparación del servidor de monitoreo.", false)
-		responderError(w, fmt.Errorf("preparando monitor: %v — %s", err, out))
+		fail("Falló el preflight", out, err)
 		return
 	}
-	monitoringProgreso("Provisionando datasource y dashboards…", 78)
+	monitoringProgreso("2/6 · Instalando Prometheus, node_exporter y herramientas…", 22)
+	out, err = monitoringRoot(cfg.MonitorServer, monitoringPackagesScript())
+	monitoringProgresoLog(out)
+	if err != nil {
+		fail("Falló la instalación de paquetes base", out, err)
+		return
+	}
+	monitoringProgreso("3/6 · Configurando repositorio e instalando Grafana OSS…", 44)
+	out, err = monitoringRoot(cfg.MonitorServer, monitoringGrafanaPackageScript())
+	monitoringProgresoLog(out)
+	if err != nil {
+		fail("Falló la instalación de Grafana", out, err)
+		return
+	}
+	monitoringProgreso("4/6 · Creando servicios locales y configuración segura…", 64)
+	out, err = monitoringRoot(cfg.MonitorServer, monitoringConfigureScript(cfg))
+	monitoringProgresoLog(out)
+	if err != nil {
+		fail("Falló la configuración de servicios", out, err)
+		return
+	}
+	monitoringProgreso("5/6 · Provisionando dashboards…", 80)
+	if err = monitoringEscribirDashboards(cfg); err != nil {
+		fail("Falló el provisionado de dashboards", "", err)
+		return
+	}
+	monitoringProgreso("6/6 · Verificando Prometheus y Grafana por HTTP local…", 94)
+	out, err = monitoringRoot(cfg.MonitorServer, monitoringVerifyScript())
+	monitoringProgresoLog(out)
+	if err != nil {
+		fail("Los servicios no respondieron correctamente", out, err)
+		return
+	}
 	cfg.Preparado = true
-	if err := guardarMonitoring(cfg); err != nil {
-		responderError(w, err)
+	if err = guardarMonitoring(cfg); err != nil {
+		fail("No pude guardar el estado de monitoreo", "", err)
 		return
 	}
-	if err := monitoringEscribirDashboards(cfg); err != nil {
-		monitoringProgresoFin("Servicios instalados, pero falló el dashboard.", false)
-		responderError(w, fmt.Errorf("instalado, pero falló el dashboard: %v", err))
-		return
-	}
-	monitoringProgreso("Comprobando servicios locales…", 94)
-	monitoringProgresoFin("Prometheus y Grafana preparados correctamente.", true)
-	responder(w, map[string]any{"ok": true, "mensaje": "Prometheus y Grafana quedaron preparados en localhost del servidor monitor."})
+	monitoringProgresoFin("Prometheus y Grafana preparados y verificados.", true)
+	responder(w, map[string]any{"ok": true, "mensaje": "Monitor preparado y verificado. Prometheus y Grafana responden correctamente."})
 }
 
 func manejarMonitoringTargets(w http.ResponseWriter, r *http.Request) {
@@ -959,6 +1194,72 @@ func monitoringPromQuery(cfg MonitoringConfig, query string) ([]struct {
 		}{r.Metric, f})
 	}
 	return out, nil
+}
+
+func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
+	cfg := cargarMonitoring()
+	if cfg.MonitorServer == "" || !cfg.Preparado {
+		responderError(w, fmt.Errorf("prepara primero el monitoreo"))
+		return
+	}
+	type srv struct {
+		Nombre                          string  `json:"nombre"`
+		Online                          bool    `json:"online"`
+		CPU, RAM, Disco, RX, TX, Uptime float64 `json:"cpu"`
+	}
+	// Mapas por servidor. Las consultas son instantáneas y pequeñas.
+	queries := map[string]string{
+		"up":     `up{job="gateway-wisp"}`,
+		"cpu":    `100 - (avg by (server) (rate(node_cpu_seconds_total{job="gateway-wisp",mode="idle"}[2m])) * 100)`,
+		"ram":    `100 * (1 - (node_memory_MemAvailable_bytes{job="gateway-wisp"} / node_memory_MemTotal_bytes{job="gateway-wisp"}))`,
+		"disk":   `100 * (1 - (node_filesystem_avail_bytes{job="gateway-wisp",mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{job="gateway-wisp",mountpoint="/",fstype!~"tmpfs|overlay"}))`,
+		"rx":     `sum by (server) (rate(node_network_receive_bytes_total{job="gateway-wisp",device!~"lo|docker.*|veth.*|br-.*"}[1m])) * 8 / 1000000`,
+		"tx":     `sum by (server) (rate(node_network_transmit_bytes_total{job="gateway-wisp",device!~"lo|docker.*|veth.*|br-.*"}[1m])) * 8 / 1000000`,
+		"uptime": `time() - node_boot_time_seconds{job="gateway-wisp"}`,
+	}
+	vals := map[string]map[string]float64{}
+	for key, q := range queries {
+		rows, _ := monitoringPromQuery(cfg, q)
+		m := map[string]float64{}
+		for _, v := range rows {
+			if n := v.Metric["server"]; n != "" {
+				m[n] = v.Value
+			}
+		}
+		vals[key] = m
+	}
+	servers := make([]map[string]any, 0, len(cfg.Targets))
+	online := 0
+	var cpuSum, ramSum, rxSum, txSum float64
+	samples := 0
+	for _, t := range cfg.Targets {
+		n := t.Servidor
+		up := vals["up"][n] > 0
+		if up {
+			online++
+		}
+		cpu := vals["cpu"][n]
+		ram := vals["ram"][n]
+		if up {
+			cpuSum += cpu
+			ramSum += ram
+			samples++
+		}
+		rx := vals["rx"][n]
+		tx := vals["tx"][n]
+		rxSum += rx
+		txSum += tx
+		servers = append(servers, map[string]any{"nombre": n, "online": up, "cpu": cpu, "ram": ram, "disco": vals["disk"][n], "rxMbit": rx, "txMbit": tx, "uptime": vals["uptime"][n]})
+	}
+	sort.Slice(servers, func(i, j int) bool {
+		return strings.ToLower(fmt.Sprint(servers[i]["nombre"])) < strings.ToLower(fmt.Sprint(servers[j]["nombre"]))
+	})
+	avgCPU, avgRAM := 0.0, 0.0
+	if samples > 0 {
+		avgCPU = cpuSum / float64(samples)
+		avgRAM = ramSum / float64(samples)
+	}
+	responder(w, map[string]any{"ok": true, "total": len(cfg.Targets), "online": online, "cpuPromedio": avgCPU, "ramPromedio": avgRAM, "rxMbit": rxSum, "txMbit": txSum, "servidores": servers})
 }
 
 func manejarMonitoringPeers(w http.ResponseWriter, r *http.Request) {
