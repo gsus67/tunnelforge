@@ -1,3 +1,19 @@
+## v3.1.11
+
+- Pestaña Info reorganizada con resumen de la instalación, estadísticas, funciones, seguridad, herramientas y atajos.
+
+- Corregido el orden estable de los servidores conectados: ya no cambian de posición en cada refresco del Dashboard.
+- El tráfico de cada servidor conectado muestra ahora RX/TX real de su interfaz de red principal, muestreado de forma ligera por SSH.
+- Nuevo selector discreto por servidor para decidir cuál responde en `localhost:puerto` cuando varios conectados comparten los mismos túneles.
+- Los puertos locales se reasignan al servidor seleccionado sin necesidad de desconectar/reconectar.
+
+### Cambios
+
+- El test de velocidad ya no imprime el comando/script completo en la terminal; muestra solo el resultado.
+- El test se prepara como script temporal remoto y se ejecuta de forma silenciosa en la terminal integrada.
+- Descarga ajustada a 75 MB para evitar respuestas vacías del endpoint en algunas rutas/edges.
+- Se mantiene la prueba de subida de 50 MB y la medición de latencia HTTP.
+
 ## v3.1.10
 
 ### Herramientas

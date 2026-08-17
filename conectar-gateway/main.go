@@ -32,6 +32,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -41,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "3.1.10"
+const version = "3.1.11"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -214,46 +215,201 @@ func descifrar(cifrado string) (string, error) {
 // ---------------------------------------------------------------------------
 type Conexion struct {
 	cliente  *ssh.Client
-	escuchas []net.Listener
+	escuchas map[int]net.Listener // puerto local -> escucha actualmente asignada a este servidor
 	servidor string
 	desde    time.Time
-	abiertos []int
 	tuneles  []Tunel
-	rx, tx   int64        // bytes acumulados (atomic)
+	rx, tx   int64        // bytes de los túneles (atomic); se conserva como respaldo
 	sftp     *sftp.Client // canal SFTP (perezoso: solo si se usa el gestor)
 	sftpMu   sync.Mutex   // evita abrir dos canales SFTP simultáneos
+	done     chan struct{}
+
+	traficoMu         sync.RWMutex
+	traficoRXBps      int64 // tráfico real de la interfaz principal del servidor
+	traficoTXBps      int64
+	traficoRXTotal    int64
+	traficoTXTotal    int64
+	traficoInterfaz   string
+	traficoDisponible bool
 }
 
-// Varias conexiones simultaneas a distintos servidores. Si dos servidores
-// comparten un puerto de tunel, el segundo simplemente omite ese tunel
-// (mismo comportamiento que un puerto local ocupado por cualquier otro programa).
+// Varias conexiones simultáneas a distintos servidores. Los puertos locales
+// compartidos se asignan al servidor marcado como destino de localhost.
 var (
-	conexiones = map[string]*Conexion{}
-	conectando = map[string]bool{}
+	conexiones        = map[string]*Conexion{}
+	conectando        = map[string]bool{}
+	servidorLocalhost string
 )
 
+func tieneTunel(c *Conexion, puerto int) bool {
+	for _, t := range c.tuneles {
+		if t.Puerto == puerto {
+			return true
+		}
+	}
+	return false
+}
+
+func conexionAntes(a, b *Conexion) bool {
+	if b == nil {
+		return true
+	}
+	if a.desde.Equal(b.desde) {
+		return strings.ToLower(a.servidor) < strings.ToLower(b.servidor)
+	}
+	return a.desde.Before(b.desde)
+}
+
+func conexionMasAntiguaLocked() *Conexion {
+	var elegida *Conexion
+	for _, c := range conexiones {
+		if conexionAntes(c, elegida) {
+			elegida = c
+		}
+	}
+	return elegida
+}
+
+func propietarioPuertoLocked(puerto int) *Conexion {
+	if seleccionada := conexiones[servidorLocalhost]; seleccionada != nil && tieneTunel(seleccionada, puerto) {
+		return seleccionada
+	}
+	var elegida *Conexion
+	for _, c := range conexiones {
+		if tieneTunel(c, puerto) && conexionAntes(c, elegida) {
+			elegida = c
+		}
+	}
+	return elegida
+}
+
+func puertosAbiertosLocked(c *Conexion) []int {
+	puertos := make([]int, 0, len(c.escuchas))
+	for _, t := range c.tuneles {
+		if _, ok := c.escuchas[t.Puerto]; ok {
+			puertos = append(puertos, t.Puerto)
+		}
+	}
+	return puertos
+}
+
+func iniciarEscuchaTunelLocked(c *Conexion, puerto int) error {
+	if c.escuchas == nil {
+		c.escuchas = make(map[int]net.Listener)
+	}
+	if _, existe := c.escuchas[puerto]; existe {
+		return nil
+	}
+	l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", puerto))
+	if err != nil {
+		return err
+	}
+	c.escuchas[puerto] = l
+	go func(l net.Listener, con *Conexion, p int) {
+		for {
+			local, err := l.Accept()
+			if err != nil {
+				return
+			}
+			go puente(local, con.cliente, p, &con.rx, &con.tx)
+		}
+	}(l, c, puerto)
+	return nil
+}
+
+// reasignarPuertosLocked mantiene una única escucha local por puerto. Si el
+// usuario selecciona otro servidor para localhost, las nuevas conexiones a
+// localhost:puerto empiezan a viajar por ese servidor sin reconectarlo.
+func reasignarPuertosLocked() {
+	if len(conexiones) == 0 {
+		servidorLocalhost = ""
+		return
+	}
+	if conexiones[servidorLocalhost] == nil {
+		if c := conexionMasAntiguaLocked(); c != nil {
+			servidorLocalhost = c.servidor
+		}
+	}
+
+	puertos := map[int]bool{}
+	for _, c := range conexiones {
+		for _, t := range c.tuneles {
+			puertos[t.Puerto] = true
+		}
+	}
+	deseado := make(map[int]*Conexion, len(puertos))
+	for p := range puertos {
+		deseado[p] = propietarioPuertoLocked(p)
+	}
+
+	// Primero soltamos los puertos que cambian de propietario.
+	for _, c := range conexiones {
+		for p, l := range c.escuchas {
+			if deseado[p] != c {
+				_ = l.Close()
+				delete(c.escuchas, p)
+			}
+		}
+	}
+
+	// Después abrimos los puertos en su propietario deseado. Si otro programa
+	// del equipo ocupa el puerto, simplemente queda no disponible.
+	listaPuertos := make([]int, 0, len(deseado))
+	for p := range deseado {
+		listaPuertos = append(listaPuertos, p)
+	}
+	sort.Ints(listaPuertos)
+	for _, p := range listaPuertos {
+		owner := deseado[p]
+		if owner == nil {
+			continue
+		}
+		if _, ok := owner.escuchas[p]; !ok {
+			_ = iniciarEscuchaTunelLocked(owner, p)
+		}
+	}
+}
+
+func detenerConexionLocked(c *Conexion) {
+	for p, l := range c.escuchas {
+		_ = l.Close()
+		delete(c.escuchas, p)
+	}
+	select {
+	case <-c.done:
+	default:
+		close(c.done)
+	}
+	c.sftpMu.Lock()
+	if c.sftp != nil {
+		_ = c.sftp.Close()
+		c.sftp = nil
+	}
+	c.sftpMu.Unlock()
+	_ = c.cliente.Close()
+}
+
+// cerrarConexion se llama con mu bloqueado.
 func cerrarConexion(nombre string) {
 	c, ok := conexiones[nombre]
 	if !ok {
 		return
 	}
-	for _, l := range c.escuchas {
-		l.Close()
-	}
-	c.sftpMu.Lock()
-	if c.sftp != nil {
-		c.sftp.Close()
-		c.sftp = nil
-	}
-	c.sftpMu.Unlock()
-	c.cliente.Close()
+	detenerConexionLocked(c)
 	delete(conexiones, nombre)
+	if servidorLocalhost == nombre {
+		servidorLocalhost = ""
+	}
+	reasignarPuertosLocked()
 }
 
+// cerrarTodas se llama con mu bloqueado.
 func cerrarTodas() {
-	for nombre := range conexiones {
-		cerrarConexion(nombre)
+	for _, c := range conexiones {
+		detenerConexionLocked(c)
 	}
+	conexiones = map[string]*Conexion{}
+	servidorLocalhost = ""
 }
 
 // contador: envoltorio que suma a un contador atomico cada byte que pasa
@@ -278,6 +434,95 @@ func puente(local net.Conn, cliente *ssh.Client, puerto int, rx, tx *int64) {
 	go func() { _, _ = io.Copy(&contador{remoto, tx}, local); remoto.Close() }()
 	_, _ = io.Copy(&contador{local, rx}, remoto)
 	local.Close()
+}
+
+// leerContadoresRed obtiene los contadores de la interfaz con ruta por defecto.
+// Son lecturas mínimas de sysfs; no generan tráfico de Internet ni hacen tests.
+func leerContadoresRed(c *Conexion) (string, int64, int64, error) {
+	sesion, err := c.cliente.NewSession()
+	if err != nil {
+		return "", 0, 0, err
+	}
+	defer sesion.Close()
+	cmd := `IF=$(awk '$2=="00000000"{print $1; exit}' /proc/net/route 2>/dev/null); if [ -z "$IF" ]; then IF=$(ls /sys/class/net 2>/dev/null | grep -v '^lo$' | head -n1); fi; RX=$(cat "/sys/class/net/$IF/statistics/rx_bytes" 2>/dev/null); TX=$(cat "/sys/class/net/$IF/statistics/tx_bytes" 2>/dev/null); printf '%s %s %s\n' "$IF" "$RX" "$TX"`
+	type salida struct {
+		datos []byte
+		err   error
+	}
+	ch := make(chan salida, 1)
+	go func() {
+		datos, e := sesion.Output(cmd)
+		ch <- salida{datos: datos, err: e}
+	}()
+	select {
+	case r := <-ch:
+		if r.err != nil {
+			return "", 0, 0, r.err
+		}
+		var interfaz string
+		var rx, tx int64
+		if _, err := fmt.Sscanf(strings.TrimSpace(string(r.datos)), "%s %d %d", &interfaz, &rx, &tx); err != nil || interfaz == "" {
+			return "", 0, 0, fmt.Errorf("no pude leer contadores de red")
+		}
+		return interfaz, rx, tx, nil
+	case <-time.After(2500 * time.Millisecond):
+		_ = sesion.Close()
+		return "", 0, 0, fmt.Errorf("timeout leyendo tráfico")
+	}
+}
+
+func monitorTraficoServidor(c *Conexion) {
+	const intervalo = 3 * time.Second
+	var prevRX, prevTX int64
+	var prevInterfaz string
+	var prevTime time.Time
+	fallos := 0
+
+	muestrear := func() {
+		interfaz, rx, tx, err := leerContadoresRed(c)
+		if err != nil {
+			fallos++
+			if fallos >= 2 {
+				c.traficoMu.Lock()
+				c.traficoDisponible = false
+				c.traficoRXBps = 0
+				c.traficoTXBps = 0
+				c.traficoMu.Unlock()
+			}
+			return
+		}
+		fallos = 0
+		ahora := time.Now()
+		var rxBps, txBps int64
+		if !prevTime.IsZero() && interfaz == prevInterfaz {
+			dt := ahora.Sub(prevTime).Seconds()
+			if dt > 0 && rx >= prevRX && tx >= prevTX {
+				rxBps = int64(float64(rx-prevRX) / dt)
+				txBps = int64(float64(tx-prevTX) / dt)
+			}
+		}
+		prevRX, prevTX, prevInterfaz, prevTime = rx, tx, interfaz, ahora
+		c.traficoMu.Lock()
+		c.traficoRXBps = rxBps
+		c.traficoTXBps = txBps
+		c.traficoRXTotal = rx
+		c.traficoTXTotal = tx
+		c.traficoInterfaz = interfaz
+		c.traficoDisponible = true
+		c.traficoMu.Unlock()
+	}
+
+	muestrear()
+	ticker := time.NewTicker(intervalo)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			muestrear()
+		case <-c.done:
+			return
+		}
+	}
 }
 
 func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any, error) {
@@ -365,32 +610,14 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 		tuneles = cargarTuneles() // compatibilidad con perfiles de versiones anteriores
 		mu.Unlock()
 	}
-	con := &Conexion{cliente: cliente, servidor: s.Nombre, desde: time.Now(), tuneles: append([]Tunel(nil), tuneles...)}
-	var omitidos []int
-	for _, t := range tuneles {
-		l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", t.Puerto))
-		if err != nil {
-			// puerto ocupado (por otro programa, o por OTRA conexion nuestra
-			// ya activa a otro servidor): se omite, no es un error fatal.
-			omitidos = append(omitidos, t.Puerto)
-			continue
-		}
-		con.escuchas = append(con.escuchas, l)
-		con.abiertos = append(con.abiertos, t.Puerto)
-		go func(l net.Listener, puerto int) {
-			for {
-				c, err := l.Accept()
-				if err != nil {
-					return
-				}
-				go puente(c, cliente, puerto, &con.rx, &con.tx)
-			}
-		}(l, t.Puerto)
+	con := &Conexion{
+		cliente:  cliente,
+		servidor: s.Nombre,
+		desde:    time.Now(),
+		tuneles:  append([]Tunel(nil), tuneles...),
+		escuchas: make(map[int]net.Listener),
+		done:     make(chan struct{}),
 	}
-	// Si NINGUN tunel pudo abrirse (puertos ocupados, tipicamente por otra
-	// conexion ya activa a otro servidor) NO cerramos la conexion SSH: sigue
-	// siendo util para el TERMINAL, que no necesita ningun puerto local.
-	sinTuneles := len(con.escuchas) == 0
 
 	go func() { // keepalive
 		t := time.NewTicker(30 * time.Second)
@@ -401,38 +628,46 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 			}
 		}
 	}()
+	mu.Lock()
+	if anterior := conexiones[con.servidor]; anterior != nil {
+		mu.Unlock()
+		_ = cliente.Close()
+		return nil, fmt.Errorf("ya estás conectado a '%s'", con.servidor)
+	}
+	conexiones[con.servidor] = con
+	if servidorLocalhost == "" {
+		servidorLocalhost = con.servidor
+	}
+	reasignarPuertosLocked()
+	abiertos := puertosAbiertosLocked(con)
+	sinTuneles := len(abiertos) == 0
+	abiertosSet := map[int]bool{}
+	for _, p := range abiertos {
+		abiertosSet[p] = true
+	}
+	var omitidos []int
+	for _, t := range con.tuneles {
+		if !abiertosSet[t.Puerto] {
+			omitidos = append(omitidos, t.Puerto)
+		}
+	}
+	mu.Unlock()
+
+	go monitorTraficoServidor(con)
 	go func() { // detectar caída de la sesión
 		_ = cliente.Wait()
 		mu.Lock()
 		if conexiones[con.servidor] == con {
-			for _, l := range con.escuchas {
-				l.Close()
-			}
-			delete(conexiones, con.servidor)
+			cerrarConexion(con.servidor)
 		}
 		mu.Unlock()
 	}()
 
-	mu.Lock()
-	if anterior := conexiones[con.servidor]; anterior != nil {
-		mu.Unlock()
-		for _, l := range con.escuchas {
-			l.Close()
-		}
-		cliente.Close()
-		return nil, fmt.Errorf("ya estás conectado a '%s'", con.servidor)
-	}
-	conexiones[con.servidor] = con
-	mu.Unlock()
-	resultado := map[string]any{"ok": true, "puertos": con.abiertos, "sinTuneles": sinTuneles}
+	resultado := map[string]any{"ok": true, "puertos": abiertos, "sinTuneles": sinTuneles}
 	var abrir []string
 	for _, t := range con.tuneles {
-		if t.AbrirWeb {
-			for _, p := range con.abiertos {
-				if p == t.Puerto {
-					abrir = append(abrir, fmt.Sprintf("http://localhost:%d%s", t.Puerto, t.Ruta))
-				}
-			}
+		if t.AbrirWeb && abiertosSet[t.Puerto] {
+			abrir = append(abrir, fmt.Sprintf("http://localhost:%d%s", t.Puerto, t.Ruta))
 		}
 	}
 	if len(abrir) > 0 {
@@ -755,29 +990,78 @@ func main() {
 		responder(w, map[string]any{"ok": true})
 	}))
 
+	mux.HandleFunc("/api/localhost-servidor", proteger(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		var pet struct{ Nombre string }
+		if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
+			responderError(w, err)
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if conexiones[pet.Nombre] == nil {
+			responderError(w, fmt.Errorf("servidor no conectado"))
+			return
+		}
+		servidorLocalhost = pet.Nombre
+		reasignarPuertosLocked()
+		responder(w, map[string]any{
+			"ok": true, "servidor": servidorLocalhost,
+			"puertos": puertosAbiertosLocked(conexiones[servidorLocalhost]),
+		})
+	}))
+
 	mux.HandleFunc("/api/estado", proteger(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
-		lista := []map[string]any{}
+		// También reintenta puertos que pudieran haber estado ocupados temporalmente.
+		reasignarPuertosLocked()
+		type conexionEstado struct {
+			nombre string
+			con    *Conexion
+		}
+		ordenadas := make([]conexionEstado, 0, len(conexiones))
 		for nombre, c := range conexiones {
-			abiertos := map[int]bool{}
-			for _, p := range c.abiertos {
-				abiertos[p] = true
+			ordenadas = append(ordenadas, conexionEstado{nombre: nombre, con: c})
+		}
+		sort.SliceStable(ordenadas, func(i, j int) bool {
+			a, b := ordenadas[i], ordenadas[j]
+			if a.con.desde.Equal(b.con.desde) {
+				return strings.ToLower(a.nombre) < strings.ToLower(b.nombre)
 			}
-			var activos []Tunel
-			for _, t := range c.tuneles {
-				if abiertos[t.Puerto] {
-					activos = append(activos, t)
-				}
-			}
+			return a.con.desde.Before(b.con.desde)
+		})
+
+		lista := make([]map[string]any, 0, len(ordenadas))
+		for _, item := range ordenadas {
+			nombre, c := item.nombre, item.con
+			puertos := puertosAbiertosLocked(c)
+			c.traficoMu.RLock()
+			traficoRXBps := c.traficoRXBps
+			traficoTXBps := c.traficoTXBps
+			traficoRXTotal := c.traficoRXTotal
+			traficoTXTotal := c.traficoTXTotal
+			traficoInterfaz := c.traficoInterfaz
+			traficoDisponible := c.traficoDisponible
+			c.traficoMu.RUnlock()
 			lista = append(lista, map[string]any{
-				"servidor": nombre, "puertos": c.abiertos, "tuneles": activos,
-				"desde": c.desde.Format("15:04:05"),
-				"rx":    atomic.LoadInt64(&c.rx), "tx": atomic.LoadInt64(&c.tx),
+				"servidor": nombre,
+				"puertos":  puertos,
+				"tuneles":  c.tuneles,
+				"desde":    c.desde.Format("15:04:05"),
+				"rx":       atomic.LoadInt64(&c.rx), "tx": atomic.LoadInt64(&c.tx),
+				"traficoRxBps": traficoRXBps, "traficoTxBps": traficoTXBps,
+				"traficoRxTotal": traficoRXTotal, "traficoTxTotal": traficoTXTotal,
+				"traficoInterfaz": traficoInterfaz, "traficoDisponible": traficoDisponible,
+				"localhost": nombre == servidorLocalhost,
 			})
 		}
 		responder(w, map[string]any{
 			"conectado": len(lista) > 0, "conexiones": lista, "version": version,
+			"localhostSeleccionado": servidorLocalhost,
 		})
 	}))
 

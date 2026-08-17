@@ -115,9 +115,10 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
-// manejarTestVelocidad prepara un comando de diagnóstico que se ejecuta de forma
-// visible en la terminal integrada del servidor conectado. Usa endpoints públicos
-// de Cloudflare para medir latencia HTTP, descarga y subida sin instalar paquetes.
+// manejarTestVelocidad prepara en el servidor un script temporal de diagnostico
+// y devuelve un comando corto para ejecutarlo dentro de la terminal integrada.
+// De esta forma la terminal muestra solamente los resultados y no el script
+// completo. Usa los endpoints oficiales del motor de Speedtest de Cloudflare.
 func manejarTestVelocidad(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		responderError(w, fmt.Errorf("método no permitido"))
@@ -140,44 +141,78 @@ func manejarTestVelocidad(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	script := `set -u
+	// Mantener el tamaño de descarga por debajo de 100 MB evita respuestas
+	// vacías que algunos edges pueden devolver para solicitudes demasiado grandes.
+	script := `#!/bin/sh
+set -u
 BASE="https://speed.cloudflare.com"
-printf '\n=== Gateway WISP · Test de velocidad ===\n'
-printf 'Host: '; hostname 2>/dev/null || true
-printf 'Destino: Cloudflare edge\n'
+
 if ! command -v curl >/dev/null 2>&1; then
-  printf '\nERROR: curl no está instalado en este servidor.\n'
-  printf 'Instálalo y vuelve a ejecutar la prueba.\n'
+  printf 'ERROR: curl no está instalado en este servidor.\n'
   exit 127
 fi
-printf 'IP pública: '
-IP=$(curl -fsS --max-time 8 https://www.cloudflare.com/cdn-cgi/trace 2>/dev/null | awk -F= '$1=="ip"{print $2; exit}')
-if [ -n "${IP:-}" ]; then printf '%s\n' "$IP"; else printf 'no disponible\n'; fi
-printf '\nMidiendo latencia...\n'
-LAT=$(curl -o /dev/null -sS --max-time 15 -w '%{time_starttransfer}' "$BASE/__down?bytes=0" 2>/dev/null || true)
+
+printf 'Midiendo latencia...\n'
+LAT=$(curl -L -o /dev/null -sS --max-time 15 -w '%{time_starttransfer}' "$BASE/__down?bytes=0&gw=$(date +%s)" 2>/dev/null || true)
 if [ -n "${LAT:-}" ]; then
   awk -v t="$LAT" 'BEGIN { if (t+0 > 0) printf "Latencia HTTP: %.1f ms\n", (t+0)*1000; else print "Latencia HTTP: no disponible" }'
 else
   printf 'Latencia HTTP: no disponible\n'
 fi
-printf '\nDescarga: probando 100 MB...\n'
-DL=$(curl -o /dev/null -sS --max-time 45 -w '%{size_download} %{time_total}' "$BASE/__down?bytes=100000000" 2>/dev/null || true)
+
+printf '\nDescarga: probando 75 MB...\n'
+DL=$(curl -L -H 'Accept-Encoding: identity' -o /dev/null -sS --max-time 60 -w '%{size_download} %{time_total}' "$BASE/__down?bytes=75000000&gw=$(date +%s%N 2>/dev/null || date +%s)" 2>/dev/null || true)
 if [ -n "${DL:-}" ]; then
-  printf '%s\n' "$DL" | awk '{ if ($2+0 > 0 && $1+0 > 0) printf "Descarga: %.1f Mbps  (%.1f MB en %.2f s)\n", (($1*8)/1000000)/$2, $1/1000000, $2; else print "Descarga: no disponible" }'
+  printf '%s\n' "$DL" | awk '{ if ($2+0 > 0 && $1+0 >= 1000000) printf "Descarga: %.1f Mbps  (%.1f MB en %.2f s)\n", (($1*8)/1000000)/$2, $1/1000000, $2; else print "Descarga: no disponible" }'
 else
   printf 'Descarga: no disponible\n'
 fi
+
 printf '\nSubida: probando 50 MB...\n'
-UP=$(dd if=/dev/zero bs=1M count=50 2>/dev/null | curl -o /dev/null -sS --max-time 45 -w '%{size_upload} %{time_total}' -X POST --data-binary @- "$BASE/__up" 2>/dev/null || true)
+UP=$(dd if=/dev/zero bs=1M count=50 2>/dev/null | curl -L -o /dev/null -sS --max-time 60 -w '%{size_upload} %{time_total}' -X POST --data-binary @- "$BASE/__up?bytes=52428800" 2>/dev/null || true)
 if [ -n "${UP:-}" ]; then
   printf '%s\n' "$UP" | awk '{ if ($2+0 > 0 && $1+0 > 0) printf "Subida: %.1f Mbps  (%.1f MB en %.2f s)\n", (($1*8)/1000000)/$2, $1/1000000, $2; else print "Subida: no disponible" }'
 else
   printf 'Subida: no disponible\n'
 fi
-printf '\nPrueba terminada.\n\n'`
+
+printf '\nPrueba terminada.\n'
+`
+
+	c, err := clienteSFTP(pet.Servidor)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	if err := c.MkdirAll(carpetaScriptsRemota); err != nil {
+		responderError(w, fmt.Errorf("no pude preparar la carpeta de herramientas: %v", err))
+		return
+	}
+	_ = c.Chmod(carpetaScriptsRemota, 0700)
+	remoto := path.Join(carpetaScriptsRemota, "gateway-speedtest.sh")
+	f, err := c.Create(remoto)
+	if err != nil {
+		responderError(w, fmt.Errorf("no pude preparar el test remoto: %v", err))
+		return
+	}
+	_, copiaErr := io.WriteString(f, script)
+	cierreErr := f.Close()
+	if copiaErr != nil {
+		responderError(w, fmt.Errorf("no pude escribir el test remoto: %v", copiaErr))
+		return
+	}
+	if cierreErr != nil {
+		responderError(w, fmt.Errorf("no pude cerrar el test remoto: %v", cierreErr))
+		return
+	}
+	if err := c.Chmod(remoto, 0700); err != nil {
+		responderError(w, fmt.Errorf("no pude preparar permisos del test: %v", err))
+		return
+	}
 
 	responder(w, map[string]any{
-		"ok":      true,
-		"comando": "sh -lc " + shellQuote(script),
+		"ok":         true,
+		"comando":    "sh -- " + shellQuote(remoto),
+		"silencioso": true,
 	})
 }

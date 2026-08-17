@@ -667,6 +667,37 @@
   .tool-note{font-size:11px;color:var(--suave)}
   .tools-footer{flex:none;display:flex;align-items:center;min-height:38px;padding:8px 14px;border-top:1px solid var(--linea);background:rgba(7,16,25,.98)}
 
+
+  /* v3.1.11: tráfico real + selector de destino localhost */
+  #dashboard .cnx .localhost-pick{width:18px;height:18px;min-width:18px;padding:0 !important;border-radius:5px !important;display:grid;place-items:center;color:transparent;border:1px solid rgba(126,164,194,.28) !important;background:rgba(7,19,31,.72);font-size:11px !important;line-height:1}
+  #dashboard .cnx .localhost-pick:hover{border-color:rgba(77,225,154,.46) !important}
+  #dashboard .cnx .localhost-pick.active{color:#061b12;background:var(--verde);border-color:var(--verde) !important;box-shadow:0 0 0 2px rgba(77,225,154,.08)}
+  #dashboard .cnx .ports-list .port-off{padding:3px 6px;font-size:9.5px;background:rgba(10,25,38,.42);border:1px dashed rgba(126,164,194,.14);border-radius:6px;color:rgba(166,184,199,.56);white-space:nowrap}
+  #dashboard .cnx .stats-mini.server-net{color:#9fc8b6}
+
+
+  /* v3.1.11: pestaña Info útil */
+  .info-panel{display:none !important;padding:14px !important;gap:12px}
+  .info-panel.activa{display:block !important}
+  .info-overview{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:14px;padding:4px 2px 14px;border-bottom:1px solid rgba(77,134,184,.14)}
+  .info-app-mark{width:50px;height:50px;display:grid;place-items:center;border:1px solid rgba(77,225,154,.22);background:rgba(18,56,50,.22);border-radius:8px;color:var(--verde)}
+  .info-app-mark svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .info-intro h2{font-size:19px;margin:0 0 4px;color:var(--texto)}
+  .info-intro p{font-size:12px;line-height:1.45;color:var(--texto-2);max-width:720px;margin:0}
+  .info-version-box{min-width:150px;padding:9px 11px;border:1px solid rgba(77,134,184,.16);background:rgba(7,19,31,.62);border-radius:8px;display:grid;gap:2px;text-align:right}
+  .info-version-box span{font-size:9.5px;color:var(--suave);text-transform:uppercase;letter-spacing:.08em}.info-version-box b{font-size:18px;color:var(--verde)}.info-version-box small{font-size:9.5px;color:var(--texto-2)}
+  .info-stats{display:grid;grid-template-columns:1fr 1fr 1.45fr;gap:8px;margin:12px 0}
+  .info-stat{min-width:0;padding:10px 11px;border:1px solid rgba(77,134,184,.15);background:rgba(7,19,31,.58);border-radius:8px;display:grid;grid-template-columns:1fr auto;gap:3px 10px;align-items:center}
+  .info-stat span{font-size:10px;color:var(--suave);text-transform:uppercase;letter-spacing:.07em}.info-stat b{font-size:18px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info-stat small{grid-column:1/-1;font-size:10px;color:var(--texto-2)}
+  .info-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .info-block{padding:11px 12px;border:1px solid rgba(77,134,184,.14);background:rgba(7,19,31,.48);border-radius:8px}
+  .info-block h3{font-size:12px;color:var(--verde);margin:0 0 7px;text-transform:uppercase;letter-spacing:.06em}
+  .info-block ul{margin:0;padding-left:16px;display:grid;gap:5px}.info-block li{font-size:11px;line-height:1.35;color:var(--texto-2)}
+  .info-block code{font-family:'JetBrains Mono',monospace;font-size:10px;color:#bcd4e7}.info-block kbd{display:inline-block;padding:1px 4px;border:1px solid rgba(126,164,194,.22);background:rgba(12,28,43,.82);border-radius:4px;font-size:9px;color:var(--texto)}
+  .info-components{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid rgba(77,134,184,.12);font-size:10px;color:var(--suave)}
+  .info-components a{padding:4px 7px;border:1px solid rgba(77,134,184,.14);border-radius:6px;background:rgba(7,19,31,.5);color:var(--texto-2)}
+  @media(max-width:900px){.info-overview{grid-template-columns:44px 1fr}.info-version-box{grid-column:1/-1;text-align:left}.info-stats{grid-template-columns:1fr}.info-sections{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -876,12 +907,74 @@
         </section>
 
         <div class="panel app-view info-panel" id="pie-final" data-view="info">
-          <div class="info-grid">
-            <div class="info-card"><b>SSH</b><span>Keys ED25519, verificación de huella y hardening reversible.</span></div>
-            <div class="info-card"><b>Acceso</b><span>Terminal integrada, SFTP y túneles por servidor.</span></div>
-            <div class="info-card"><b>Updates</b><span>Releases privadas verificadas con firma Ed25519 y SHA-256.</span></div>
+          <div class="info-overview">
+            <div class="info-app-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z"/><path d="M9.25 11.25V9.9a2.75 2.75 0 0 1 5.5 0v1.35"/><rect x="8.4" y="11.2" width="7.2" height="5.5" rx="1.2"/></svg>
+            </div>
+            <div class="info-intro">
+              <h2>Gateway WISP Access</h2>
+              <p>Administrador SSH para operar varios gateways y servidores desde una sola ventana: conexiones, terminal, archivos, túneles y herramientas.</p>
+            </div>
+            <div class="info-version-box">
+              <span>Versión instalada</span>
+              <b id="info-version">—</b>
+              <small id="info-update-status">Actualizaciones firmadas</small>
+            </div>
           </div>
-</div>
+
+          <div class="info-stats">
+            <div class="info-stat"><span>Servidores guardados</span><b id="info-saved">—</b><small>Perfiles SSH configurados</small></div>
+            <div class="info-stat"><span>Conectados ahora</span><b id="info-connected">—</b><small>Sesiones activas</small></div>
+            <div class="info-stat wide"><span>Destino localhost</span><b id="info-localhost">Ninguno</b><small>Servidor que responde en los puertos compartidos</small></div>
+          </div>
+
+          <div class="info-sections">
+            <section class="info-block">
+              <h3>Operación</h3>
+              <ul>
+                <li>Terminal SSH integrada con historial de comandos.</li>
+                <li>Gestor SFTP para subir, bajar y administrar archivos.</li>
+                <li>Túneles locales por servidor con acceso rápido a paneles web.</li>
+                <li>Tráfico de red real del servidor mostrado en el Dashboard.</li>
+              </ul>
+            </section>
+            <section class="info-block">
+              <h3>Seguridad</h3>
+              <ul>
+                <li>Keys ED25519 y verificación TOFU de la huella del host.</li>
+                <li>Hardening SSH reversible con validación antes de aplicar cambios.</li>
+                <li>Contraseñas guardadas cifradas localmente.</li>
+                <li>Updates privados verificados con firma Ed25519 y SHA-256.</li>
+              </ul>
+            </section>
+            <section class="info-block">
+              <h3>Herramientas</h3>
+              <ul>
+                <li>Cargar scripts locales al servidor y ejecutarlos viendo la salida en Terminal.</li>
+                <li>Test de velocidad a Internet desde el servidor conectado.</li>
+                <li>Selector de servidor para resolver puertos compartidos en <code>localhost:puerto</code>.</li>
+                <li>Más utilidades pueden añadirse sin recargar el Dashboard.</li>
+              </ul>
+            </section>
+            <section class="info-block">
+              <h3>Atajos</h3>
+              <ul>
+                <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> guarda el perfil que estás editando.</li>
+                <li><kbd>Esc</kbd> cierra Terminal, Archivos, Herramientas y diálogos.</li>
+                <li>Un clic en un comando del historial vuelve a enviarlo a la Terminal.</li>
+                <li>La casilla verde en un conectado lo convierte en destino de localhost.</li>
+              </ul>
+            </section>
+          </div>
+
+          <div class="info-components">
+            <span>Componentes principales</span>
+            <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a>
+            <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a>
+            <a href="https://github.com/pkg/sftp" target="_blank">pkg/sftp</a>
+            <a href="https://github.com/webview/webview" target="_blank">webview</a>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -1146,6 +1239,8 @@
     var pv = $('pie-ver'); if (pv) pv.textContent = 'v' + (e.version||'');
     var cont = $('conexiones');
     var lista = e.conexiones || [];
+    var infoCon=$('info-connected'); if(infoCon) infoCon.textContent=String(lista.length);
+    var infoLocal=$('info-localhost'); if(infoLocal) infoLocal.textContent=e.localhostSeleccionado||'Ninguno';
     var actuales = {};
     lista.forEach(function(c){ actuales[c.servidor] = true; });
 
@@ -1202,7 +1297,19 @@
       div.appendChild(fila);
 
       var meta = nodo('div','cnx-meta');
+      var bLocal=nodo('button','localhost-pick'+(c.localhost?' active':''),c.localhost?'✓':'');
+      bLocal.title=c.localhost ? 'Este servidor responde ahora en localhost:puerto' : 'Usar este servidor para los puertos localhost compartidos';
+      bLocal.setAttribute('aria-label',bLocal.title);
+      bLocal.onclick=function(){
+        api('/api/localhost-servidor',{method:'POST',body:JSON.stringify({nombre:c.servidor})}).then(function(r){
+          if(r.error){ aviso(r.error,false); return; }
+          aviso('localhost:puerto ahora apunta a '+c.servidor+'.',true);
+          refrescarEstado();
+        });
+      };
+      meta.appendChild(bLocal);
       var tuneles = c.tuneles || [];
+      var puertosActivos={}; (c.puertos||[]).forEach(function(p){puertosActivos[p]=true;});
       var ports = nodo('div','ports-list');
       if (tuneles.length){
         var bPorts=nodo('button','ports-toggle','Puertos '+tuneles.length);
@@ -1210,8 +1317,14 @@
         bPorts.onclick=function(){ ports.classList.toggle('open'); };
         meta.appendChild(bPorts);
         tuneles.forEach(function(t){
-          var a=nodo('a','', ''); a.href='#'; a.dataset.url='http://localhost:'+t.puerto+(t.ruta||'');
-          a.appendChild(nodo('b','', ':'+t.puerto)); a.appendChild(document.createTextNode(' '+(t.nombre||''))); ports.appendChild(a);
+          if(puertosActivos[t.puerto]){
+            var a=nodo('a','', ''); a.href='#'; a.dataset.url='http://localhost:'+t.puerto+(t.ruta||'');
+            a.appendChild(nodo('b','', ':'+t.puerto)); a.appendChild(document.createTextNode(' '+(t.nombre||''))); ports.appendChild(a);
+          } else {
+            var off=nodo('span','port-off', ':'+t.puerto+' '+(t.nombre||''));
+            off.title=c.localhost ? 'Este puerto está ocupado por otro programa local.' : 'Marca esta casilla para intentar asignar los puertos compartidos a este servidor.';
+            ports.appendChild(off);
+          }
         });
       } else {
         meta.appendChild(nodo('span','ports-toggle','Sin puertos'));
@@ -1219,7 +1332,11 @@
       var bSSH = nodo('button','ssh-seg','SSH');
       bSSH.onclick=function(){ alternarSeguridadSSH(c.servidor,bSSH); };
       meta.appendChild(bSSH); consultarSeguridadSSH(c.servidor,bSSH,false);
-      var stats=nodo('span','stats-mini','↓ '+fmtBs(rxS)+' · ↑ '+fmtBs(txS)+' · '+fmtB(c.rx+c.tx));
+      var traficoReal=!!c.traficoDisponible;
+      var down=traficoReal ? (c.traficoRxBps||0) : rxS;
+      var up=traficoReal ? (c.traficoTxBps||0) : txS;
+      var stats=nodo('span','stats-mini'+(traficoReal?' server-net':''),'↓ '+fmtBs(down)+' · ↑ '+fmtBs(up));
+      stats.title=traficoReal ? ('Tráfico real del servidor'+(c.traficoInterfaz?' · '+c.traficoInterfaz:'')) : 'Tráfico observado en los túneles SSH';
       meta.appendChild(stats);
       div.appendChild(meta);
       div.appendChild(ports);
@@ -1227,7 +1344,7 @@
     });
   }
   function refrescarEstado(){
-    api('/api/estado').then(function(e){ pintarConexiones(e); refrescarSelectorServidores(); }).catch(function(){});
+    api('/api/estado').then(function(e){ estadoActual=e; pintarConexiones(e); refrescarSelectorServidores(); }).catch(function(){});
   }
   setInterval(refrescarEstado, 3000); refrescarEstado();
 
@@ -1243,6 +1360,7 @@
   var servidoresCache = [];
   function pintarLista(lista){
     servidoresCache = lista;
+    var infoSaved=$('info-saved'); if(infoSaved) infoSaved.textContent=String((lista||[]).length);
     var cta = document.getElementById('srv-cuenta');
     if (cta) cta.textContent = '— ' + lista.length + ' servidor' + (lista.length===1?'':'es');
     var filtro = ($('buscador').value || '').toLowerCase().trim();
@@ -1510,7 +1628,7 @@
   var term = null, fit = null, wsTerm = null, servidorTerminal = null;
   var bufferLinea = '';
 
-  function abrirTerminal(nombre, comandoInicial){
+  function abrirTerminal(nombre, comandoInicial, comandoSilencioso){
     if (typeof Terminal !== 'function' || typeof FitAddon === 'undefined' || typeof FitAddon.FitAddon !== 'function'){
       aviso('No se pudieron cargar los componentes de la terminal. Reinicia la aplicación o reinstala esta versión.', false);
       return;
@@ -1549,12 +1667,25 @@
       wsTerm.send(JSON.stringify({cols: term.cols, rows: term.rows}));
       term.focus();
       if (comandoInicial){
-        setTimeout(function(){
-          if (wsTerm && wsTerm.readyState === 1){
-            wsTerm.send(codificador.encode(comandoInicial + '\r'));
-            guardarComandoHistorial(nombre, comandoInicial);
-          }
-        }, 250);
+        if (comandoSilencioso){
+          setTimeout(function(){
+            if (!wsTerm || wsTerm.readyState !== 1 || !term) return;
+            wsTerm.send(codificador.encode('stty -echo\r'));
+            setTimeout(function(){
+              if (!term || !wsTerm || wsTerm.readyState !== 1) return;
+              term.clear();
+              term.write('\x1b[2J\x1b[H');
+              wsTerm.send(codificador.encode(comandoInicial + '; __gw_rc=$?; stty echo; printf "\\n"\r'));
+            }, 140);
+          }, 300);
+        } else {
+          setTimeout(function(){
+            if (wsTerm && wsTerm.readyState === 1){
+              wsTerm.send(codificador.encode(comandoInicial + '\r'));
+              guardarComandoHistorial(nombre, comandoInicial);
+            }
+          }, 250);
+        }
       }
     };
     wsTerm.onmessage = function(e){ if (term) term.write(new Uint8Array(e.data)); };
@@ -1679,6 +1810,7 @@
     p.title=resumen;
     var p2=$('upd-punto-dash'); if (p2){ p2.className='upd-punto '+estado; p2.title=resumen; }
     var s2=$('upd-dash-status'); if (s2) s2.textContent = resumen || 'sin comprobar';
+    var is=$('info-update-status'); if(is) is.textContent = resumen || 'Actualizaciones firmadas';
     var next=$('dash-next-check'); if(next){ next.textContent = estado==='rojo' ? 'Hay una nueva versión disponible.' : (estado==='verde' ? 'Tu instalación está verificada y al día.' : 'Pendiente de comprobar o falta token.'); }
   }
   function updEstado(texto, tipo){
@@ -1698,6 +1830,7 @@
   api('/api/version').then(function(v){
     $('app-ver').textContent='v'+v.version;
     var dv=$('dash-app-ver'); if (dv) dv.textContent='v'+v.version;
+    var iv=$('info-version'); if(iv) iv.textContent='v'+v.version;
     $('btn-releases').onclick=function(){ abrirFuera(v.releasesURL); };
   }).catch(function(){});
   api('/api/actualizaciones').then(function(c){
@@ -1827,7 +1960,7 @@
       if (r.error){ aviso(r.error,false); return; }
       cerrarHerramientas();
       aviso('Abriendo terminal para medir la conexión de '+srv+'…',true);
-      abrirTerminal(srv,r.comando);
+      abrirTerminal(srv,r.comando,!!r.silencioso);
     }).catch(function(){ aviso('No pude preparar el test de velocidad.',false); }).finally(function(){ b.disabled=false; b.textContent='Probar velocidad'; });
   };
 
@@ -1997,7 +2130,7 @@
                 if (r.error){ aviso(r.error,false); return; }
                 cerrarArchivos(); selectorDestino=null; selectorScriptServidor=null;
                 aviso('Script cargado en '+r.remoto+'. Abriendo terminal…',true);
-                abrirTerminal(srv,r.comando);
+                abrirTerminal(srv,r.comando,!!r.silencioso);
               }).catch(function(){ aviso('Error cargando el script.',false); }).finally(function(){ bE.disabled=false; bE.textContent='Ejecutar'; });
             };
             it.appendChild(bE);
