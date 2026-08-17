@@ -1,3 +1,11 @@
+## v3.4.4
+
+- Publicación de GitHub Releases resistente a errores temporales HTTP 5xx/503.
+- Reintentos con espera progresiva para crear, consultar, subir assets y publicar el Release.
+- La creación del Release y la subida de binarios ahora son pasos separados e idempotentes.
+- Cada asset se sube individualmente con reintentos, permitiendo recuperar publicaciones parciales.
+- Metadata de aplicación sincronizada con v3.4.4.
+
 ## v3.4.3
 
 ### WireGuard embebido — corrección de conexión en Windows

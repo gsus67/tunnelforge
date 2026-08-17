@@ -172,10 +172,74 @@ jobs:
           set -euo pipefail
           TAG="$GITHUB_REF_NAME"
           ASSETS=(Conectar-Gateway.exe conectar-gateway-linux update-manifest.json update-manifest.sig SHA256SUMS.txt)
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "${ASSETS[@]}" --clobber
-            IS_DRAFT="$(gh release view "$TAG" --json isDraft --jq '.isDraft')"
-            if [ "$IS_DRAFT" = "true" ]; then gh release edit "$TAG" --draft=false; fi
-          else
-            gh release create "$TAG" "${ASSETS[@]}" --verify-tag --generate-notes --title "$TAG"
+
+          retry_gh() {
+            local attempt=1
+            local max_attempts=7
+            local delay=5
+            local rc=0
+
+            while true; do
+              echo "GitHub API intento ${attempt}/${max_attempts}: gh $*" >&2
+              if gh "$@"; then
+                return 0
+              else
+                rc=$?
+              fi
+
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "GitHub API siguió fallando después de ${max_attempts} intentos." >&2
+                return "$rc"
+              fi
+
+              echo "Fallo temporal al hablar con GitHub. Reintentando en ${delay}s..." >&2
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              if [ "$delay" -lt 40 ]; then
+                delay=$((delay * 2))
+              fi
+            done
+          }
+
+          # Comprobar el Release mediante REST para distinguir un 404 real de un 5xx.
+          # curl --retry vuelve a intentar respuestas HTTP transitorias como 503.
+          RELEASE_JSON="$(mktemp)"
+          HTTP_CODE="$(curl -sS \
+            --retry 7 --retry-delay 5 --retry-max-time 180 \
+            --connect-timeout 15 --max-time 60 \
+            -o "$RELEASE_JSON" -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")"
+
+          case "$HTTP_CODE" in
+            200)
+              echo "El Release $TAG ya existe; continuaré con la subida de assets."
+              ;;
+            404)
+              echo "El Release $TAG no existe; creándolo..."
+              retry_gh release create "$TAG" --verify-tag --generate-notes --title "$TAG" --draft
+              ;;
+            *)
+              echo "GitHub devolvió HTTP $HTTP_CODE al consultar el Release:" >&2
+              cat "$RELEASE_JSON" >&2 || true
+              rm -f "$RELEASE_JSON"
+              exit 1
+              ;;
+          esac
+          rm -f "$RELEASE_JSON"
+
+          # Subir uno a uno. Si GitHub falla a mitad de publicación, el rerun puede
+          # continuar de forma segura y --clobber reemplaza el asset parcial/existente.
+          for asset in "${ASSETS[@]}"; do
+            echo "Subiendo $asset..."
+            retry_gh release upload "$TAG" "$asset" --clobber
+          done
+
+          IS_DRAFT="$(retry_gh release view "$TAG" --json isDraft --jq '.isDraft')"
+          if [ "$IS_DRAFT" = "true" ]; then
+            retry_gh release edit "$TAG" --draft=false
           fi
+
+          echo "Release $TAG publicado correctamente."
