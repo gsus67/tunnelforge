@@ -1,5 +1,12 @@
 ## v3.3.0
 
+### Correcciones de compilación
+
+- Se conserva un placeholder `frontend/dist/.keep` para que `go:embed` sea válido durante la generación inicial de bindings de Wails en un checkout limpio.
+- GitHub Actions ejecuta `go mod tidy` antes de compilar para completar `go.sum` con las dependencias de Wails y sus módulos transitivos.
+- El repositorio debe conservar un único workflow: `.github/workflows/build-release.yml`; workflows antiguos de la etapa pre-Wails no forman parte de 3.3.0.
+
+
 ### Migración Go + Wails + TypeScript
 
 - La aplicación de escritorio migra de `webview_go` a **Wails v2.13.0** estable.

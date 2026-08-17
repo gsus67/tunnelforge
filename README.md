@@ -261,7 +261,10 @@ Requiere **Go 1.25+**, Node.js y **Wails v2.13.0**. El proyecto fija Go 1.25 por
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 cd conectar-gateway
+go mod tidy
 ```
+
+El repositorio conserva `frontend/dist/.keep` a propósito: Wails genera bindings antes de que el frontend final exista y `//go:embed all:frontend/dist` necesita al menos un archivo en un checkout limpio. El contenido real de `frontend/dist` es generado durante el build y no se versiona.
 
 Windows:
 
@@ -276,7 +279,7 @@ sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
 wails build -clean -tags webkit2_41 -o conectar-gateway-linux
 ```
 
-`wails build` ejecuta primero la compilación del frontend TypeScript y después genera el binario nativo. GitHub Actions construye Windows y Linux en runners nativos separados y reúne ambos artefactos para el Release firmado.
+GitHub Actions ejecuta `go mod tidy` antes de compilar para completar `go.sum`, construye Windows y Linux en runners nativos separados y reúne ambos artefactos para el Release firmado.
 
 ---
 

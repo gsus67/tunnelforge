@@ -29,9 +29,11 @@ jobs:
         shell: pwsh
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
-      - name: Descargar dependencias Go
+      - name: Preparar dependencias Go
         working-directory: conectar-gateway
-        run: go mod download
+        run: |
+          go mod download
+          go mod tidy
 
       - name: Compilar Windows
         working-directory: conectar-gateway
@@ -69,9 +71,11 @@ jobs:
       - name: Instalar Wails estable
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
 
-      - name: Descargar dependencias Go
+      - name: Preparar dependencias Go
         working-directory: conectar-gateway
-        run: go mod download
+        run: |
+          go mod download
+          go mod tidy
 
       - name: Compilar Linux
         working-directory: conectar-gateway

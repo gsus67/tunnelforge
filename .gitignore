@@ -1,7 +1,6 @@
 # Binarios compilados (se publican en Releases, no en el repo)
 *.exe
 conectar-gateway-linux
-dist/
 
 # Datos personales del operador (IPs, huellas): NUNCA al repo
 conexiones.json
@@ -10,6 +9,11 @@ conexiones.json
 *.syso
 
 # Artefactos de Wails/TypeScript
+# Wails genera frontend/dist durante el build, pero Go necesita que el patrón
+# go:embed tenga al menos un archivo antes de generar bindings. Por eso se
+# conserva únicamente .keep en Git.
+conectar-gateway/frontend/dist/*
+!conectar-gateway/frontend/dist/.keep
 conectar-gateway/frontend/node_modules/
 conectar-gateway/frontend/wailsjs/
 conectar-gateway/build/bin/
