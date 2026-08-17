@@ -10,6 +10,10 @@ pero sirve para **cualquier servidor SSH**: los túneles son configurables.
 
 Consulta el historial acumulado de versiones en **[CHANGELOG.md](CHANGELOG.md)**.
 
+### Flujo de publicación seguro
+
+Para evitar crear tags de versiones que todavía no compilan, primero se suben los cambios a `main` **sin tag**. El workflow ejecuta validaciones de Go, TypeScript, host WireGuard y builds completos de Windows/Linux. Solo cuando ambos jobs están verdes se crea el tag `vX.Y.Z`; el job de Release depende de esos builds y no publica si alguno falla.
+
 ## Dashboard
 
 ![Dashboard de Gateway WISP Access](docs/dashboard.png)
@@ -21,7 +25,7 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 ## WireGuard
 
-> **v3.4.6** mantiene WireGuard completamente integrado en el ejecutable de Windows, conserva la corrección del host nativo de v3.4.3 y endurece la publicación de Releases frente a errores HTTP 5xx de GitHub. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
+> **v3.4.7** mantiene WireGuard completamente integrado en el ejecutable de Windows, conserva la corrección del host nativo de v3.4.3 y endurece la publicación de Releases frente a errores HTTP 5xx de GitHub. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
 
 Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. A partir de **v3.4.3**, el build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `Conectar-Gateway.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
 
