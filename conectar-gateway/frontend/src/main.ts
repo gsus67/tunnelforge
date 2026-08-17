@@ -775,7 +775,7 @@ var TOKEN = '';
   $('mon-peer-search').oninput=cargarPeers;$('mon-peer-sort').onchange=cargarPeers;
   $('mon-tab-overview').onclick=function(){monSetTab('overview');}; $('mon-tab-wg').onclick=function(){monSetTab('wg');}; $('mon-reload').onclick=function(){if(monDashboard==='wg')cargarPeers();else cargarResumen();}; $('mon-peer-refresh').onclick=cargarPeers;
 
-  // ── Cliente WireGuard local ───────────────────────────────────
+  // ── WireGuard local ───────────────────────────────────
   var wgcProfiles:any[]=[], wgcSelected:string|null=null, wgcStatus:any={}, wgcPrev:any={}, wgcTimer:any=null, wgcSecretsVisible=false;
   function wgcNote(texto:any,tipo?:any){var e=$('wgc-note');if(!e)return;e.textContent=texto||'';e.className='wgclient-note'+(tipo?' '+tipo:'');}
   function wgcSplit(v:any){return String(v||'').split(/[,\n]/).map(function(x){return x.trim();}).filter(Boolean);}
@@ -960,7 +960,7 @@ var TOKEN = '';
     profiles:['Perfil SSH','Agrega un servidor nuevo o edita un perfil existente.'],
     backup:['Copia de seguridad','Exporta o restaura servidores, túneles, contraseñas guardadas, claves SSH y monitoreo.'],
     monitoring:['Monitoreo','Prometheus, métricas nativas y peers WireGuard en tiempo real por túneles SSH persistentes.'],
-    wireguard:['Cliente WireGuard','Perfiles VPN locales con el motor oficial de WireGuard para Windows y Linux.'],
+    wireguard:['WireGuard','Perfiles VPN locales con el motor oficial de WireGuard para Windows y Linux.'],
     updates:['Actualizaciones','Comprueba e instala versiones firmadas desde el repositorio privado.'],
     info:['Gateway WISP Access','Información de seguridad, componentes y versión instalada.']
   };

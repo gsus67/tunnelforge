@@ -31,7 +31,7 @@ Los scripts y métricas `gateway_wisp_*` generados por Gateway WISP Access son c
 
 Las fuentes de la interfaz (Barlow Condensed, JetBrains Mono) se cargan desde Google Fonts bajo SIL Open Font License.
 
-## Cliente WireGuard local
+## Integración WireGuard local
 
 Desde v3.4.0 la aplicación puede administrar túneles WireGuard locales. La interfaz y el almacenamiento de perfiles son código de Gateway WISP Access, pero el motor de VPN se mantiene como software externo del sistema operativo:
 

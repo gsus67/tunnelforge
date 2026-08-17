@@ -22,7 +22,7 @@
       <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='8.2' r='3.2'/><path d='M5 19a7 7 0 0 1 14 0'/></svg></span><span>Perfiles</span></a>
       <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='8' y='8' width='10' height='12' rx='2'/><path d='M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1'/></svg></span><span>Copias</span></a>
       <a class="nav-item" href="#monitoring-panel" data-nav="monitoring"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg></span><span>Monitoreo</span></a>
-      <a class="nav-item" href="#wireguard-panel" data-nav="wireguard"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12c2.2-4.8 5-7.2 8-7.2s5.8 2.4 8 7.2c-2.2 4.8-5 7.2-8 7.2S6.2 16.8 4 12z"/><path d="M8 12h8M12 8v8"/></svg></span><span>Cliente WireGuard</span></a>
+      <a class="nav-item" href="#wireguard-panel" data-nav="wireguard"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12c2.2-4.8 5-7.2 8-7.2s5.8 2.4 8 7.2c-2.2 4.8-5 7.2-8 7.2S6.2 16.8 4 12z"/><path d="M8 12h8M12 8v8"/></svg></span><span>WireGuard</span></a>
       <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M20 11a8 8 0 1 0 2 5.3'/><path d='M20 4v7h-7'/></svg></span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
       <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M12 10v6'/><path d='M12 7h.01'/></svg></span><span>Info</span></a>
     </nav>
@@ -175,7 +175,7 @@
                 <div class="check"><input type="checkbox" id="exp-monitoring" checked>
                   <label for="exp-monitoring" style="margin:0">Incluir Monitoreo</label></div>
                 <div class="check"><input type="checkbox" id="exp-wireguard" checked>
-                  <label for="exp-wireguard" style="margin:0">Incluir perfiles WireGuard Client</label></div>
+                  <label for="exp-wireguard" style="margin:0">Incluir perfiles WireGuard</label></div>
                 <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar…</button>
                 <div class="res" id="exp-res"></div>
               </div>
@@ -262,7 +262,7 @@
             <section class="panel wgclient-main">
               <div class="wgclient-main-head">
                 <div>
-                  <span class="wgclient-label">Cliente WireGuard</span>
+                  <span class="wgclient-label">WireGuard</span>
                   <h2 id="wgc-title">Nuevo perfil</h2>
                   <p id="wgc-subtitle">Configura un túnel o importa un archivo .conf.</p>
                 </div>
@@ -376,7 +376,7 @@
                 <li>Tráfico de red real del servidor en el Dashboard, expresado en Mbit/s.</li>
                 <li>Monitoreo centralizado con preparación por fases, verificación de servicios y resumen nativo responsive de CPU, RAM, disco y tráfico.</li>
                 <li>Peers WireGuard en lista compacta con nombres de WGDashboard/configuración WireGuard, RX/TX en Mbit/s y último handshake en tiempo real.</li>
-                <li>Cliente WireGuard integrado para Windows y Linux con perfiles, importación/exportación .conf, múltiples peers, autoconexión, generación de keys/PSK y tráfico en tiempo real mediante el motor WireGuard del sistema.</li>
+                <li>WireGuard integrado para Windows y Linux con perfiles, importación/exportación .conf, múltiples peers, autoconexión, generación de keys/PSK y tráfico en tiempo real mediante el motor WireGuard del sistema.</li>
               </ul>
             </section>
             <section class="info-block">

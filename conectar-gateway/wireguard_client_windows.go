@@ -9,7 +9,17 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
+
+func wgWindowsCommand(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	// Gateway WISP Access es una app GUI. Los comandos de estado de WireGuard
+	// se ejecutan periódicamente; sin HideWindow Windows crea una consola que
+	// aparece y desaparece en cada sondeo.
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	return cmd
+}
 
 func wgWindowsPaths() (wireguardExe, wgExe string) {
 	candidates := []string{}
@@ -49,7 +59,7 @@ func wgEngineStatus() WGEngineInfo {
 	info.Installed = true
 	info.Path = we
 	if wg != "" {
-		if out, err := exec.Command(wg, "--version").CombinedOutput(); err == nil {
+		if out, err := wgWindowsCommand(wg, "--version").CombinedOutput(); err == nil {
 			info.Version = strings.TrimSpace(string(out))
 		}
 	}
@@ -73,7 +83,7 @@ func wgRunElevated(exe string, args ...string) error {
 		quoted[i] = psQuote(a)
 	}
 	script := fmt.Sprintf("$p=Start-Process -FilePath %s -ArgumentList @(%s) -Verb RunAs -Wait -PassThru; exit $p.ExitCode", psQuote(exe), strings.Join(quoted, ","))
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script)
+	cmd := wgWindowsCommand("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("WireGuard necesita permisos de administrador: %v %s", err, strings.TrimSpace(string(out)))
 	}
@@ -82,13 +92,22 @@ func wgRunElevated(exe string, args ...string) error {
 
 func wgWindowsServiceStatus(name string) (exists, running bool) {
 	service := "WireGuardTunnel$" + name
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-Command", fmt.Sprintf("$s=Get-Service -Name %s -ErrorAction SilentlyContinue; if($null -eq $s){exit 3}; Write-Output $s.Status", psQuote(service)))
-	out, err := cmd.Output()
+	// sc.exe es mucho más liviano que crear un proceso PowerShell cada 2 s.
+	// HideWindow evita cualquier flash de consola en la aplicación Wails.
+	out, err := wgWindowsCommand("sc.exe", "query", service).CombinedOutput()
 	if err != nil {
 		return false, false
 	}
-	status := strings.TrimSpace(string(out))
-	return true, strings.EqualFold(status, "Running")
+	text := strings.ReplaceAll(string(out), "\r", "")
+	for _, line := range strings.Split(text, "\n") {
+		// SERVICE_RUNNING = 4. El número de estado es estable aunque Windows
+		// traduzca el texto descriptivo de sc.exe.
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, ": 4 ") || strings.HasSuffix(trimmed, ": 4") {
+			return true, true
+		}
+	}
+	return true, false
 }
 
 func wgConnectProfile(p WGProfile, configPath string) error {
@@ -142,7 +161,7 @@ func wgTunnelSnapshot(p WGProfile) (WGTunnelSnapshot, error) {
 		snap.Error = "wg.exe no está disponible para leer estadísticas"
 		return snap, nil
 	}
-	out, err := exec.Command(wg, "show", name, "dump").CombinedOutput()
+	out, err := wgWindowsCommand(wg, "show", name, "dump").CombinedOutput()
 	if err != nil {
 		snap.Error = "túnel activo; estadísticas requieren permiso del propietario/administrador"
 		return snap, nil

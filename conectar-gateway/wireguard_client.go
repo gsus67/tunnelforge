@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Gsus — Licencia MIT (ver LICENSE)
 package main
 
-// Cliente WireGuard integrado.
+// Integración WireGuard local.
 //
 // La UI y el almacenamiento pertenecen a Gateway WISP Access. El motor de VPN
 // se delega a los componentes oficiales de WireGuard del sistema operativo:

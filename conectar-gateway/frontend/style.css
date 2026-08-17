@@ -786,7 +786,7 @@
   @media(max-width:900px){.monitor-layout{grid-template-columns:1fr!important;height:auto!important}.monitor-control,.monitor-display{height:auto!important}.mon-summary-view{max-height:none}.mon-health-list{grid-template-columns:1fr}}
 
 
-/* ── WireGuard Client v3.4 ───────────────────────────────────── */
+/* ── WireGuard v3.4 ───────────────────────────────────── */
 .wgclient-view{padding:0;background:transparent!important;border:0!important;box-shadow:none!important}
 .wgclient-layout{display:grid;grid-template-columns:310px minmax(0,1fr);gap:12px;min-height:calc(100vh - 175px)}
 .wgclient-sidebar,.wgclient-main{min-width:0;overflow:hidden}

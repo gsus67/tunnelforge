@@ -19,9 +19,11 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 ---
 
 
-## Cliente WireGuard
+## WireGuard
 
-Desde **v3.4.0** Gateway WISP Access incluye un cliente WireGuard local para Windows y Linux. La aplicación administra los perfiles y la interfaz, mientras el túnel lo levanta el motor WireGuard del sistema operativo. No se redistribuye un driver VPN propio dentro del ejecutable.
+> **v3.4.1** corrige el parpadeo de consolas auxiliares en Windows durante el sondeo de estado y simplifica el nombre visible del apartado a **WireGuard**.
+
+Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. La aplicación administra los perfiles y la interfaz, mientras el túnel lo levanta el motor WireGuard del sistema operativo. No se redistribuye un driver VPN propio dentro del ejecutable.
 
 - Perfiles múltiples con búsqueda, estado conectado/desconectado y autoconexión.
 - Importación y exportación de archivos `.conf`.
@@ -103,7 +105,7 @@ Descarga el ejecutable de la pestaña **[Releases](../../releases)**:
 | `Conectar-Gateway.exe` | Windows 10/11 (64 bits) |
 | `conectar-gateway-linux` | Linux (64 bits) |
 
-Ponlo donde quieras y ábrelo. La aplicación no necesita PuTTY ni OpenSSH para sus funciones SSH. Wails usa el WebView del sistema y la función **Cliente WireGuard** requiere el motor oficial WireGuard del sistema solo si vas a utilizar VPN local.
+Ponlo donde quieras y ábrelo. La aplicación no necesita PuTTY ni OpenSSH para sus funciones SSH. Wails usa el WebView del sistema y la función **WireGuard** requiere el motor oficial WireGuard del sistema solo si vas a utilizar VPN local.
 
 En **Windows y Linux** se abre en su propia ventana Wails. En Windows se requiere Microsoft WebView2 (normalmente ya instalado). En Linux se requiere GTK3 + WebKitGTK 4.1; en Debian/Ubuntu modernos se cubre con los paquetes `libgtk-3-0` y `libwebkit2gtk-4.1-0`.
 
@@ -133,7 +135,7 @@ En **Windows y Linux** se abre en su propia ventana Wails. En Windows se requier
 ### Copia de seguridad
 
 La sección **Copia de seguridad** exporta toda tu configuración a un archivo
-`.cgw`: servidores, túneles, Monitoreo, perfiles del Cliente WireGuard y, opcionalmente, las contraseñas guardadas y el
+`.cgw`: servidores, túneles, Monitoreo, perfiles de WireGuard y, opcionalmente, las contraseñas guardadas y el
 contenido de tus claves SSH privadas.
 
 El archivo se cifra con **una contraseña que tú eliges** (scrypt + AES-256-GCM),

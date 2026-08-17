@@ -1,3 +1,14 @@
+## v3.4.1
+
+### WireGuard — correcciones de interfaz y Windows
+
+- El apartado global pasa a llamarse simplemente **WireGuard**.
+- Corregido el parpadeo/efecto de “ventana abriéndose constantemente” al entrar en WireGuard en Windows.
+- El sondeo de estado ya no crea una ventana visible de PowerShell cada 2 segundos.
+- La comprobación de servicios WireGuard usa `sc.exe` en segundo plano y los procesos auxiliares Windows se ejecutan con ventana oculta.
+- El refresco periódico actualiza únicamente estado, handshake y tráfico; no vuelve a abrir selectores ni vistas.
+- README, Info y metadata de versión sincronizados con v3.4.1.
+
 ## v3.4.0
 
 ### Cliente WireGuard local
