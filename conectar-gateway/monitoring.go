@@ -932,9 +932,14 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type srv struct {
-		Nombre                          string  `json:"nombre"`
-		Online                          bool    `json:"online"`
-		CPU, RAM, Disco, RX, TX, Uptime float64 `json:"cpu"`
+		Nombre string  `json:"nombre"`
+		Online bool    `json:"online"`
+		CPU    float64 `json:"cpu"`
+		RAM    float64 `json:"ram"`
+		Disco  float64 `json:"disco"`
+		RX     float64 `json:"rx"`
+		TX     float64 `json:"tx"`
+		Uptime float64 `json:"uptime"`
 	}
 	// Mapas por servidor. Las consultas son instantáneas y pequeñas.
 	queries := map[string]string{

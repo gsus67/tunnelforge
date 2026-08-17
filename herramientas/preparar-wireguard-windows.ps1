@@ -17,24 +17,56 @@ if (Test-Path $WorkDir) {
 }
 
 # Construimos tunnel.dll desde el tag fijado del repositorio oficial.
+# El build oficial descarga varias dependencias. Esos servidores pueden responder
+# temporalmente con 502/503, así que reintentamos sin borrar lo ya descargado.
 git clone --depth 1 --branch v1.1 https://git.zx2c4.com/wireguard-windows $WorkDir
+if ($LASTEXITCODE -ne 0) {
+    throw "No pude clonar WireGuard for Windows v1.1"
+}
+
 Push-Location $WorkDir
 try {
     $actual = (git rev-parse HEAD).Trim()
     if ($actual -ne $wgCommit) {
         throw "WireGuard v1.1 no coincide con el commit fijado: $actual"
     }
-    cmd /c embeddable-dll-service\build.bat
-    if ($LASTEXITCODE -ne 0) {
-        throw "Falló la compilación oficial de embeddable-dll-service"
+
+    $maxIntentos = 6
+    $compilado = $false
+    for ($intento = 1; $intento -le $maxIntentos; $intento++) {
+        Write-Host "Compilando embeddable-dll-service (intento $intento/$maxIntentos)..."
+        cmd /c embeddable-dll-service\build.bat
+        if ($LASTEXITCODE -eq 0) {
+            $compilado = $true
+            break
+        }
+
+        if ($intento -lt $maxIntentos) {
+            $espera = [Math]::Min(10 * $intento, 40)
+            Write-Warning "El build oficial de WireGuard falló (posible descarga temporal). Reintentando en ${espera}s..."
+            Start-Sleep -Seconds $espera
+        }
+    }
+
+    if (-not $compilado) {
+        throw "Falló la compilación oficial de embeddable-dll-service después de $maxIntentos intentos"
     }
 } finally {
     Pop-Location
 }
 
+$tunnelDll = Join-Path $WorkDir "embeddable-dll-service\amd64\tunnel.dll"
+$wireguardDll = Join-Path $WorkDir ".deps\wireguard-nt\bin\amd64\wireguard.dll"
+if (-not (Test-Path $tunnelDll)) {
+    throw "El build terminó pero no generó tunnel.dll"
+}
+if (-not (Test-Path $wireguardDll)) {
+    throw "El build terminó pero no dejó wireguard.dll"
+}
+
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
-Copy-Item (Join-Path $WorkDir "embeddable-dll-service\amd64\tunnel.dll") (Join-Path $dest "tunnel.dll") -Force
-Copy-Item (Join-Path $WorkDir ".deps\wireguard-nt\bin\amd64\wireguard.dll") (Join-Path $dest "wireguard.dll") -Force
+Copy-Item $tunnelDll (Join-Path $dest "tunnel.dll") -Force
+Copy-Item $wireguardDll (Join-Path $dest "wireguard.dll") -Force
 
 # tunnel.dll es una librería Go c-shared. Para no cargar un segundo runtime Go
 # dentro del proceso Wails, la ejecutamos desde un host nativo mínimo siguiendo
@@ -51,15 +83,22 @@ $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
 if (-not (Test-Path $vcvars)) {
     throw "No encontré vcvars64.bat: $vcvars"
 }
-$headerCandidates = @(
-    (Join-Path $WorkDir ".deps\wireguard-nt\wireguard.h"),
-    (Join-Path $WorkDir ".deps\wireguard-nt\api\wireguard.h")
-)
-$wireguardHeader = $headerCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $wireguardHeader) {
-    throw "No encontré wireguard.h junto al WireGuardNT 1.1 usado por este build"
+
+# La distribución de WireGuardNT puede cambiar la carpeta interna del header.
+# No asumimos una ruta: usamos el wireguard.h que vino dentro de .deps/wireguard-nt
+# en este mismo build y fallamos si aparece más de uno de forma ambigua.
+$wireguardNtRoot = Join-Path $WorkDir ".deps\wireguard-nt"
+$headers = @(Get-ChildItem -Path $wireguardNtRoot -Filter "wireguard.h" -File -Recurse -ErrorAction SilentlyContinue)
+if ($headers.Count -eq 0) {
+    throw "No encontré wireguard.h dentro del WireGuardNT usado por este build"
 }
+if ($headers.Count -gt 1) {
+    Write-Host "Se encontraron varios wireguard.h; usando el primero y mostrando candidatos:"
+    $headers | ForEach-Object { Write-Host "  $($_.FullName)" }
+}
+$wireguardHeader = $headers[0].FullName
 $wireguardIncludeDir = Split-Path -Parent $wireguardHeader
+Write-Host "Header WireGuardNT: $wireguardHeader"
 
 $hostOut = Join-Path $dest "wg-service-host.exe"
 # Compilar contra el header exacto que acompaña al wireguard.dll de este mismo build.
