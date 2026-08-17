@@ -1,3 +1,12 @@
+## v3.1.10
+
+### Herramientas
+
+- La descripción de seguridad de Herramientas pasa a un footer real, fijo al pie de esa ventana.
+- Nueva herramienta **Test de velocidad** por servidor conectado.
+- La prueba abre la terminal integrada y muestra latencia HTTP, descarga y subida en vivo.
+- El test usa endpoints de Cloudflare y no instala paquetes; requiere `curl` en el servidor remoto.
+
 ## v3.1.9
 
 ### Cambios

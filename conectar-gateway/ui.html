@@ -664,7 +664,8 @@
   .tool-card .tool-ico{width:38px;height:38px;border:1px solid rgba(77,134,184,.20);border-radius:8px;display:grid;place-items:center;color:var(--verde)}
   .tool-card .tool-ico svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .tool-card h4{font-size:14px;margin:0 0 4px}.tool-card p{font-size:11.5px;color:var(--suave);line-height:1.35;margin:0 0 10px}.tool-card button{padding:7px 10px;font-size:12px}
-  .tool-note{margin-top:10px;font-size:11px;color:var(--suave)}
+  .tool-note{font-size:11px;color:var(--suave)}
+  .tools-footer{flex:none;display:flex;align-items:center;min-height:38px;padding:8px 14px;border-top:1px solid var(--linea);background:rgba(7,16,25,.98)}
 
 </style>
 </head>
@@ -971,9 +972,13 @@
         <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.3 2.3-3-3 2.3-2.3z"/><path d="M14 18l2 2 4-4-2-2"/></svg></div>
         <div><h4>Cargar y ejecutar script</h4><p>Elige un script de tu equipo. Gateway lo copia por SFTP a <b>/tmp/gateway-wisp-access/scripts</b> y abre la terminal para mostrar su ejecución en vivo.</p><button class="principal" id="tool-script">Elegir script</button></div>
       </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 17a8 8 0 0 1 16 0"/><path d="M12 13l4-4"/><path d="M7 17h10"/><path d="M6.4 11.5l-1.7-1"/><path d="M17.6 11.5l1.7-1"/><path d="M12 9V7"/></svg></div>
+        <div><h4>Test de velocidad</h4><p>Mide latencia, descarga y subida desde este servidor hacia Internet usando la red de Cloudflare. El resultado se muestra en la terminal.</p><button class="principal" id="tool-speedtest">Probar velocidad</button></div>
+      </div>
     </div>
-    <div class="tool-note">Los scripts se ejecutan con los permisos del usuario SSH conectado. Esta ventana queda preparada para añadir más herramientas después.</div>
   </div>
+  <div class="tools-footer"><div class="tool-note">Los scripts se ejecutan con los permisos del usuario SSH conectado. Esta ventana queda preparada para añadir más herramientas después.</div></div>
 </div>
 
 <!-- Modal: confirmar huella -->
@@ -1812,6 +1817,18 @@
     abrirArchivos(toolsServidor);
     cargarLocal('');
     aviso('Elige el script en "Tu equipo" y pulsa Ejecutar.',true);
+  };
+  $('tool-speedtest').onclick = function(){
+    if (!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
+    var srv = toolsServidor;
+    var b = this;
+    b.disabled = true; b.textContent = 'Preparando…';
+    api('/api/herramientas/test-velocidad',{method:'POST',body:JSON.stringify({servidor:srv})}).then(function(r){
+      if (r.error){ aviso(r.error,false); return; }
+      cerrarHerramientas();
+      aviso('Abriendo terminal para medir la conexión de '+srv+'…',true);
+      abrirTerminal(srv,r.comando);
+    }).catch(function(){ aviso('No pude preparar el test de velocidad.',false); }).finally(function(){ b.disabled=false; b.textContent='Probar velocidad'; });
   };
 
   // ── Selector de clave SSH y diagnóstico ──────────────────────

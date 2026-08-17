@@ -84,7 +84,7 @@ func mostrarVentana(url string) {
 	const titulo = "Conectar Gateway WISP"
 	w.SetTitle(titulo)
 	w.SetSize(1440, 810, webview.HintNone) // dashboard en dos columnas, cercano al mockup
-	w.SetSize(1100, 680, webview.HintMin)   // mínimo funcional; debajo se adapta a una columna
+	w.SetSize(1100, 680, webview.HintMin)  // mínimo funcional; debajo se adapta a una columna
 	w.Navigate(url)
 	go centrarVentanaWindows(titulo)
 	w.Run() // bloquea; al cerrar la ventana, retorna y la app termina
