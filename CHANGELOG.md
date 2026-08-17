@@ -1,3 +1,18 @@
+## v3.4.2
+
+### WireGuard embebido en Windows
+
+- El ejecutable oficial de Windows ya incorpora su motor WireGuard: no se requiere instalar **WireGuard for Windows** por separado.
+- Integración basada en el `embeddable-dll-service` oficial: Gateway WISP Access se registra a sí mismo como servicio `WireGuardTunnel$...` y carga `tunnel.dll`.
+- `wireguard.dll` (WireGuardNT 1.1 oficial) se empaqueta como recurso interno y se extrae al runtime privado solo cuando se usa la VPN.
+- Eliminada la dependencia funcional de `wireguard.exe` y `wg.exe` en Windows.
+- Las estadísticas de peers, RX/TX y handshake se consultan directamente por la API de WireGuardNT.
+- Conectar/desconectar usa una sola elevación UAC por operación para crear, iniciar, detener o borrar el servicio del túnel.
+- El build de GitHub Actions fija WireGuard for Windows v1.1 al commit `378990476748b5038df433f73712bfde859f4d65` y genera los recursos embebidos durante la compilación.
+- La interfaz muestra **WireGuard integrado** en Windows y deja de ofrecer instalar un motor externo.
+- Linux conserva `wireguard-tools`/`wg-quick` del sistema.
+- Versión de aplicación, Wails, frontend, README, Info y avisos de terceros sincronizados con v3.4.2.
+
 ## v3.4.1
 
 ### WireGuard — correcciones de interfaz y Windows

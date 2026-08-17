@@ -35,11 +35,15 @@ jobs:
           go mod download
           go mod tidy
 
+      - name: Preparar motor WireGuard embebido
+        shell: pwsh
+        run: .\herramientas\preparar-wireguard-windows.ps1 -WorkDir "$env:GITHUB_WORKSPACE\wireguard-upstream"
+
       - name: Compilar Windows
         working-directory: conectar-gateway
         shell: pwsh
         run: |
-          wails build -clean -o Conectar-Gateway
+          wails build -clean -tags wireguard_embedded -o Conectar-Gateway
           $candidatos = @(
             "build/bin/Conectar-Gateway.exe",
             "build/bin/Conectar-Gateway"

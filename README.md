@@ -21,9 +21,9 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 ## WireGuard
 
-> **v3.4.1** corrige el parpadeo de consolas auxiliares en Windows durante el sondeo de estado y simplifica el nombre visible del apartado a **WireGuard**.
+> **v3.4.2** integra el motor WireGuard dentro del ejecutable de Windows: ya no pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
 
-Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. La aplicación administra los perfiles y la interfaz, mientras el túnel lo levanta el motor WireGuard del sistema operativo. No se redistribuye un driver VPN propio dentro del ejecutable.
+Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. A partir de **v3.4.2**, el build oficial de Windows incorpora `tunnel.dll` del proyecto `embeddable-dll-service` y el `wireguard.dll` precompilado oficial de WireGuardNT como recursos internos del propio `Conectar-Gateway.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
 
 - Perfiles múltiples con búsqueda, estado conectado/desconectado y autoconexión.
 - Importación y exportación de archivos `.conf`.
@@ -37,7 +37,7 @@ Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linu
 - Los perfiles pueden incluirse en el backup portable `.cgw`; sus secretos viajan dentro del contenedor cifrado del backup y se vuelven a cifrar al restaurar.
 - Los hooks `PreUp`, `PostUp`, `PreDown` y `PostDown` importados se conservan, pero quedan **deshabilitados por defecto** hasta que el usuario los autoriza expresamente.
 
-En Windows la función detecta **WireGuard for Windows** y utiliza sus herramientas oficiales para instalar/quitar el servicio del túnel. Si no está instalado, la aplicación dirige al instalador oficial. En Linux utiliza `wireguard-tools` (`wg`/`wg-quick`) y puede instalarlo mediante el gestor de paquetes compatible cuando hay `pkexec`.
+En Windows **no hace falta instalar ningún cliente WireGuard aparte**: Gateway WISP Access registra su propio ejecutable como servicio `WireGuardTunnel$...` y carga el motor oficial embebido. Las estadísticas RX/TX y handshake se consultan directamente mediante la API de WireGuardNT. En Linux se mantiene `wireguard-tools` (`wg`/`wg-quick`) del sistema y puede instalarse mediante el gestor de paquetes compatible cuando hay `pkexec`.
 
 > Gateway WISP Access no es el cliente oficial de WireGuard. El nombre WireGuard se utiliza para describir compatibilidad e integración con el software/protocolo correspondiente; cada componente externo conserva su licencia y autoría. Consulte [TERCEROS.md](TERCEROS.md).
 
@@ -105,7 +105,7 @@ Descarga el ejecutable de la pestaña **[Releases](../../releases)**:
 | `Conectar-Gateway.exe` | Windows 10/11 (64 bits) |
 | `conectar-gateway-linux` | Linux (64 bits) |
 
-Ponlo donde quieras y ábrelo. La aplicación no necesita PuTTY ni OpenSSH para sus funciones SSH. Wails usa el WebView del sistema y la función **WireGuard** requiere el motor oficial WireGuard del sistema solo si vas a utilizar VPN local.
+Ponlo donde quieras y ábrelo. La aplicación no necesita PuTTY ni OpenSSH para sus funciones SSH. Wails usa el WebView del sistema. En **Windows**, WireGuard ya viene dentro del ejecutable oficial; en **Linux**, la VPN local requiere `wireguard-tools` del sistema.
 
 En **Windows y Linux** se abre en su propia ventana Wails. En Windows se requiere Microsoft WebView2 (normalmente ya instalado). En Linux se requiere GTK3 + WebKitGTK 4.1; en Debian/Ubuntu modernos se cubre con los paquetes `libgtk-3-0` y `libwebkit2gtk-4.1-0`.
 
@@ -290,11 +290,15 @@ go mod tidy
 
 El repositorio conserva `frontend/dist/.keep` a propósito: Wails genera bindings antes de que el frontend final exista y `//go:embed all:frontend/dist` necesita al menos un archivo en un checkout limpio. El contenido real de `frontend/dist` es generado durante el build y no se versiona.
 
-Windows:
+Windows (build completo con WireGuard embebido):
 
 ```powershell
-wails build -clean -o Conectar-Gateway
+.\herramientas\preparar-wireguard-windows.ps1
+cd conectar-gateway
+wails build -clean -tags wireguard_embedded -o Conectar-Gateway
 ```
+
+El script fija **WireGuard for Windows v1.1** a un commit concreto, ejecuta su `embeddable-dll-service` oficial y coloca temporalmente `tunnel.dll` + el `wireguard.dll` precompilado oficial en `wireguard-assets/`. Esos DLL están ignorados por Git y se incrustan en el `.exe` únicamente cuando se compila con `-tags wireguard_embedded`. GitHub Actions hace este paso automáticamente.
 
 Linux (Debian/Ubuntu moderno):
 

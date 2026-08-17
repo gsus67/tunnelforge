@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "3.4.1"
+const version = "3.4.2"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -689,6 +689,12 @@ func responderError(w http.ResponseWriter, err error) {
 }
 
 func main() {
+	if handled, code := manejarModoWireGuardEspecial(); handled {
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if manejarModoActualizador() {
 		return
 	}

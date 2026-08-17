@@ -4,74 +4,56 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
+	"time"
+	"unsafe"
+)
+
+const (
+	wgWinInterfaceSize = 80
+	wgWinPeerSize      = 136
+	wgWinAllowedIPSize = 24
+	wgWinErrMoreData   = syscall.Errno(234)
 )
 
 func wgWindowsCommand(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	// Gateway WISP Access es una app GUI. Los comandos de estado de WireGuard
-	// se ejecutan periódicamente; sin HideWindow Windows crea una consola que
-	// aparece y desaparece en cada sondeo.
+	// Gateway WISP Access es una app GUI. Los comandos de estado se ejecutan
+	// periódicamente; sin HideWindow Windows crea una consola que parpadea.
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd
 }
 
-func wgWindowsPaths() (wireguardExe, wgExe string) {
-	candidates := []string{}
-	if pf := os.Getenv("ProgramFiles"); pf != "" {
-		candidates = append(candidates, filepath.Join(pf, "WireGuard", "wireguard.exe"))
-	}
-	if p, err := exec.LookPath("wireguard.exe"); err == nil {
-		candidates = append(candidates, p)
-	}
-	for _, p := range candidates {
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			wireguardExe = p
-			break
-		}
-	}
-	if wireguardExe != "" {
-		p := filepath.Join(filepath.Dir(wireguardExe), "wg.exe")
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			wgExe = p
-		}
-	}
-	if wgExe == "" {
-		if p, err := exec.LookPath("wg.exe"); err == nil {
-			wgExe = p
-		}
-	}
-	return
-}
-
 func wgEngineStatus() WGEngineInfo {
-	we, wg := wgWindowsPaths()
-	info := WGEngineInfo{Name: "WireGuard for Windows", Platform: "windows", CanInstall: true}
-	if we == "" {
-		info.Message = "Instala el cliente oficial de WireGuard para Windows."
-		return info
+	info := WGEngineInfo{
+		Installed:  wgEmbeddedAvailable(),
+		Name:       "WireGuard integrado",
+		Version:    wgEmbeddedDescription(),
+		CanInstall: false,
+		Platform:   "windows",
 	}
-	info.Installed = true
-	info.Path = we
-	if wg != "" {
-		if out, err := wgWindowsCommand(wg, "--version").CombinedOutput(); err == nil {
-			info.Version = strings.TrimSpace(string(out))
-		}
+	if info.Installed {
+		info.Message = "Incluido dentro de Gateway WISP Access · no requiere instalar WireGuard aparte."
+	} else {
+		info.Message = "Esta compilación no incluye el motor WireGuard embebido. Usa el ejecutable oficial generado por GitHub Actions."
 	}
 	return info
 }
 
 func wgInstallEngine() (WGEngineInfo, error) {
-	// El driver WireGuardNT debe venir firmado por Microsoft. Por seguridad
-	// abrimos el instalador oficial en vez de intentar instalar un driver propio.
-	abrirNavegador("https://www.wireguard.com/install/")
 	info := wgEngineStatus()
-	info.Message = "Abrí la descarga oficial de WireGuard. Instálalo y vuelve a comprobar el motor."
+	if !info.Installed {
+		return info, fmt.Errorf("el motor WireGuard embebido no está incluido en esta compilación")
+	}
+	info.Message = "WireGuard ya viene integrado; no hay nada adicional que instalar."
 	return info, nil
 }
 
@@ -80,9 +62,10 @@ func psQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + 
 func wgRunElevated(exe string, args ...string) error {
 	quoted := make([]string, len(args))
 	for i, a := range args {
-		quoted[i] = psQuote(a)
+		quoted[i] = wgWindowsCmdQuote(a)
 	}
-	script := fmt.Sprintf("$p=Start-Process -FilePath %s -ArgumentList @(%s) -Verb RunAs -Wait -PassThru; exit $p.ExitCode", psQuote(exe), strings.Join(quoted, ","))
+	argLine := strings.Join(quoted, " ")
+	script := fmt.Sprintf("$p=Start-Process -FilePath %s -ArgumentList %s -Verb RunAs -Wait -PassThru; exit $p.ExitCode", psQuote(exe), psQuote(argLine))
 	cmd := wgWindowsCommand("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("WireGuard necesita permisos de administrador: %v %s", err, strings.TrimSpace(string(out)))
@@ -92,16 +75,12 @@ func wgRunElevated(exe string, args ...string) error {
 
 func wgWindowsServiceStatus(name string) (exists, running bool) {
 	service := "WireGuardTunnel$" + name
-	// sc.exe es mucho más liviano que crear un proceso PowerShell cada 2 s.
-	// HideWindow evita cualquier flash de consola en la aplicación Wails.
 	out, err := wgWindowsCommand("sc.exe", "query", service).CombinedOutput()
 	if err != nil {
 		return false, false
 	}
 	text := strings.ReplaceAll(string(out), "\r", "")
 	for _, line := range strings.Split(text, "\n") {
-		// SERVICE_RUNNING = 4. El número de estado es estable aunque Windows
-		// traduzca el texto descriptivo de sc.exe.
 		trimmed := strings.TrimSpace(line)
 		if strings.Contains(trimmed, ": 4 ") || strings.HasSuffix(trimmed, ": 4") {
 			return true, true
@@ -110,43 +89,319 @@ func wgWindowsServiceStatus(name string) (exists, running bool) {
 	return true, false
 }
 
+func wgSC(args ...string) error {
+	out, err := wgWindowsCommand("sc.exe", args...).CombinedOutput()
+	if err != nil {
+		msg := strings.TrimSpace(string(out))
+		if msg == "" {
+			msg = err.Error()
+		}
+		return fmt.Errorf("sc.exe %s: %s", strings.Join(args, " "), msg)
+	}
+	return nil
+}
+
+func wgWindowsCmdQuote(s string) string {
+	// Las rutas que pasamos al SCM no contienen comillas; escapamos por
+	// seguridad y las encerramos porque casi siempre contienen espacios.
+	return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
+}
+
+func wgAdminInstallService(name, configPath, engineDir, startMode string) error {
+	if startMode != "auto" {
+		startMode = "demand"
+	}
+	service := "WireGuardTunnel$" + name
+	if exists, _ := wgWindowsServiceStatus(name); exists {
+		_ = wgSC("stop", service)
+		_ = wgSC("delete", service)
+		for i := 0; i < 20; i++ {
+			if exists, _ := wgWindowsServiceStatus(name); !exists {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	binPath := strings.Join([]string{
+		wgWindowsCmdQuote(exe),
+		"--wg-service",
+		wgWindowsCmdQuote(configPath),
+		wgWindowsCmdQuote(engineDir),
+	}, " ")
+
+	if err := wgSC("create", service,
+		"binPath=", binPath,
+		"type=", "own",
+		"start=", startMode,
+		"error=", "normal",
+		"depend=", "Nsi/TcpIp",
+		"DisplayName=", "Gateway WISP Access - "+name); err != nil {
+		return err
+	}
+	if err := wgSC("sidtype", service, "unrestricted"); err != nil {
+		_ = wgSC("delete", service)
+		return err
+	}
+	if err := wgSC("start", service); err != nil {
+		_ = wgSC("delete", service)
+		return err
+	}
+	return nil
+}
+
+func wgAdminRemoveService(name string) error {
+	service := "WireGuardTunnel$" + name
+	if exists, _ := wgWindowsServiceStatus(name); !exists {
+		return nil
+	}
+	_ = wgSC("stop", service)
+	if err := wgSC("delete", service); err != nil {
+		return err
+	}
+	return nil
+}
+
+func wgSetDLLDirectory(dir string) error {
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	proc := kernel32.NewProc("SetDllDirectoryW")
+	p, err := syscall.UTF16PtrFromString(dir)
+	if err != nil {
+		return err
+	}
+	r, _, callErr := proc.Call(uintptr(unsafe.Pointer(p)))
+	runtime.KeepAlive(p)
+	if r == 0 {
+		return fmt.Errorf("SetDllDirectoryW: %v", callErr)
+	}
+	return nil
+}
+
+func wgRunTunnelService(configPath, engineDir string) error {
+	if err := wgSetDLLDirectory(engineDir); err != nil {
+		return err
+	}
+	tunnelPath := filepath.Join(engineDir, "tunnel.dll")
+	if _, err := os.Stat(filepath.Join(engineDir, "wireguard.dll")); err != nil {
+		return fmt.Errorf("falta wireguard.dll: %w", err)
+	}
+	dll, err := syscall.LoadDLL(tunnelPath)
+	if err != nil {
+		return fmt.Errorf("no pude cargar tunnel.dll: %w", err)
+	}
+	defer dll.Release()
+	proc, err := dll.FindProc("WireGuardTunnelService")
+	if err != nil {
+		return fmt.Errorf("tunnel.dll no exporta WireGuardTunnelService: %w", err)
+	}
+	conf, err := syscall.UTF16PtrFromString(configPath)
+	if err != nil {
+		return err
+	}
+	r, _, callErr := proc.Call(uintptr(unsafe.Pointer(conf)))
+	runtime.KeepAlive(conf)
+	if r == 0 {
+		return fmt.Errorf("WireGuardTunnelService falló: %v", callErr)
+	}
+	return nil
+}
+
+func manejarModoWireGuardEspecial() (bool, int) {
+	args := os.Args[1:]
+	if len(args) == 0 {
+		return false, 0
+	}
+	switch args[0] {
+	case "--wg-service":
+		if len(args) != 3 {
+			return true, 2
+		}
+		if err := wgRunTunnelService(args[1], args[2]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return true, 1
+		}
+		return true, 0
+	case "--wg-admin-connect":
+		if len(args) != 5 {
+			return true, 2
+		}
+		if err := wgAdminInstallService(args[1], args[2], args[3], args[4]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return true, 1
+		}
+		return true, 0
+	case "--wg-admin-disconnect":
+		if len(args) != 2 {
+			return true, 2
+		}
+		if err := wgAdminRemoveService(args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return true, 1
+		}
+		return true, 0
+	default:
+		return false, 0
+	}
+}
+
 func wgConnectProfile(p WGProfile, configPath string) error {
-	we, _ := wgWindowsPaths()
-	if we == "" {
-		return fmt.Errorf("WireGuard for Windows no está instalado")
+	engineDir, err := wgEnsureEmbeddedEngine()
+	if err != nil {
+		return err
 	}
 	name := wgInterfaceName(p.ID)
 	exists, running := wgWindowsServiceStatus(name)
 	if running {
 		return nil
 	}
-	if exists {
-		_ = wgRunElevated(we, "/uninstalltunnelservice", name)
-	}
-	if err := wgRunElevated(we, "/installtunnelservice", configPath); err != nil {
+	// Si quedó un servicio viejo, el proceso elevado lo reemplaza en la misma
+	// operación para no mostrar varios avisos UAC.
+	_ = exists
+	exe, err := os.Executable()
+	if err != nil {
 		return err
 	}
-	// /installtunnelservice usa inicio automático. Si el usuario no pidió
-	// autoconexión, lo cambiamos a manual sin detener la sesión actual.
 	mode := "demand"
 	if p.AutoConnect {
 		mode = "auto"
 	}
-	_ = wgRunElevated("sc.exe", "config", "WireGuardTunnel$"+name, "start=", mode)
-	return nil
+	return wgRunElevated(exe, "--wg-admin-connect", name, configPath, engineDir, mode)
 }
 
 func wgDisconnectProfile(p WGProfile) error {
-	we, _ := wgWindowsPaths()
-	if we == "" {
-		return fmt.Errorf("WireGuard for Windows no está instalado")
-	}
 	name := wgInterfaceName(p.ID)
-	exists, _ := wgWindowsServiceStatus(name)
-	if !exists {
+	if exists, _ := wgWindowsServiceStatus(name); !exists {
 		return nil
 	}
-	return wgRunElevated(we, "/uninstalltunnelservice", name)
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	return wgRunElevated(exe, "--wg-admin-disconnect", name)
+}
+
+func wgReadWireGuardNTConfig(name, engineDir string) ([]byte, error) {
+	dll, err := syscall.LoadDLL(filepath.Join(engineDir, "wireguard.dll"))
+	if err != nil {
+		return nil, err
+	}
+	defer dll.Release()
+	openAdapter, err := dll.FindProc("WireGuardOpenAdapter")
+	if err != nil {
+		return nil, err
+	}
+	closeAdapter, err := dll.FindProc("WireGuardCloseAdapter")
+	if err != nil {
+		return nil, err
+	}
+	getConfig, err := dll.FindProc("WireGuardGetConfiguration")
+	if err != nil {
+		return nil, err
+	}
+	nameW, err := syscall.UTF16PtrFromString(name)
+	if err != nil {
+		return nil, err
+	}
+	handle, _, openErr := openAdapter.Call(uintptr(unsafe.Pointer(nameW)))
+	runtime.KeepAlive(nameW)
+	if handle == 0 {
+		return nil, fmt.Errorf("WireGuardOpenAdapter: %v", openErr)
+	}
+	defer closeAdapter.Call(handle)
+
+	size := uint32(64 * 1024)
+	for attempt := 0; attempt < 5; attempt++ {
+		if size < wgWinInterfaceSize {
+			size = wgWinInterfaceSize
+		}
+		if size > 16*1024*1024 {
+			return nil, fmt.Errorf("configuración WireGuard demasiado grande")
+		}
+		buf := make([]byte, int(size))
+		requested := size
+		r, _, callErr := getConfig.Call(
+			handle,
+			uintptr(unsafe.Pointer(&buf[0])),
+			uintptr(unsafe.Pointer(&requested)),
+		)
+		runtime.KeepAlive(buf)
+		if r != 0 {
+			if requested > uint32(len(buf)) {
+				return nil, fmt.Errorf("WireGuard devolvió un tamaño inválido")
+			}
+			return buf[:requested], nil
+		}
+		if errno, ok := callErr.(syscall.Errno); ok && errno == wgWinErrMoreData {
+			size = requested
+			continue
+		}
+		return nil, fmt.Errorf("WireGuardGetConfiguration: %v", callErr)
+	}
+	return nil, fmt.Errorf("WireGuardGetConfiguration cambió de tamaño demasiadas veces")
+}
+
+func wgFiletimeToUnix(v uint64) int64 {
+	if v == 0 {
+		return 0
+	}
+	const epochDeltaSeconds = uint64(11644473600)
+	secs := v / 10000000
+	if secs <= epochDeltaSeconds {
+		return 0
+	}
+	return int64(secs - epochDeltaSeconds)
+}
+
+func wgParseWireGuardNTConfig(p WGProfile, name string, buf []byte) (WGTunnelSnapshot, error) {
+	snap := WGTunnelSnapshot{Connected: true, Interface: name, Peers: []WGPeerSnapshot{}}
+	if len(buf) < wgWinInterfaceSize {
+		return snap, fmt.Errorf("respuesta WireGuardNT demasiado corta")
+	}
+	snap.ListenPort = int(binary.LittleEndian.Uint16(buf[4:6]))
+	peersCount := binary.LittleEndian.Uint32(buf[72:76])
+	offset := wgWinInterfaceSize
+	profilePeers := make(map[string]WGPeer, len(p.Peers))
+	for _, peer := range p.Peers {
+		profilePeers[strings.TrimSpace(peer.PublicKey)] = peer
+	}
+	for i := uint32(0); i < peersCount; i++ {
+		if offset+wgWinPeerSize > len(buf) {
+			return snap, fmt.Errorf("respuesta WireGuardNT truncada en peer %d", i+1)
+		}
+		peerBuf := buf[offset : offset+wgWinPeerSize]
+		publicKey := base64.StdEncoding.EncodeToString(peerBuf[8:40])
+		tx := int64(binary.LittleEndian.Uint64(peerBuf[104:112]))
+		rx := int64(binary.LittleEndian.Uint64(peerBuf[112:120]))
+		handshake := wgFiletimeToUnix(binary.LittleEndian.Uint64(peerBuf[120:128]))
+		allowedCount := binary.LittleEndian.Uint32(peerBuf[128:132])
+		ps := WGPeerSnapshot{
+			PublicKey:       publicKey,
+			LatestHandshake: handshake,
+			RXBytes:         rx,
+			TXBytes:         tx,
+		}
+		if stored, ok := profilePeers[publicKey]; ok {
+			ps.Endpoint = stored.Endpoint
+			ps.AllowedIPs = strings.Join(stored.AllowedIPs, ", ")
+		}
+		snap.Peers = append(snap.Peers, ps)
+		snap.RXBytes += rx
+		snap.TXBytes += tx
+		if handshake > snap.LatestHandshake {
+			snap.LatestHandshake = handshake
+		}
+		offset += wgWinPeerSize
+		skip := uint64(allowedCount) * wgWinAllowedIPSize
+		if skip > uint64(len(buf)-offset) {
+			return snap, fmt.Errorf("respuesta WireGuardNT truncada en AllowedIPs")
+		}
+		offset += int(skip)
+	}
+	return snap, nil
 }
 
 func wgTunnelSnapshot(p WGProfile) (WGTunnelSnapshot, error) {
@@ -156,18 +411,20 @@ func wgTunnelSnapshot(p WGProfile) (WGTunnelSnapshot, error) {
 	if !exists || !running {
 		return snap, nil
 	}
-	_, wg := wgWindowsPaths()
-	if wg == "" {
-		snap.Error = "wg.exe no está disponible para leer estadísticas"
-		return snap, nil
-	}
-	out, err := wgWindowsCommand(wg, "show", name, "dump").CombinedOutput()
+	engineDir, err := wgEnsureEmbeddedEngine()
 	if err != nil {
-		snap.Error = "túnel activo; estadísticas requieren permiso del propietario/administrador"
+		snap.Error = err.Error()
 		return snap, nil
 	}
-	parsed := parseWGDump(string(out))
-	parsed.Interface = name
-	parsed.Connected = true
+	buf, err := wgReadWireGuardNTConfig(name, engineDir)
+	if err != nil {
+		snap.Error = "túnel activo; no pude leer estadísticas: " + err.Error()
+		return snap, nil
+	}
+	parsed, err := wgParseWireGuardNTConfig(p, name, buf)
+	if err != nil {
+		snap.Error = err.Error()
+		return snap, nil
+	}
 	return parsed, nil
 }

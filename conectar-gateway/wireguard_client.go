@@ -3,9 +3,10 @@ package main
 
 // Integración WireGuard local.
 //
-// La UI y el almacenamiento pertenecen a Gateway WISP Access. El motor de VPN
-// se delega a los componentes oficiales de WireGuard del sistema operativo:
-// WireGuard for Windows (wireguard.exe/wg.exe) y wireguard-tools en Linux.
+// La UI y el almacenamiento pertenecen a Gateway WISP Access. En Windows el
+// motor oficial se distribuye embebido dentro de la propia aplicación usando
+// tunnel.dll + WireGuardNT; no hace falta instalar WireGuard for Windows. En
+// Linux se siguen usando las herramientas wireguard-tools del sistema.
 // La generación de claves sigue el algoritmo del embeddable-dll-service
 // oficial (MIT), con atribución en TERCEROS.md.
 
@@ -842,7 +843,7 @@ func manejarWGConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	eng := wgEngineStatus()
 	if !eng.Installed {
-		responderError(w, errors.New("el motor oficial WireGuard no está instalado"))
+		responderError(w, errors.New("el motor WireGuard no está disponible en esta compilación"))
 		return
 	}
 	snap, _ := wgTunnelSnapshot(p)

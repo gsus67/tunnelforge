@@ -33,19 +33,22 @@ Las fuentes de la interfaz (Barlow Condensed, JetBrains Mono) se cargan desde Go
 
 ## Integración WireGuard local
 
-Desde v3.4.0 la aplicación puede administrar túneles WireGuard locales. La interfaz y el almacenamiento de perfiles son código de Gateway WISP Access, pero el motor de VPN se mantiene como software externo del sistema operativo:
+Desde v3.4.0 la aplicación puede administrar túneles WireGuard locales. Desde **v3.4.2**, el build oficial de Windows incorpora el motor necesario dentro de `Conectar-Gateway.exe`; Linux continúa utilizando las herramientas de la distribución.
 
 | Componente | Uso | Distribución/licencia |
 |---|---|---|
-| [WireGuard for Windows](https://git.zx2c4.com/wireguard-windows/) | Motor oficial en Windows, servicio de túnel y `wg.exe` | **No se redistribuye dentro de Gateway WISP Access**; conserva las licencias y términos del proyecto WireGuard |
+| [WireGuard for Windows · embeddable-dll-service](https://git.zx2c4.com/wireguard-windows/tree/embeddable-dll-service/) | `tunnel.dll`, servicio de túnel embebible usado por el ejecutable Windows | MIT © WireGuard LLC. Se compila durante GitHub Actions desde el tag oficial v1.1 fijado a un commit concreto |
+| [WireGuardNT](https://git.zx2c4.com/wireguard-nt/) | `wireguard.dll`, driver/API oficial usados por `tunnel.dll` y para leer estadísticas | Se utiliza el **binario precompilado oficial** incluido en `wireguard-nt-1.1.zip`, bajo su *Prebuilt Binaries License*, que permite distribuirlo junto a software que lo usa mediante la API permitida |
 | [wireguard-tools](https://git.zx2c4.com/wireguard-tools/) | `wg` / `wg-quick` en Linux | GPL-2.0; se instala como paquete independiente del sistema |
-| [embeddable-dll-service / main.go](https://git.zx2c4.com/wireguard-windows/tree/embeddable-dll-service/main.go) | Referencia para la generación local de pares de claves Curve25519 | MIT © WireGuard LLC; la pequeña adaptación incluida conserva atribución en el código fuente |
+| [embeddable-dll-service / main.go](https://git.zx2c4.com/wireguard-windows/tree/embeddable-dll-service/main.go) | Referencia para generación local de pares Curve25519 | MIT © WireGuard LLC; la pequeña adaptación incluida conserva atribución en el código fuente |
 
-Gateway WISP Access **no incorpora ni redistribuye WireGuardNT ni el instalador/driver de WireGuard for Windows**. En Windows abre el canal oficial de instalación si el motor no está disponible y luego controla los servicios con la CLI oficial. En Linux utiliza las herramientas instaladas por la distribución.
+En Windows, `tunnel.dll` y `wireguard.dll` se incrustan como recursos dentro del ejecutable de Gateway WISP Access y se extraen a un directorio privado de runtime cuando se necesita iniciar un túnel. El usuario **no instala WireGuard for Windows ni `wg.exe`**. La creación/control del servicio VPN sí requiere elevación UAC de Windows.
+
+El workflow no compila un WireGuardNT/driver modificado: toma el `wireguard.dll` precompilado distribuido por WireGuard dentro de la dependencia oficial y conserva sus avisos y términos. Gateway WISP Access usa únicamente las funciones públicas de la API de WireGuardNT para leer estado y estadísticas.
 
 Los hooks `PreUp`, `PostUp`, `PreDown` y `PostDown` de un `.conf` pueden ejecutar comandos. Por seguridad la aplicación los conserva al importar pero no los activa sin una acción explícita del usuario.
 
-**Marca/nombre:** Gateway WISP Access no es el cliente oficial de WireGuard. El término “WireGuard” se utiliza únicamente para identificar compatibilidad con el protocolo y el software externo correspondiente.
+**Marca/nombre:** Gateway WISP Access no es el cliente oficial de WireGuard. El término “WireGuard” se utiliza únicamente para identificar compatibilidad con el protocolo y los componentes correspondientes.
 
 ## Interfaz de escritorio
 
