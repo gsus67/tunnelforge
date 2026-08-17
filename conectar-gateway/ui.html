@@ -667,6 +667,22 @@
   .tool-note{font-size:11px;color:var(--suave)}
   .tools-footer{flex:none;display:flex;align-items:center;min-height:38px;padding:8px 14px;border-top:1px solid var(--linea);background:rgba(7,16,25,.98)}
 
+  /* v3.1.12: administrador de firewall */
+  .firewall-modal{max-width:720px !important;border-radius:12px !important;padding:16px !important}
+  .fw-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+  .fw-badge{display:inline-flex;align-items:center;padding:4px 7px;border:1px solid rgba(77,134,184,.22);background:rgba(7,19,31,.72);border-radius:6px;font-size:10px;color:var(--texto-2)}
+  .fw-badge.ok{border-color:rgba(77,225,154,.28);color:var(--verde)}
+  .fw-badge.warn{border-color:rgba(230,180,91,.28);color:var(--ambar)}
+  .fw-rules{height:220px;overflow:auto;border:1px solid rgba(77,134,184,.16);background:#06111b;border-radius:7px;padding:9px 10px;margin:8px 0 10px}
+  .fw-rules pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.45;color:#b8cad8}
+  .fw-actions{display:grid;grid-template-columns:minmax(100px,1fr) 95px auto auto;gap:7px;align-items:end}
+  .fw-actions label{font-size:10px;color:var(--suave);display:grid;gap:4px}
+  .fw-actions input,.fw-actions select{height:34px;padding:6px 8px !important}
+  .fw-actions button{height:34px;padding:6px 10px !important;font-size:11px !important}
+  .fw-note{min-height:28px;margin:9px 0 4px;font-size:10.5px;line-height:1.4;color:var(--suave)}
+  .fw-note.err{color:var(--rojo)}.fw-note.ok{color:var(--verde)}
+  @media(max-width:720px){.fw-actions{grid-template-columns:1fr 90px}.fw-actions button{width:100%}}
+
 
   /* v3.1.11: tráfico real + selector de destino localhost */
   #dashboard .cnx .localhost-pick{width:18px;height:18px;min-width:18px;padding:0 !important;border-radius:5px !important;display:grid;place-items:center;color:transparent;border:1px solid rgba(126,164,194,.28) !important;background:rgba(7,19,31,.72);font-size:11px !important;line-height:1}
@@ -860,7 +876,7 @@
                   <label for="exp-claves" style="margin:0">Incluir contraseñas guardadas</label></div>
                 <div class="check"><input type="checkbox" id="exp-keys" checked>
                   <label for="exp-keys" style="margin:0">Incluir claves SSH privadas</label></div>
-                <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar</button>
+                <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar…</button>
                 <div class="res" id="exp-res"></div>
               </div>
               <div>
@@ -935,7 +951,7 @@
                 <li>Terminal SSH integrada con historial de comandos.</li>
                 <li>Gestor SFTP para subir, bajar y administrar archivos.</li>
                 <li>Túneles locales por servidor con acceso rápido a paneles web.</li>
-                <li>Tráfico de red real del servidor mostrado en el Dashboard.</li>
+                <li>Tráfico de red real del servidor en el Dashboard, expresado en Mbit/s.</li>
               </ul>
             </section>
             <section class="info-block">
@@ -952,6 +968,7 @@
               <ul>
                 <li>Cargar scripts locales al servidor y ejecutarlos viendo la salida en Terminal.</li>
                 <li>Test de velocidad a Internet desde el servidor conectado.</li>
+                <li>Firewall: detección de UFW, firewalld y nftables con apertura/cierre seguro de puertos.</li>
                 <li>Selector de servidor para resolver puertos compartidos en <code>localhost:puerto</code>.</li>
                 <li>Más utilidades pueden añadirse sin recargar el Dashboard.</li>
               </ul>
@@ -1069,9 +1086,37 @@
         <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 17a8 8 0 0 1 16 0"/><path d="M12 13l4-4"/><path d="M7 17h10"/><path d="M6.4 11.5l-1.7-1"/><path d="M17.6 11.5l1.7-1"/><path d="M12 9V7"/></svg></div>
         <div><h4>Test de velocidad</h4><p>Mide latencia, descarga y subida desde este servidor hacia Internet usando la red de Cloudflare. El resultado se muestra en la terminal.</p><button class="principal" id="tool-speedtest">Probar velocidad</button></div>
       </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg></div>
+        <div><h4>Firewall</h4><p>Detecta UFW, firewalld o nftables, muestra las reglas y permite abrir o cerrar puertos con protección del puerto SSH y copia previa.</p><button class="principal" id="tool-firewall">Administrar firewall</button></div>
+      </div>
     </div>
   </div>
   <div class="tools-footer"><div class="tool-note">Los scripts se ejecutan con los permisos del usuario SSH conectado. Esta ventana queda preparada para añadir más herramientas después.</div></div>
+</div>
+
+<!-- Firewall del servidor -->
+<div class="velo" id="m-firewall">
+  <div class="modal firewall-modal">
+    <h3>Firewall — <span id="fw-srv">sin servidor</span></h3>
+    <div class="fw-head">
+      <span class="fw-badge" id="fw-backend">Detectando…</span>
+      <span class="fw-badge" id="fw-estado">—</span>
+      <span class="fw-badge" id="fw-ssh">SSH protegido</span>
+    </div>
+    <div class="fw-rules"><pre id="fw-reglas">Consultando firewall…</pre></div>
+    <div class="fw-actions">
+      <label>Puerto<input type="number" id="fw-puerto" min="1" max="65535" placeholder="8080"></label>
+      <label>Protocolo<select id="fw-proto"><option value="tcp">TCP</option><option value="udp">UDP</option></select></label>
+      <button class="principal" id="fw-abrir">Abrir puerto</button>
+      <button class="peligro" id="fw-cerrar-puerto">Cerrar puerto</button>
+    </div>
+    <div class="fw-note" id="fw-nota">Gateway crea una copia del firewall antes de modificarlo.</div>
+    <div class="botones">
+      <button id="fw-refrescar">Actualizar estado</button>
+      <button id="fw-salir">Cerrar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal: confirmar huella -->
@@ -1173,7 +1218,7 @@
     while (b >= 1024 && i < u.length-1){ b /= 1024; i++; }
     return (b >= 100 ? Math.round(b) : b.toFixed(1)) + ' ' + u[i];
   }
-  function fmtBs(b){ return b === null || b === undefined ? '—' : fmtB(b) + '/s'; }
+  function fmtBs(b){ if (b === null || b === undefined) return '—'; var m=(Math.max(0,b)*8)/1000000; return (m < 10 ? m.toFixed(2) : m.toFixed(1)) + ' Mbit/s'; }
 
   // ── Conexiones activas (multiples) ───────────────────────────
   var estadoActual = {conectado:false, conexiones:[]};
@@ -1767,12 +1812,13 @@
     })}).then(function(r){
       var res = document.getElementById('exp-res');
       if (r.error){ res.textContent = r.error; aviso(r.error, false); return; }
+      if (r.cancelado){ res.textContent = 'Exportación cancelada.'; return; }
       res.textContent = 'Copia creada. ' + r.servidores + ' servidor(es), ' +
         r.tuneles + ' túnel(es), ' + r.keys + ' clave(s) SSH. Guardada en: ' + r.ruta +
         ((r.omitidas && r.omitidas.length) ? ' · No pude leer: ' + r.omitidas.join(', ') : '');
       document.getElementById('exp-pass').value = '';
       aviso('Copia exportada.', true);
-    }).finally(function(){ b.disabled = false; b.textContent = 'Exportar'; });
+    }).finally(function(){ b.disabled = false; b.textContent = 'Exportar…'; });
   };
   document.getElementById('btn-importar').onclick = function(){
     var archivo = document.getElementById('imp-archivo').files[0];
@@ -1869,6 +1915,7 @@
   // ── Atajos de teclado ──────────────────────────────────────────
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape'){
+      if (document.getElementById('m-firewall').classList.contains('abierto')){ cerrarFirewall(); return; }
       if (document.getElementById('fx-velo').classList.contains('abierto')){ cerrarArchivos(); return; }
       if (document.getElementById('tools-velo').classList.contains('abierto')){ cerrarHerramientas(); return; }
       if (document.getElementById('term-velo').classList.contains('abierto')){ cerrarTerminalUI(); return; }
@@ -1963,6 +2010,59 @@
       abrirTerminal(srv,r.comando,!!r.silencioso);
     }).catch(function(){ aviso('No pude preparar el test de velocidad.',false); }).finally(function(){ b.disabled=false; b.textContent='Probar velocidad'; });
   };
+
+  var firewallServidor = null;
+  var firewallEditable = false;
+  function pintarFirewall(f){
+    if(!f) return;
+    firewallEditable=!!f.editable;
+    $('fw-backend').textContent=f.nombre||f.backend||'Firewall';
+    $('fw-backend').className='fw-badge '+(f.backend&&f.backend!=='none'?'ok':'warn');
+    $('fw-estado').textContent=f.estado||'—';
+    $('fw-estado').className='fw-badge '+(f.estado==='activo'?'ok':'warn');
+    $('fw-ssh').textContent='SSH '+(f.puertoSSH||22)+'/tcp protegido';
+    $('fw-reglas').textContent=f.reglas||'Sin reglas para mostrar.';
+    $('fw-nota').textContent=f.nota||'Gateway crea una copia del firewall antes de modificarlo.';
+    $('fw-nota').className='fw-note';
+    $('fw-abrir').disabled=!firewallEditable;
+    $('fw-cerrar-puerto').disabled=!firewallEditable;
+  }
+  function cargarFirewall(){
+    if(!firewallServidor) return;
+    $('fw-reglas').textContent='Consultando firewall…';
+    $('fw-abrir').disabled=true; $('fw-cerrar-puerto').disabled=true;
+    api('/api/herramientas/firewall?servidor='+encodeURIComponent(firewallServidor)).then(function(r){
+      if(r.error){ $('fw-reglas').textContent=r.error; $('fw-nota').textContent=r.error; $('fw-nota').className='fw-note err'; return; }
+      pintarFirewall(r);
+    }).catch(function(){ $('fw-reglas').textContent='No pude consultar el firewall.'; $('fw-nota').textContent='No pude consultar el firewall.'; $('fw-nota').className='fw-note err'; });
+  }
+  $('tool-firewall').onclick=function(){
+    if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
+    firewallServidor=toolsServidor;
+    $('fw-srv').textContent=firewallServidor;
+    $('m-firewall').classList.add('abierto');
+    cargarFirewall();
+  };
+  function cerrarFirewall(){ $('m-firewall').classList.remove('abierto'); }
+  $('fw-salir').onclick=cerrarFirewall;
+  $('fw-refrescar').onclick=cargarFirewall;
+  function cambiarPuertoFirewall(accion,boton){
+    if(!firewallServidor||!firewallEditable) return;
+    var puerto=parseInt($('fw-puerto').value,10);
+    if(!puerto||puerto<1||puerto>65535){ aviso('Escribe un puerto entre 1 y 65535.',false); return; }
+    var proto=$('fw-proto').value;
+    var original=boton.textContent; boton.disabled=true; boton.textContent=accion==='abrir'?'Abriendo…':'Cerrando…';
+    $('fw-nota').textContent='Creando backup y aplicando el cambio…'; $('fw-nota').className='fw-note';
+    api('/api/herramientas/firewall',{method:'POST',body:JSON.stringify({servidor:firewallServidor,accion:accion,puerto:puerto,protocolo:proto})}).then(function(r){
+      if(r.error){ $('fw-nota').textContent=r.error; $('fw-nota').className='fw-note err'; aviso(r.error,false); return; }
+      pintarFirewall(r.estado);
+      $('fw-nota').textContent=(accion==='abrir'?'Puerto abierto. ':'Puerto cerrado. ')+(r.backup?'Backup: '+r.backup:'');
+      $('fw-nota').className='fw-note ok';
+      aviso((accion==='abrir'?'Puerto abierto: ':'Puerto cerrado: ')+puerto+'/'+proto,true);
+    }).catch(function(){ $('fw-nota').textContent='No pude aplicar el cambio de firewall.'; $('fw-nota').className='fw-note err'; }).finally(function(){ boton.textContent=original; boton.disabled=!firewallEditable; });
+  }
+  $('fw-abrir').onclick=function(){ cambiarPuertoFirewall('abrir',this); };
+  $('fw-cerrar-puerto').onclick=function(){ cambiarPuertoFirewall('cerrar',this); };
 
   // ── Selector de clave SSH y diagnóstico ──────────────────────
   var selectorDestino = null;  // 'key' | 'script' | null

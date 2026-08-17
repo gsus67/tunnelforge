@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "3.1.11"
+const version = "3.1.12"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -901,6 +901,7 @@ func main() {
 	mux.HandleFunc("/api/local", proteger(manejarLocal))
 	mux.HandleFunc("/api/herramientas/ejecutar-script", proteger(manejarEjecutarScript))
 	mux.HandleFunc("/api/herramientas/test-velocidad", proteger(manejarTestVelocidad))
+	mux.HandleFunc("/api/herramientas/firewall", proteger(manejarFirewall))
 
 	// Reordenar servidores (arrastrar en la interfaz): recibe la lista de
 	// nombres en el nuevo orden y reescribe el archivo respetando ese orden.

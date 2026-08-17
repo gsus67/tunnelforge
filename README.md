@@ -31,7 +31,9 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 - **Buscador** de servidores por nombre, host o usuario
 - **Gestor de archivos (SFTP)**: navega el servidor y tu equipo lado a lado,
   sube y baja archivos, crea carpetas, renombra y borra
-- **Herramientas por servidor**: icono de herramientas junto a Terminal y Archivos. La primera utilidad permite elegir un script local, copiarlo por SFTP a una carpeta temporal privada del servidor y ejecutarlo mostrando toda la salida en la terminal integrada.
+- **Herramientas por servidor**: icono de herramientas junto a Terminal y Archivos. Incluye ejecución de scripts, test de velocidad y administración básica de firewall con detección de UFW/firewalld/nftables.
+- **Tráfico real**: RX/TX de la interfaz principal del servidor mostrado en Mbit/s.
+- **Firewall seguro**: protege el puerto SSH, crea backup antes de cambios y evita reescribir reglas nftables personalizadas.
 
 - **Copia de seguridad** cifrada: exporta e importa toda tu configuración
 - **Verifica la identidad del servidor**: si su huella cambia, se niega a conectar
@@ -164,6 +166,7 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
   túneles locales; cualquier otro destino se rechaza.
 - **Interfaz endurecida contra XSS**: nombres de servidores, archivos, errores y
   datos importados se insertan como texto mediante el DOM, no como HTML ejecutable.
+- **Exportación con destino elegible**: al exportar una copia cifrada se abre **Guardar como…** para elegir dónde crear el `.cgw`.
 - **Importaciones validadas**: las claves SSH restauradas no pueden escapar de
   `keys/` mediante rutas manipuladas, y los túneles importados pasan las mismas
   validaciones de puertos y duplicados que los creados desde la interfaz.

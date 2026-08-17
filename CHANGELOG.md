@@ -1,9 +1,26 @@
+## v3.1.12
+
+### Herramientas y servidor
+
+- El tráfico real de cada servidor conectado se expresa en **Mbit/s**.
+- Nueva herramienta **Firewall** por servidor conectado.
+- Detección de **UFW**, **firewalld** y **nftables** sin depender directamente de la distribución Linux.
+- UFW y firewalld permiten abrir/cerrar puertos TCP o UDP cuando hay permisos root o sudo sin contraseña.
+- nftables se trata de forma conservadora: Gateway solo modifica reglas creadas por la propia app y no reescribe rulesets personalizados.
+- El puerto SSH usado por el perfil está protegido contra cierre accidental.
+- Se crea una copia de seguridad del firewall antes de cada cambio y se comprueba que el puerto SSH siga accesible; si falla, se intenta rollback automático.
+
+### Copias de seguridad
+
+- **Exportar** abre ahora un diálogo **Guardar como…** para elegir la carpeta y el nombre del archivo `.cgw`, igual que Importar permite elegir el archivo de origen.
+- En Windows se usa el selector nativo del sistema; Linux usa Zenity/KDialog cuando están disponibles.
+
 ## v3.1.11
 
 - Pestaña Info reorganizada con resumen de la instalación, estadísticas, funciones, seguridad, herramientas y atajos.
 
 - Corregido el orden estable de los servidores conectados: ya no cambian de posición en cada refresco del Dashboard.
-- El tráfico de cada servidor conectado muestra ahora RX/TX real de su interfaz de red principal, muestreado de forma ligera por SSH.
+- El tráfico de cada servidor conectado muestra ahora RX/TX real de su interfaz de red principal, muestreado de forma ligera por SSH y expresado en Mbit/s.
 - Nuevo selector discreto por servidor para decidir cuál responde en `localhost:puerto` cuando varios conectados comparten los mismos túneles.
 - Los puertos locales se reasignan al servidor seleccionado sin necesidad de desconectar/reconectar.
 

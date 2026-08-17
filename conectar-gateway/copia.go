@@ -118,7 +118,7 @@ func descifrarPaquete(datos []byte, password string) (*Paquete, error) {
 	return &p, nil
 }
 
-// carpetaDescargas devuelve dónde dejar el archivo exportado.
+// carpetaDescargas devuelve la carpeta inicial sugerida al abrir "Guardar como".
 func carpetaDescargas() string {
 	if h, err := os.UserHomeDir(); err == nil {
 		d := filepath.Join(h, "Downloads")
@@ -188,8 +188,16 @@ func manejarExportar(w http.ResponseWriter, r *http.Request) {
 		responderError(w, err)
 		return
 	}
-	nombre := fmt.Sprintf("conectar-gateway-%s.cgw", time.Now().Format("20060102-1504"))
-	ruta := filepath.Join(carpetaDescargas(), nombre)
+	nombre := fmt.Sprintf("gateway-wisp-access-%s.cgw", time.Now().Format("20060102-1504"))
+	ruta, cancelado, err := seleccionarDestinoCopia(nombre)
+	if err != nil {
+		responderError(w, fmt.Errorf("no pude abrir el selector para guardar la copia: %v", err))
+		return
+	}
+	if cancelado {
+		responder(w, map[string]any{"ok": false, "cancelado": true})
+		return
+	}
 	if err := os.WriteFile(ruta, cifrado, 0600); err != nil {
 		responderError(w, fmt.Errorf("no pude escribir el archivo: %v", err))
 		return
