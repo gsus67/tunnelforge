@@ -1,0 +1,4 @@
+# Go genera go.mod/go.sum con LF. Fuerza LF también en checkout de Windows
+# para que `go mod tidy -diff` no falle por CRLF sin cambios reales.
+conectar-gateway/go.mod text eol=lf
+conectar-gateway/go.sum text eol=lf
