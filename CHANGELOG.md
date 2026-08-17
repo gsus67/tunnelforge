@@ -1,3 +1,18 @@
+## v3.4.7
+
+- Estabilización RC: `go.mod` y `go.sum` quedan ya en el estado exacto producido por `go mod tidy` con Go 1.25; CI usa `go mod tidy -diff` para verificar sin modificar el checkout.
+- El preflight Linux ahora prueba y valida con el mismo tag `webkit2_41` usado por el build final.
+
+### Estabilidad de build y WireGuard
+
+- Corregido el error de compilación Windows `undefined: p` introducido en v3.4.6.
+- El host nativo de telemetría se compila contra el `wireguard.h` exacto incluido con WireGuardNT 1.1 en el mismo build, eliminando estructuras ABI mantenidas a mano.
+- El compilador C usa `/W4 /WX`: cualquier warning del host WireGuard falla CI antes de empaquetar.
+- GitHub Actions ejecuta `go test`, `go vet`, `gofmt` y TypeScript typecheck antes de Wails tanto en Windows como en Linux.
+- Se añadieron pruebas para nombres de interfaz, AllowedIPs con exclusión LAN, parser de `wg dump`, conversión FILETIME y lectura del archivo de telemetría del servicio.
+- Se verifica automáticamente que `main.go`, `wails.json`, `package.json`, manifest de Windows, CHANGELOG y tag usen la misma versión.
+- La publicación del Release sigue bloqueada detrás de builds Windows y Linux exitosos.
+
 ## v3.4.6
 
 ### WireGuard — telemetría desde el servicio elevado

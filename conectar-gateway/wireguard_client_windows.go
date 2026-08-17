@@ -193,7 +193,6 @@ func wgWindowsServiceFailureDetail(service, configPath string) string {
 func wgAdminRemoveService(name string) error {
 	service := "WireGuardTunnel$" + name
 	if exists, _ := wgWindowsServiceStatus(name); !exists {
-		_ = os.Remove(wgServiceStatsPath(p))
 		return nil
 	}
 	_ = wgSC("stop", service)

@@ -17,9 +17,9 @@
 #include <wchar.h>
 #include <stdint.h>
 #include <string.h>
+#include "wireguard.h"
 
 #define WG_PATH_CAP 32768
-#define WG_KEY_LENGTH 32
 #define WG_ADAPTER_NAME_CAP 256
 #define WG_STATS_VERSION 1
 #define WG_STATS_INTERVAL_MS 1000
@@ -31,46 +31,6 @@
 #endif
 
 typedef BOOL (__cdecl *WireGuardTunnelServiceFn)(LPCWSTR configFile);
-typedef void *WG_ADAPTER_HANDLE;
-typedef WG_ADAPTER_HANDLE (WINAPI *WGOpenAdapterFn)(LPCWSTR Name);
-typedef VOID (WINAPI *WGCloseAdapterFn)(WG_ADAPTER_HANDLE Adapter);
-typedef BOOL (WINAPI *WGGetConfigurationFn)(WG_ADAPTER_HANDLE Adapter, void *Config, DWORD *Bytes);
-
-typedef struct __declspec(align(8)) WG_INTERFACE {
-    DWORD Flags;
-    WORD ListenPort;
-    BYTE PrivateKey[WG_KEY_LENGTH];
-    BYTE PublicKey[WG_KEY_LENGTH];
-    DWORD PeersCount;
-} WG_INTERFACE;
-
-typedef struct __declspec(align(8)) WG_PEER {
-    DWORD Flags;
-    DWORD Reserved;
-    BYTE PublicKey[WG_KEY_LENGTH];
-    BYTE PresharedKey[WG_KEY_LENGTH];
-    WORD PersistentKeepalive;
-    SOCKADDR_INET Endpoint;
-    uint64_t TxBytes;
-    uint64_t RxBytes;
-    uint64_t LastHandshake;
-    DWORD AllowedIPsCount;
-} WG_PEER;
-
-typedef struct __declspec(align(8)) WG_ALLOWED_IP {
-    union {
-        IN_ADDR V4;
-        IN6_ADDR V6;
-    } Address;
-    ADDRESS_FAMILY AddressFamily;
-    BYTE Cidr;
-    DWORD Flags;
-} WG_ALLOWED_IP;
-
-/* Fallar el build si el SDK cambia el ABI que usa WireGuardNT. */
-typedef char wg_check_interface_size[(sizeof(WG_INTERFACE) == 80) ? 1 : -1];
-typedef char wg_check_peer_size[(sizeof(WG_PEER) == 136) ? 1 : -1];
-typedef char wg_check_allowed_ip_size[(sizeof(WG_ALLOWED_IP) == 24) ? 1 : -1];
 
 #pragma pack(push, 1)
 typedef struct WG_STATS_HEADER {
@@ -82,7 +42,7 @@ typedef struct WG_STATS_HEADER {
 } WG_STATS_HEADER;
 
 typedef struct WG_STATS_PEER {
-    BYTE PublicKey[WG_KEY_LENGTH];
+    BYTE PublicKey[WIREGUARD_KEY_LENGTH];
     uint64_t TxBytes;
     uint64_t RxBytes;
     uint64_t LastHandshake;
@@ -185,7 +145,7 @@ static BOOL wgAdapterNameFromConfig(LPCWSTR configPath, wchar_t out[WG_ADAPTER_N
     return TRUE;
 }
 
-static BOOL wgWriteStatsFile(LPCWSTR configPath, const WG_INTERFACE *iface, DWORD configBytes)
+static BOOL wgWriteStatsFile(LPCWSTR configPath, const WIREGUARD_INTERFACE *iface, DWORD configBytes)
 {
     const BYTE *base;
     size_t offset;
@@ -200,7 +160,7 @@ static BOOL wgWriteStatsFile(LPCWSTR configPath, const WG_INTERFACE *iface, DWOR
     DWORD written;
     BOOL ok;
 
-    if (!configPath || !iface || configBytes < sizeof(WG_INTERFACE))
+    if (!configPath || !iface || configBytes < sizeof(WIREGUARD_INTERFACE))
         return FALSE;
 
     if (iface->PeersCount > 65535)
@@ -221,26 +181,26 @@ static BOOL wgWriteStatsFile(LPCWSTR configPath, const WG_INTERFACE *iface, DWOR
     records = (WG_STATS_PEER *)(output + sizeof(WG_STATS_HEADER));
 
     base = (const BYTE *)iface;
-    offset = sizeof(WG_INTERFACE);
+    offset = sizeof(WIREGUARD_INTERFACE);
     for (i = 0; i < iface->PeersCount; ++i) {
-        const WG_PEER *peer;
+        const WIREGUARD_PEER *peer;
         size_t allowedBytes;
-        if (offset > configBytes || sizeof(WG_PEER) > (size_t)configBytes - offset) {
+        if (offset > configBytes || sizeof(WIREGUARD_PEER) > (size_t)configBytes - offset) {
             HeapFree(GetProcessHeap(), 0, output);
             return FALSE;
         }
-        peer = (const WG_PEER *)(base + offset);
-        memcpy(records[i].PublicKey, peer->PublicKey, WG_KEY_LENGTH);
+        peer = (const WIREGUARD_PEER *)(base + offset);
+        memcpy(records[i].PublicKey, peer->PublicKey, WIREGUARD_KEY_LENGTH);
         records[i].TxBytes = peer->TxBytes;
         records[i].RxBytes = peer->RxBytes;
         records[i].LastHandshake = peer->LastHandshake;
-        offset += sizeof(WG_PEER);
+        offset += sizeof(WIREGUARD_PEER);
 
-        if ((size_t)peer->AllowedIPsCount > SIZE_MAX / sizeof(WG_ALLOWED_IP)) {
+        if ((size_t)peer->AllowedIPsCount > SIZE_MAX / sizeof(WIREGUARD_ALLOWED_IP)) {
             HeapFree(GetProcessHeap(), 0, output);
             return FALSE;
         }
-        allowedBytes = (size_t)peer->AllowedIPsCount * sizeof(WG_ALLOWED_IP);
+        allowedBytes = (size_t)peer->AllowedIPsCount * sizeof(WIREGUARD_ALLOWED_IP);
         if (offset > configBytes || allowedBytes > (size_t)configBytes - offset) {
             HeapFree(GetProcessHeap(), 0, output);
             return FALSE;
@@ -282,24 +242,26 @@ static DWORD WINAPI wgStatsThread(LPVOID param)
 {
     WG_STATS_CONTEXT *ctx = (WG_STATS_CONTEXT *)param;
     HMODULE dll;
-    WGOpenAdapterFn openAdapter;
-    WGCloseAdapterFn closeAdapter;
-    WGGetConfigurationFn getConfig;
+    WIREGUARD_OPEN_ADAPTER_FUNC *openAdapter;
+    WIREGUARD_CLOSE_ADAPTER_FUNC *closeAdapter;
+    WIREGUARD_GET_CONFIGURATION_FUNC *getConfig;
 
     dll = LoadLibraryExW(ctx->WireGuardDLL, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
     if (!dll)
         return 1;
 
-    openAdapter = (WGOpenAdapterFn)(void *)GetProcAddress(dll, "WireGuardOpenAdapter");
-    closeAdapter = (WGCloseAdapterFn)(void *)GetProcAddress(dll, "WireGuardCloseAdapter");
-    getConfig = (WGGetConfigurationFn)(void *)GetProcAddress(dll, "WireGuardGetConfiguration");
+    /* Mismo patrón que el ejemplo oficial de WireGuardNT: evita casts
+       inseguros entre FARPROC y punteros de función y compila limpio con /W4 /WX. */
+    *(FARPROC *)&openAdapter = GetProcAddress(dll, "WireGuardOpenAdapter");
+    *(FARPROC *)&closeAdapter = GetProcAddress(dll, "WireGuardCloseAdapter");
+    *(FARPROC *)&getConfig = GetProcAddress(dll, "WireGuardGetConfiguration");
     if (!openAdapter || !closeAdapter || !getConfig) {
         FreeLibrary(dll);
         return 2;
     }
 
     while (WaitForSingleObject(ctx->StopEvent, 0) == WAIT_TIMEOUT) {
-        WG_ADAPTER_HANDLE adapter = openAdapter(ctx->AdapterName);
+        WIREGUARD_ADAPTER_HANDLE adapter = openAdapter(ctx->AdapterName);
         if (adapter) {
             DWORD capacity = WG_STATS_INITIAL_BYTES;
             BYTE *buffer = (BYTE *)HeapAlloc(GetProcessHeap(), 0, capacity);
@@ -307,8 +269,8 @@ static DWORD WINAPI wgStatsThread(LPVOID param)
             if (buffer) {
                 for (attempt = 0; attempt < 5; ++attempt) {
                     DWORD needed = capacity;
-                    if (getConfig(adapter, buffer, &needed)) {
-                        wgWriteStatsFile(ctx->ConfigPath, (const WG_INTERFACE *)buffer, needed);
+                    if (getConfig(adapter, (WIREGUARD_INTERFACE *)buffer, &needed)) {
+                        wgWriteStatsFile(ctx->ConfigPath, (const WIREGUARD_INTERFACE *)buffer, needed);
                         break;
                     }
                     if (GetLastError() != ERROR_MORE_DATA || needed <= capacity || needed > WG_STATS_MAX_BYTES)

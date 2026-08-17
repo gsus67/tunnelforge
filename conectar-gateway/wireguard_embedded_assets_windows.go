@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 )
 
-const wgEmbeddedEngineVersion = "WireGuard Windows v1.1 / WireGuardNT 1.1 · host nativo integrado con telemetría"
+const wgEmbeddedEngineVersion = "WireGuard Windows v1.1 / WireGuardNT 1.1 · host nativo integrado con telemetría · API header verificada"
 
 // Estos binarios se preparan en GitHub Actions desde las fuentes/descargas
 // oficiales de WireGuard y se incrustan dentro de Conectar-Gateway.exe.
@@ -63,7 +63,7 @@ func wgEnsureEmbeddedEngine() (string, error) {
 	if !wgEmbeddedAvailable() {
 		return "", fmt.Errorf("esta compilación no contiene el motor WireGuard embebido")
 	}
-	dir := filepath.Join(wgRuntimeDir(), "engine", "wireguard-v1.1-amd64-host-v3")
+	dir := filepath.Join(wgRuntimeDir(), "engine", "wireguard-v1.1-amd64-host-v4")
 	if err := wgWriteEmbeddedFile(filepath.Join(dir, "wg-service-host.exe"), wgEmbeddedServiceHost); err != nil {
 		return "", fmt.Errorf("no pude preparar wg-service-host.exe: %w", err)
 	}

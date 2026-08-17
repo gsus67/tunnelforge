@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verificar metadata de versión
+        run: python herramientas/verificar-versiones.py
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.x'
@@ -33,11 +36,33 @@ jobs:
         working-directory: conectar-gateway
         run: |
           go mod download
-          go mod tidy
+          go mod verify
+          go mod tidy -diff
 
       - name: Preparar motor WireGuard embebido
         shell: pwsh
         run: .\herramientas\preparar-wireguard-windows.ps1 -WorkDir "$env:GITHUB_WORKSPACE\wireguard-upstream"
+
+      - name: Validar Go Windows antes de Wails
+        working-directory: conectar-gateway
+        shell: pwsh
+        run: |
+          $malFormato = @(Get-ChildItem -File -Filter *.go | ForEach-Object { gofmt -l $_.FullName })
+          if ($malFormato.Count -gt 0) {
+            Write-Error "Archivos Go sin gofmt:`n$($malFormato -join "`n")"
+            exit 1
+          }
+          go test -tags wireguard_embedded ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go vet -tags wireguard_embedded ./...
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validar frontend
+        working-directory: conectar-gateway/frontend
+        shell: pwsh
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
 
       - name: Compilar Windows
         working-directory: conectar-gateway
@@ -69,6 +94,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verificar metadata de versión
+        run: python herramientas/verificar-versiones.py
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.x'
@@ -90,7 +118,21 @@ jobs:
         working-directory: conectar-gateway
         run: |
           go mod download
-          go mod tidy
+          go mod verify
+          go mod tidy -diff
+
+      - name: Validar Go Linux antes de Wails
+        working-directory: conectar-gateway
+        run: |
+          test -z "$(gofmt -l *.go)" || { echo "Hay archivos Go sin gofmt:"; gofmt -l *.go; exit 1; }
+          go test -tags webkit2_41 ./...
+          go vet -tags webkit2_41 ./...
+
+      - name: Validar frontend
+        working-directory: conectar-gateway/frontend
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
 
       - name: Compilar Linux
         working-directory: conectar-gateway

@@ -51,8 +51,20 @@ $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
 if (-not (Test-Path $vcvars)) {
     throw "No encontré vcvars64.bat: $vcvars"
 }
+$headerCandidates = @(
+    (Join-Path $WorkDir ".deps\wireguard-nt\wireguard.h"),
+    (Join-Path $WorkDir ".deps\wireguard-nt\api\wireguard.h")
+)
+$wireguardHeader = $headerCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $wireguardHeader) {
+    throw "No encontré wireguard.h junto al WireGuardNT 1.1 usado por este build"
+}
+$wireguardIncludeDir = Split-Path -Parent $wireguardHeader
+
 $hostOut = Join-Path $dest "wg-service-host.exe"
-$compileCmd = 'call "{0}" >nul && cl.exe /nologo /O2 /W4 /utf-8 /MT /Fe:"{1}" "{2}" /link /SUBSYSTEM:CONSOLE' -f $vcvars, $hostOut, $hostSource
+# Compilar contra el header exacto que acompaña al wireguard.dll de este mismo build.
+# Así cualquier cambio de ABI/API rompe aquí, durante CI, y no en la app del usuario.
+$compileCmd = 'call "{0}" >nul && cl.exe /nologo /O2 /W4 /WX /utf-8 /MT /I"{1}" /Fe:"{2}" "{3}" /link /SUBSYSTEM:CONSOLE' -f $vcvars, $wireguardIncludeDir, $hostOut, $hostSource
 cmd.exe /d /s /c $compileCmd
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $hostOut)) {
     throw "Falló la compilación de wg-service-host.exe"
