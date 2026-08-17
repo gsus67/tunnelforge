@@ -1,3 +1,13 @@
+## v3.1.9
+
+### Cambios
+
+- Nuevo icono **Herramientas** junto a Terminal y Archivos en cada servidor conectado.
+- Nueva ventana de herramientas preparada para incorporar utilidades por servidor.
+- Primera herramienta: **Cargar y ejecutar script** desde el equipo local.
+- El script se transfiere por SFTP a `/tmp/gateway-wisp-access/scripts`, con permisos privados, y se ejecuta en la terminal integrada para ver toda la salida en vivo.
+- Soporte directo para scripts `.sh`/`.bash` con Bash y `.py` con Python 3; otros scripts se ejecutan por su shebang/permisos.
+
 ## v3.1.8
 
 ### Corrección del Dashboard

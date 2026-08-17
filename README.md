@@ -31,6 +31,8 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 - **Buscador** de servidores por nombre, host o usuario
 - **Gestor de archivos (SFTP)**: navega el servidor y tu equipo lado a lado,
   sube y baja archivos, crea carpetas, renombra y borra
+- **Herramientas por servidor**: icono de herramientas junto a Terminal y Archivos. La primera utilidad permite elegir un script local, copiarlo por SFTP a una carpeta temporal privada del servidor y ejecutarlo mostrando toda la salida en la terminal integrada.
+
 - **Copia de seguridad** cifrada: exporta e importa toda tu configuración
 - **Verifica la identidad del servidor**: si su huella cambia, se niega a conectar
 - **Avisa si una conexión se cae** sola (sin que la hayas cerrado tú)

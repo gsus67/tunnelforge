@@ -652,6 +652,20 @@
   .footer-check svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
   @media(max-width:1050px){.footer-libs{display:none}.footer-update-note{display:none}}
 
+
+  /* v3.1.9 herramientas por servidor */
+  .tools-velo{position:fixed;inset:0;display:none;flex-direction:column;z-index:46;background:rgba(2,8,13,.90);backdrop-filter:blur(5px)}
+  .tools-velo.abierto{display:flex}
+  .tools-barra{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 12px;border-bottom:1px solid var(--linea);background:rgba(8,17,27,.98)}
+  .tools-barra .t{font-size:17px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;text-transform:uppercase}.tools-barra .t b{color:var(--verde)}.tools-barra .sep{flex:1}
+  .tools-cuerpo{flex:1;min-height:0;overflow:auto;padding:14px}
+  .tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;align-content:start}
+  .tool-card{border:1px solid var(--linea);background:rgba(8,20,32,.88);padding:14px;border-radius:8px;display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;align-items:start}
+  .tool-card .tool-ico{width:38px;height:38px;border:1px solid rgba(77,134,184,.20);border-radius:8px;display:grid;place-items:center;color:var(--verde)}
+  .tool-card .tool-ico svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tool-card h4{font-size:14px;margin:0 0 4px}.tool-card p{font-size:11.5px;color:var(--suave);line-height:1.35;margin:0 0 10px}.tool-card button{padding:7px 10px;font-size:12px}
+  .tool-note{margin-top:10px;font-size:11px;color:var(--suave)}
+
 </style>
 </head>
 <body>
@@ -944,6 +958,24 @@
   </div>
 </div>
 
+<!-- Herramientas del servidor -->
+<div class="tools-velo" id="tools-velo">
+  <div class="tools-barra">
+    <span class="t">Herramientas — <b id="tools-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <button id="tools-cerrar">Cerrar <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="tools-cuerpo">
+    <div class="tools-grid">
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.3 2.3-3-3 2.3-2.3z"/><path d="M14 18l2 2 4-4-2-2"/></svg></div>
+        <div><h4>Cargar y ejecutar script</h4><p>Elige un script de tu equipo. Gateway lo copia por SFTP a <b>/tmp/gateway-wisp-access/scripts</b> y abre la terminal para mostrar su ejecución en vivo.</p><button class="principal" id="tool-script">Elegir script</button></div>
+      </div>
+    </div>
+    <div class="tool-note">Los scripts se ejecutan con los permisos del usuario SSH conectado. Esta ventana queda preparada para añadir más herramientas después.</div>
+  </div>
+</div>
+
 <!-- Modal: confirmar huella -->
 <div class="velo" id="m-huella">
   <div class="modal">
@@ -1025,6 +1057,7 @@
     function add(tag,attrs){ var x=document.createElementNS('http://www.w3.org/2000/svg',tag); Object.keys(attrs).forEach(function(k){x.setAttribute(k,attrs[k]);}); svg.appendChild(x); }
     if(tipo==='terminal'){ add('rect',{x:'4',y:'5',width:'16',height:'14',rx:'1.5'}); add('path',{d:'M7 9l3 3-3 3'}); add('path',{d:'M12 15h5'}); }
     else if(tipo==='files'){ add('path',{d:'M4 7h6l2 2h8v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z'}); add('path',{d:'M4 9h16'}); }
+    else if(tipo==='tools'){ add('path',{d:'M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.3 2.3-3-3 2.3-2.3z'}); }
     else if(tipo==='disconnect'){ add('path',{d:'M12 3v8'}); add('path',{d:'M7.2 5.8a8 8 0 1 0 9.6 0'}); }
     return svg;
   }
@@ -1148,6 +1181,9 @@
       var bArch = botonAccion('files','Archivos');
       bArch.onclick = function(){ abrirArchivos(c.servidor); };
       fila.appendChild(bArch);
+      var bTools = botonAccion('tools','Herramientas');
+      bTools.onclick = function(){ abrirHerramientas(c.servidor); };
+      fila.appendChild(bTools);
       var bDesc = botonAccion('disconnect','Desconectar este servidor','disconnect');
       bDesc.onclick = function(){
         desconectandoManual[c.servidor] = true;
@@ -1469,7 +1505,7 @@
   var term = null, fit = null, wsTerm = null, servidorTerminal = null;
   var bufferLinea = '';
 
-  function abrirTerminal(nombre){
+  function abrirTerminal(nombre, comandoInicial){
     if (typeof Terminal !== 'function' || typeof FitAddon === 'undefined' || typeof FitAddon.FitAddon !== 'function'){
       aviso('No se pudieron cargar los componentes de la terminal. Reinicia la aplicación o reinstala esta versión.', false);
       return;
@@ -1507,6 +1543,14 @@
       if (!term) return;
       wsTerm.send(JSON.stringify({cols: term.cols, rows: term.rows}));
       term.focus();
+      if (comandoInicial){
+        setTimeout(function(){
+          if (wsTerm && wsTerm.readyState === 1){
+            wsTerm.send(codificador.encode(comandoInicial + '\r'));
+            guardarComandoHistorial(nombre, comandoInicial);
+          }
+        }, 250);
+      }
     };
     wsTerm.onmessage = function(e){ if (term) term.write(new Uint8Array(e.data)); };
     wsTerm.onerror = function(){ if (term) term.write('\r\n\x1b[31m[error en la conexión de terminal]\x1b[0m\r\n'); };
@@ -1688,6 +1732,7 @@
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape'){
       if (document.getElementById('fx-velo').classList.contains('abierto')){ cerrarArchivos(); return; }
+      if (document.getElementById('tools-velo').classList.contains('abierto')){ cerrarHerramientas(); return; }
       if (document.getElementById('term-velo').classList.contains('abierto')){ cerrarTerminalUI(); return; }
       if (document.getElementById('m-huella').classList.contains('abierto')){ document.getElementById('huella-no').click(); return; }
       if (document.getElementById('m-pass').classList.contains('abierto')){ document.getElementById('pass-no').click(); return; }
@@ -1750,8 +1795,28 @@
   });
 
 
+  // ── Herramientas por servidor ────────────────────────────────
+  var toolsServidor = null;
+  function abrirHerramientas(nombre){
+    toolsServidor = nombre;
+    $('tools-srv').textContent = nombre;
+    $('tools-velo').classList.add('abierto');
+  }
+  function cerrarHerramientas(){ $('tools-velo').classList.remove('abierto'); }
+  $('tools-cerrar').onclick = cerrarHerramientas;
+  $('tool-script').onclick = function(){
+    if (!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
+    selectorDestino = 'script';
+    selectorScriptServidor = toolsServidor;
+    cerrarHerramientas();
+    abrirArchivos(toolsServidor);
+    cargarLocal('');
+    aviso('Elige el script en "Tu equipo" y pulsa Ejecutar.',true);
+  };
+
   // ── Selector de clave SSH y diagnóstico ──────────────────────
-  var selectorDestino = null;  // 'key' | 'subir'
+  var selectorDestino = null;  // 'key' | 'script' | null
+  var selectorScriptServidor = null;
   document.getElementById('btn-buscar-key').onclick = function(){
     selectorDestino = 'key';
     abrirArchivos('');
@@ -1904,6 +1969,22 @@
             };
             it.appendChild(bU);
           }
+          if (selectorDestino === 'script'){
+            var bE = document.createElement('button'); bE.className='principal'; bE.textContent = 'Ejecutar';
+            bE.onclick = function(ev){
+              ev.stopPropagation();
+              var srv = selectorScriptServidor;
+              if (!srv){ aviso('No hay servidor seleccionado.',false); return; }
+              bE.disabled=true; bE.textContent='Subiendo…';
+              api('/api/herramientas/ejecutar-script',{method:'POST',body:JSON.stringify({servidor:srv,rutaLocal:a.ruta})}).then(function(r){
+                if (r.error){ aviso(r.error,false); return; }
+                cerrarArchivos(); selectorDestino=null; selectorScriptServidor=null;
+                aviso('Script cargado en '+r.remoto+'. Abriendo terminal…',true);
+                abrirTerminal(srv,r.comando);
+              }).catch(function(){ aviso('Error cargando el script.',false); }).finally(function(){ bE.disabled=false; bE.textContent='Ejecutar'; });
+            };
+            it.appendChild(bE);
+          } else {
           var bS = document.createElement('button'); bS.textContent = '⬆ Subir';
           bS.onclick = function(ev){
             ev.stopPropagation();
@@ -1917,6 +1998,7 @@
             }).finally(function(){ bS.disabled = false; bS.textContent = '⬆ Subir'; });
           };
           it.appendChild(bS);
+          }
         }
         cont.appendChild(it);
       });
