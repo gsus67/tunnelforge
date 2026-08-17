@@ -25,7 +25,7 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 ## WireGuard
 
-> **v3.4.7** mantiene WireGuard completamente integrado en el ejecutable de Windows, conserva la corrección del host nativo de v3.4.3 y endurece la publicación de Releases frente a errores HTTP 5xx de GitHub. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
+> **v3.4.8** corrige la lectura del estado del servicio WireGuard en Windows (se consulta el SCM en vez de interpretar el texto de `sc.exe`) y reorganiza la vista: el túnel se muestra en estado y estadísticas, y la configuración del perfil vive detrás del botón **⚙ Configuración**. Mantiene WireGuard completamente integrado en el ejecutable de Windows y conserva la corrección del host nativo de v3.4.3. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
 
 Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. A partir de **v3.4.3**, el build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `Conectar-Gateway.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
 
@@ -37,6 +37,7 @@ Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linu
 - Atajo de túnel completo IPv4 + IPv6 (`0.0.0.0/0, ::/0`) y bypass LAN por peer usando rutas `/1` equivalentes cuando se activa **Excluir tráfico local**.
 - Tráfico RX/TX en **Mbit/s**, totales transferidos, interfaz activa y último handshake cuando el motor del sistema expone esas métricas.
 - Estado en vivo por peer cuando `wg` permite leer sus contadores.
+- Vista centrada en el estado del túnel: RX/TX, totales, handshake, interfaz y una fila por peer; la configuración completa se abre con **⚙ Configuración**.
 - PrivateKey y PresharedKey se guardan cifradas en el almacenamiento local de Gateway WISP Access.
 - Los perfiles pueden incluirse en el backup portable `.cgw`; sus secretos viajan dentro del contenedor cifrado del backup y se vuelven a cifrar al restaurar.
 - Los hooks `PreUp`, `PostUp`, `PreDown` y `PostDown` importados se conservan, pero quedan **deshabilitados por defecto** hasta que el usuario los autoriza expresamente.

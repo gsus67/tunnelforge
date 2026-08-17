@@ -13,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/sys/windows"
 )
 
 func wgWindowsCommand(name string, args ...string) *exec.Cmd {
@@ -50,33 +52,65 @@ func wgInstallEngine() (WGEngineInfo, error) {
 
 func psQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 
+// wgElevacionCancelada = ERROR_CANCELLED. Windows lo devuelve cuando el usuario
+// cierra o rechaza el aviso de UAC.
+const wgElevacionCancelada = 1223
+
+// wgRunElevated lanza el propio ejecutable con permisos de administrador.
+//
+// Antes el script terminaba en "exit $p.ExitCode": si Start-Process fallaba o
+// el usuario cancelaba el UAC, $p quedaba en $null, PowerShell evaluaba
+// "exit $null" como exit 0 y la aplicación daba la conexión por buena aunque el
+// servicio nunca se hubiera creado. Ahora el error se propaga de verdad.
 func wgRunElevated(exe string, args ...string) error {
 	quoted := make([]string, len(args))
 	for i, a := range args {
 		quoted[i] = psQuote(a)
 	}
-	script := fmt.Sprintf("$p=Start-Process -FilePath %s -ArgumentList @(%s) -Verb RunAs -Wait -PassThru; exit $p.ExitCode", psQuote(exe), strings.Join(quoted, ","))
+	script := fmt.Sprintf("$ErrorActionPreference='Stop'; try { $p=Start-Process -FilePath %s -ArgumentList @(%s) -Verb RunAs -Wait -PassThru } catch { exit %d }; if ($null -eq $p) { exit %d }; exit $p.ExitCode",
+		psQuote(exe), strings.Join(quoted, ","), wgElevacionCancelada, wgElevacionCancelada)
 	cmd := wgWindowsCommand("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("WireGuard necesita permisos de administrador: %v %s", err, strings.TrimSpace(string(out)))
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
 	}
-	return nil
+	if salida, ok := err.(*exec.ExitError); ok && salida.ExitCode() == wgElevacionCancelada {
+		return fmt.Errorf("se canceló el aviso de administrador de Windows; WireGuard necesita esos permisos para crear el servicio del túnel")
+	}
+	return fmt.Errorf("WireGuard necesita permisos de administrador: %v %s", err, strings.TrimSpace(string(out)))
 }
 
+// wgWindowsServiceStatus consulta el SCM directamente en vez de interpretar la
+// salida de texto de sc.exe. El parser anterior buscaba ": 4 " en CUALQUIER
+// línea, así que también encontraba SERVICE_EXIT_CODE : 4  (0x4) — justo el
+// código que devuelve wg-service-host.exe cuando falla LoadLibraryExW de
+// tunnel.dll — y daba por RUNNING un servicio que en realidad estaba muerto.
+// Además el texto de sc.exe viene traducido según el idioma de Windows.
+//
+// Se piden únicamente SC_MANAGER_CONNECT y SERVICE_QUERY_STATUS, permisos que
+// los usuarios normales sí tienen: no hace falta elevar la aplicación.
 func wgWindowsServiceStatus(name string) (exists, running bool) {
-	service := "WireGuardTunnel$" + name
-	out, err := wgWindowsCommand("sc.exe", "query", service).CombinedOutput()
+	nombre, err := windows.UTF16PtrFromString("WireGuardTunnel$" + name)
 	if err != nil {
 		return false, false
 	}
-	text := strings.ReplaceAll(string(out), "\r", "")
-	for _, line := range strings.Split(text, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, ": 4 ") || strings.HasSuffix(trimmed, ": 4") {
-			return true, true
-		}
+	scm, err := windows.OpenSCManager(nil, nil, windows.SC_MANAGER_CONNECT)
+	if err != nil {
+		return false, false
 	}
-	return true, false
+	defer windows.CloseServiceHandle(scm)
+
+	servicio, err := windows.OpenService(scm, nombre, windows.SERVICE_QUERY_STATUS)
+	if err != nil {
+		return false, false
+	}
+	defer windows.CloseServiceHandle(servicio)
+
+	var estado windows.SERVICE_STATUS
+	if err := windows.QueryServiceStatus(servicio, &estado); err != nil {
+		return true, false
+	}
+	return true, estado.CurrentState == windows.SERVICE_RUNNING
 }
 
 func wgSC(args ...string) error {

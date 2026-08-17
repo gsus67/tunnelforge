@@ -1048,7 +1048,11 @@ func wgImportFromBackup(in *WGBackup, replace bool) bool {
 		if err != nil {
 			continue
 		}
-		p := WGProfile{ID: bp.ID, Name: bp.Name, PrivateKeyCifr: privC, PublicKey: bp.PublicKey, Addresses: bp.Addresses, DNS: bp.DNS, MTU: bp.MTU, ListenPort: bp.ListenPort, Table: bp.Table, PreUp: bp.PreUp, PostUp: bp.PostUp, PreDown: bp.PreDown, PostDown: bp.PostDown, AllowHooks: bp.AllowHooks, AutoConnect: bp.AutoConnect, Notes: bp.Notes, CreatedAt: bp.CreatedAt, UpdatedAt: bp.UpdatedAt, Peers: []WGPeer{}}
+		// Los hooks llegan SIEMPRE desactivados, igual que al importar un .conf:
+		// un backup .cgw también puede venir de otra persona y PreUp/PostUp se
+		// ejecutan con privilegios al levantar el túnel. El usuario los vuelve a
+		// habilitar a mano si confía en el archivo.
+		p := WGProfile{ID: bp.ID, Name: bp.Name, PrivateKeyCifr: privC, PublicKey: bp.PublicKey, Addresses: bp.Addresses, DNS: bp.DNS, MTU: bp.MTU, ListenPort: bp.ListenPort, Table: bp.Table, PreUp: bp.PreUp, PostUp: bp.PostUp, PreDown: bp.PreDown, PostDown: bp.PostDown, AllowHooks: false, AutoConnect: bp.AutoConnect, Notes: bp.Notes, CreatedAt: bp.CreatedAt, UpdatedAt: bp.UpdatedAt, Peers: []WGPeer{}}
 		if p.ID == "" {
 			p.ID = wgNewID()
 		}

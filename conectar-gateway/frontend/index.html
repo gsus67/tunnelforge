@@ -270,6 +270,7 @@
                   <span class="wgclient-state" id="wgc-state">Desconectado</span>
                   <button class="principal" id="wgc-connect">Conectar</button>
                   <button id="wgc-disconnect" hidden>Desconectar</button>
+                  <button id="wgc-config-toggle" class="wgclient-config-btn" aria-expanded="false" aria-controls="wgc-form" title="Abrir la configuración del perfil">⚙ Configuración</button>
                 </div>
               </div>
 
@@ -281,7 +282,14 @@
               </div>
               <div id="wgc-runtime-warning" class="wgclient-runtime-warning" hidden></div>
 
-              <form id="wgc-form" class="wgclient-form" onsubmit="return false">
+              <section class="wgclient-live" id="wgc-live">
+                <div class="wgclient-live-head">
+                  <div><b>Peers del túnel</b><small id="wgc-live-sub">Estado y tráfico en vivo. La configuración vive en el botón ⚙ de arriba.</small></div>
+                </div>
+                <div class="wgclient-live-list" id="wgc-live-list"></div>
+              </section>
+
+              <form id="wgc-form" class="wgclient-form" hidden onsubmit="return false">
                 <div class="wgclient-section-title"><div><b>Interfaz</b><small>Identidad y red local del cliente.</small></div><div class="wgclient-form-actions"><button type="button" id="wgc-reveal">Mostrar secretos</button><button type="button" id="wgc-generate">Generar keys</button></div></div>
                 <div class="wgclient-grid">
                   <div><label>Nombre del perfil</label><input id="wgc-name" type="text" placeholder="Casa / Gateway Norte"></div>
@@ -315,7 +323,7 @@
                 </div>
                 <div class="wgclient-savebar">
                   <div id="wgc-note" class="wgclient-note">Las claves privadas y PresharedKey se guardan cifradas. El archivo .conf exportado sí contiene secretos.</div>
-                  <div><button type="button" id="wgc-delete" class="danger" hidden>Eliminar</button><button type="button" id="wgc-export" hidden>Exportar .conf</button><button type="button" class="principal" id="wgc-save">Guardar perfil</button></div>
+                  <div><button type="button" id="wgc-delete" class="danger" hidden>Eliminar</button><button type="button" id="wgc-export" hidden>Exportar .conf</button><button type="button" id="wgc-config-close">Cerrar configuración</button><button type="button" class="principal" id="wgc-save">Guardar perfil</button></div>
                 </div>
               </form>
             </section>

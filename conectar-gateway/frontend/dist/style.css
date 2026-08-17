@@ -807,3 +807,26 @@
 
 /* v3.4.5: bypass LAN por peer + diagnóstico de telemetría WireGuard */
 .wgclient-peer-local{border-top:1px solid rgba(115,147,169,.12);padding-top:8px}.wgclient-peer-local .check{margin:0}.wgclient-peer-local small{display:block;margin:5px 0 0 24px;color:#7f93a5;line-height:1.35}.wgclient-runtime-warning{margin:-2px 0 8px;padding:8px 10px;border:1px solid rgba(232,184,91,.25);background:rgba(232,184,91,.06);border-radius:7px;color:#d5b66d;font-size:11px}
+
+/* --- WireGuard v3.4.8: estado en primera plana, configuración bajo demanda --- */
+.wgclient-config-btn{border:1px solid rgba(115,147,169,.28);background:rgba(4,18,31,.55);color:#b9cbd8}
+.wgclient-config-btn.abierto{border-color:rgba(88,198,255,.45);background:rgba(88,198,255,.12);color:#9fdcff}
+.wgclient-live{margin:4px 0 2px;border:1px solid rgba(115,147,169,.16);border-radius:8px;background:rgba(4,18,31,.42);padding:12px}
+.wgclient-live-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.wgclient-live-head b{color:#dce7ee}
+.wgclient-live-head small{display:block;margin-top:3px;color:#7f93a5;font-size:11px}
+.wgclient-live-list{display:flex;flex-direction:column;gap:8px}
+.wgclient-live-empty{color:#7f93a5;font-size:12px;padding:10px 2px;text-align:center}
+.wgclient-live-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 14px;align-items:center;border:1px solid rgba(115,147,169,.14);border-radius:7px;background:rgba(6,23,38,.6);padding:10px 12px}
+.wgclient-live-id{min-width:0}
+.wgclient-live-id b{display:block;color:#dce7ee;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wgclient-live-id small{display:block;color:#7f93a5;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wgclient-live-nums{display:flex;gap:16px;align-items:center;text-align:right}
+.wgclient-live-nums div span{display:block;color:#7f93a5;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+.wgclient-live-nums div b{display:block;color:#dce7ee;font-size:13px;margin-top:2px}
+.wgclient-live-nums .rx b{color:#58c6ff}
+.wgclient-live-nums .tx b{color:#4de19a}
+.wgclient-live-nums .hs b{color:#9fb3c2;font-size:12px}
+.wgclient-live-row.up{border-color:rgba(77,225,154,.28)}
+.wgclient-live-row.off .wgclient-live-nums b{color:#7f93a5}
+@media(max-width:900px){.wgclient-live-row{grid-template-columns:minmax(0,1fr)}.wgclient-live-nums{justify-content:flex-start;text-align:left}}

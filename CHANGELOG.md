@@ -1,3 +1,23 @@
+## v3.4.8
+
+### WireGuard — corrección del estado del servicio en Windows
+
+- Corregido el fallo por el que la aplicación daba un túnel por conectado cuando en realidad el servicio había muerto. El estado se leía interpretando el texto de `sc.exe` y la búsqueda de `": 4 "` también encontraba la línea `SERVICE_EXIT_CODE : 4  (0x4)`, justo el código que devuelve `wg-service-host.exe` cuando no puede cargar `tunnel.dll`.
+- El estado del servicio se consulta ahora contra el SCM de Windows (`OpenSCManager` + `QueryServiceStatus`), sin analizar texto y sin depender del idioma del sistema. Se piden solo permisos de consulta, así que sigue funcionando sin elevar la aplicación.
+- Efecto secundario del fallo anterior: como la aplicación creía que el perfil ya estaba activo, el botón **Conectar** dejaba de hacer nada hasta borrar el servicio a mano. Queda resuelto.
+- Cancelar el aviso de UAC ya no se reporta como conexión correcta. `Start-Process -Verb RunAs` devolvía `$null` y `exit $null` terminaba en código 0; ahora el error se propaga y el usuario recibe un mensaje explícito.
+- Los perfiles restaurados desde una copia `.cgw` llegan siempre con los hooks `PreUp`/`PostUp`/`PreDown`/`PostDown` **desactivados**, igual que al importar un `.conf`. Un backup puede venir de un tercero y esos hooks se ejecutan con privilegios.
+
+### WireGuard — la vista muestra el túnel, no el formulario
+
+- La pantalla de WireGuard abre en estado y estadísticas: conexión, RX/TX en Mbit/s, totales, handshake, interfaz y una lista por peer con su tráfico instantáneo y su último handshake.
+- Toda la configuración (claves, peers, DNS, MTU, opciones avanzadas y hooks) pasa a un botón **⚙ Configuración** y permanece oculta hasta que se abre.
+- Los peers que reporta el motor pero que no están en el perfil también aparecen en la lista de estado en vez de quedar invisibles.
+- Con la configuración cerrada, **Conectar** activa el túnel directamente en lugar de reguardar un formulario que no está a la vista.
+- Al cerrar la configuración se ocultan de nuevo los secretos revelados en pantalla.
+- Crear un perfil nuevo abre la configuración automáticamente; guardar devuelve a la vista de estado.
+- Metadata de aplicación sincronizada con v3.4.8.
+
 ## v3.4.7
 
 - Estabilización RC: `go.mod` y `go.sum` quedan ya en el estado exacto producido por `go mod tidy` con Go 1.25; CI usa `go mod tidy -diff` para verificar sin modificar el checkout.

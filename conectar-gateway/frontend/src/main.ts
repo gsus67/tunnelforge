@@ -776,7 +776,30 @@ var TOKEN = '';
   $('mon-tab-overview').onclick=function(){monSetTab('overview');}; $('mon-tab-wg').onclick=function(){monSetTab('wg');}; $('mon-reload').onclick=function(){if(monDashboard==='wg')cargarPeers();else cargarResumen();}; $('mon-peer-refresh').onclick=cargarPeers;
 
   // ── WireGuard local ───────────────────────────────────
-  var wgcProfiles:any[]=[], wgcSelected:string|null=null, wgcStatus:any={}, wgcPrev:any={}, wgcTimer:any=null, wgcSecretsVisible=false;
+  var wgcProfiles:any[]=[], wgcSelected:string|null=null, wgcStatus:any={}, wgcPrev:any={}, wgcTimer:any=null, wgcSecretsVisible=false, wgcConfigAbierta=false;
+
+  // La vista de WireGuard muestra por defecto SOLO estado y estadísticas del
+  // túnel. El formulario completo (keys, peers, hooks) aparece únicamente
+  // cuando el usuario pulsa "⚙ Configuración".
+  function wgcSetConfig(abrir:any){
+    wgcConfigAbierta=!!abrir;
+    var form=$('wgc-form'); if(form) form.hidden=!wgcConfigAbierta;
+    var live=$('wgc-live'); if(live) live.hidden=wgcConfigAbierta;
+    var btn=$('wgc-config-toggle');
+    if(btn){
+      btn.textContent=wgcConfigAbierta?'✕ Cerrar configuración':'⚙ Configuración';
+      btn.className='wgclient-config-btn'+(wgcConfigAbierta?' abierto':'');
+      btn.setAttribute('aria-expanded',wgcConfigAbierta?'true':'false');
+      btn.title=wgcConfigAbierta?'Volver al estado del túnel':'Abrir la configuración del perfil';
+    }
+    if(!wgcConfigAbierta&&wgcSecretsVisible){
+      // Al cerrar la configuración no dejamos secretos revelados en el DOM.
+      wgcSecretsVisible=false;
+      var priv=$('wgc-private'); if(priv){priv.type='password';priv.value='';}
+      document.querySelectorAll('#wgc-peers [data-field=presharedKey]').forEach(function(x:any){x.type='password';x.value='';});
+      var rev=$('wgc-reveal'); if(rev) rev.textContent='Mostrar secretos';
+    }
+  }
   function wgcNote(texto:any,tipo?:any){var e=$('wgc-note');if(!e)return;e.textContent=texto||'';e.className='wgclient-note'+(tipo?' '+tipo:'');}
   function wgcSplit(v:any){return String(v||'').split(/[,\n]/).map(function(x){return x.trim();}).filter(Boolean);}
   function wgcLines(v:any){return String(v||'').split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean);}
@@ -805,29 +828,83 @@ var TOKEN = '';
   function wgcCollectPeers(){var out:any[]=[];document.querySelectorAll('#wgc-peers .wgclient-peer').forEach(function(row){function v(n){var e:any=row.querySelector('[data-field='+n+']');return e?String(e.value||'').trim():'';}var local:any=row.querySelector('[data-field=excludeLocalTraffic]');out.push({name:v('name'),endpoint:v('endpoint'),publicKey:v('publicKey'),presharedKey:v('presharedKey'),allowedIPs:wgcSplit(v('allowedIPs')),persistentKeepalive:Number(v('persistentKeepalive'))||0,excludeLocalTraffic:!!(local&&local.checked)});});return out;}
 
   function wgcClear(){
-    wgcSelected=null;wgcSecretsVisible=false;$('wgc-title').textContent='Nuevo perfil';$('wgc-subtitle').textContent='Configura un túnel o importa un archivo .conf.';
+    wgcSelected=null;wgcSecretsVisible=false;wgcSetConfig(true);$('wgc-title').textContent='Nuevo perfil';$('wgc-subtitle').textContent='Configura un túnel o importa un archivo .conf.';
     ['wgc-name','wgc-address','wgc-private','wgc-public','wgc-dns','wgc-mtu','wgc-listen','wgc-table','wgc-notes','wgc-preup','wgc-postup','wgc-predown','wgc-postdown'].forEach(function(id){$(id).value='';});
     $('wgc-private').type='password';$('wgc-auto').checked=false;$('wgc-hooks-allow').checked=false;wgcRenderPeers([]);$('wgc-export').hidden=true;$('wgc-delete').hidden=true;wgcSetSnapshot({connected:false,interface:'—',rxBytes:0,txBytes:0});wgcNote('Las claves privadas y PresharedKey se guardan cifradas. El archivo .conf exportado sí contiene secretos.','');wgcRenderList();
   }
-  function wgcLoadProfile(id:any){var p=wgcProfileById(id);if(!p)return;wgcSelected=id;wgcSecretsVisible=false;$('wgc-title').textContent=p.name;$('wgc-subtitle').textContent=(p.addresses||[]).join(', ')+' · '+wgcEndpoint(p);$('wgc-name').value=p.name||'';$('wgc-address').value=(p.addresses||[]).join(', ');$('wgc-private').value='';$('wgc-private').type='password';$('wgc-public').value=p.publicKey||'';$('wgc-dns').value=(p.dns||[]).join(', ');$('wgc-mtu').value=p.mtu||'';$('wgc-listen').value=p.listenPort||'';$('wgc-table').value=p.table||'';$('wgc-notes').value=p.notes||'';$('wgc-preup').value=(p.preUp||[]).join('\n');$('wgc-postup').value=(p.postUp||[]).join('\n');$('wgc-predown').value=(p.preDown||[]).join('\n');$('wgc-postdown').value=(p.postDown||[]).join('\n');$('wgc-auto').checked=!!p.autoConnect;$('wgc-hooks-allow').checked=!!p.allowHooks;wgcRenderPeers(p.peers||[]);$('wgc-export').hidden=false;$('wgc-delete').hidden=false;wgcRenderList();var st=wgcStatus[id]&&wgcStatus[id].snapshot;wgcSetSnapshot(st||{connected:false,interface:p.interface});}
+  function wgcLoadProfile(id:any){var p=wgcProfileById(id);if(!p)return;var cambioDePerfil=wgcSelected!==id;wgcSelected=id;wgcSecretsVisible=false;if(cambioDePerfil)wgcSetConfig(false);$('wgc-title').textContent=p.name;$('wgc-subtitle').textContent=(p.addresses||[]).join(', ')+' · '+wgcEndpoint(p);$('wgc-name').value=p.name||'';$('wgc-address').value=(p.addresses||[]).join(', ');$('wgc-private').value='';$('wgc-private').type='password';$('wgc-public').value=p.publicKey||'';$('wgc-dns').value=(p.dns||[]).join(', ');$('wgc-mtu').value=p.mtu||'';$('wgc-listen').value=p.listenPort||'';$('wgc-table').value=p.table||'';$('wgc-notes').value=p.notes||'';$('wgc-preup').value=(p.preUp||[]).join('\n');$('wgc-postup').value=(p.postUp||[]).join('\n');$('wgc-predown').value=(p.preDown||[]).join('\n');$('wgc-postdown').value=(p.postDown||[]).join('\n');$('wgc-auto').checked=!!p.autoConnect;$('wgc-hooks-allow').checked=!!p.allowHooks;wgcRenderPeers(p.peers||[]);$('wgc-export').hidden=false;$('wgc-delete').hidden=false;wgcRenderList();var st=wgcStatus[id]&&wgcStatus[id].snapshot;wgcSetSnapshot(st||{connected:false,interface:p.interface});}
 
   function wgcRenderList(){var box=$('wgc-profile-list');vaciar(box);var q=String($('wgc-search').value||'').toLowerCase();var arr=wgcProfiles.filter(function(p){return !q||String(p.name).toLowerCase().includes(q)||wgcEndpoint(p).toLowerCase().includes(q);});if(!arr.length){box.appendChild(nodo('div','wgclient-empty',wgcProfiles.length?'No coincide ningún perfil.':'No hay perfiles WireGuard.'));return;}arr.forEach(function(p){var st=wgcStatus[p.id]&&wgcStatus[p.id].snapshot||{};var row=nodo('div','wgclient-profile'+(p.id===wgcSelected?' active':''));row.onclick=function(){wgcLoadProfile(p.id);};var dot=nodo('span','wgclient-profile-dot'+(st.connected?' up':''));row.appendChild(dot);var m=nodo('div','wgclient-profile-main');m.appendChild(nodo('b','',p.name));m.appendChild(nodo('small','',wgcEndpoint(p)+(p.autoConnect?' · auto':'')));row.appendChild(m);var rate=wgcStatus[p.id]&&wgcStatus[p.id]._rate||{};row.appendChild(nodo('div','wgclient-profile-rate',st.connected?('↓ '+wgcMbit(rate.rx||0)+'\n↑ '+wgcMbit(rate.tx||0)):'OFF'));box.appendChild(row);});}
 
+  // Lista de solo lectura con el estado real del túnel: un peer por fila, con
+  // su tráfico instantáneo y su último handshake. Combina lo que el perfil sabe
+  // (nombre amigable, endpoint) con lo que reporta el motor WireGuard.
+  function wgcRenderLive(s:any){
+    var box=$('wgc-live-list'); if(!box) return;
+    vaciar(box);
+    var perfil=wgcSelected?wgcProfileById(wgcSelected):null;
+    var sub=$('wgc-live-sub');
+    if(!perfil){
+      if(sub) sub.textContent='Selecciona un perfil de la izquierda o crea uno nuevo.';
+      box.appendChild(nodo('div','wgclient-live-empty','Sin perfil seleccionado.'));
+      return;
+    }
+    var conectado=!!(s&&s.connected);
+    if(sub) sub.textContent=conectado?'Tráfico por peer, actualizado cada pocos segundos.':'El túnel está desconectado; se muestran los peers configurados.';
+    var rates=(wgcSelected&&wgcStatus[wgcSelected]&&wgcStatus[wgcSelected]._peerRates)||{};
+    var vivos:any={}; ((s&&s.peers)||[]).forEach(function(p:any){vivos[String(p.publicKey||'').trim()]=p;});
+    var lista=(perfil.peers||[]).slice();
+    // Peers que reporta el motor pero que no están en el perfil (p. ej. tras
+    // importar un .conf editado a mano): se muestran igual, no se ocultan.
+    Object.keys(vivos).forEach(function(k){
+      var existe=lista.some(function(p:any){return String(p.publicKey||'').trim()===k;});
+      if(!existe) lista.push({name:'',publicKey:k,endpoint:'',allowedIPs:[]});
+    });
+    if(!lista.length){
+      box.appendChild(nodo('div','wgclient-live-empty','Este perfil todavía no tiene peers. Ábrelo con ⚙ Configuración para agregar uno.'));
+      return;
+    }
+    lista.forEach(function(p:any,i:any){
+      var clave=String(p.publicKey||'').trim();
+      var info=vivos[clave];
+      var activo=!!(info&&info.latestHandshake);
+      var row=nodo('div','wgclient-live-row'+(activo?' up':' off'));
+      var id=nodo('div','wgclient-live-id');
+      id.appendChild(nodo('b','',p.name||('Peer '+(i+1))));
+      var detalle=p.endpoint||(info&&info.endpoint)||'sin endpoint';
+      var rutas=(p.allowedIPs&&p.allowedIPs.length)?p.allowedIPs.join(', '):(info&&info.allowedIPs)||'';
+      id.appendChild(nodo('small','',detalle+(rutas?(' · '+rutas):'')));
+      row.appendChild(id);
+      var nums=nodo('div','wgclient-live-nums');
+      var rate=(info&&rates[info.publicKey])||{};
+      function celda(clase:any,titulo:any,valor:any){var d=nodo('div',clase);d.appendChild(nodo('span','',titulo));d.appendChild(nodo('b','',valor));nums.appendChild(d);}
+      celda('rx','Descarga',conectado?wgcMbit(rate.rx||0):'—');
+      celda('tx','Subida',conectado?wgcMbit(rate.tx||0):'—');
+      celda('hs','Handshake',info?wgcHandshake(info.latestHandshake):(conectado?'sin datos':'—'));
+      row.appendChild(nums);
+      box.appendChild(row);
+    });
+  }
+
   function wgcUpdatePeerLive(s:any){var rates=wgcSelected&&wgcStatus[wgcSelected]&&wgcStatus[wgcSelected]._peerRates||{};var peers=(s&&s.peers)||[];var byKey:any={};peers.forEach(function(p){byKey[p.publicKey]=p;});document.querySelectorAll('#wgc-peers .wgclient-peer').forEach(function(row){var pk=row.querySelector('[data-field=publicKey]');var live=row.querySelector('[data-role=live]');if(!live||!pk)return;var info=byKey[pk.value.trim()];if(!info){live.textContent=s&&s.connected?'Sin datos del peer':'Sin telemetría';live.className='wgclient-peer-live';return;}var rate=rates[info.publicKey]||{};live.textContent='↓ '+wgcMbit(rate.rx||0)+' · ↑ '+wgcMbit(rate.tx||0)+' · '+wgcHandshake(info.latestHandshake);live.className='wgclient-peer-live'+(info.latestHandshake?' up':'');});}
-  function wgcSetSnapshot(s:any){s=s||{};var connected=!!s.connected;$('wgc-state').textContent=connected?'Conectado':'Desconectado';$('wgc-state').className='wgclient-state'+(connected?' up':'');$('wgc-connect').hidden=connected;$('wgc-disconnect').hidden=!connected;$('wgc-connect').disabled=!wgcSelected;$('wgc-interface').textContent=s.interface||'—';$('wgc-rx-total').textContent=wgcBytes(s.rxBytes||0)+' total';$('wgc-tx-total').textContent=wgcBytes(s.txBytes||0)+' total';$('wgc-handshake').textContent=wgcHandshake(s.latestHandshake);var p=wgcSelected?wgcProfileById(wgcSelected):null;$('wgc-endpoint-summary').textContent=wgcEndpoint(p);var rate=wgcSelected&&wgcStatus[wgcSelected]&&wgcStatus[wgcSelected]._rate||{};$('wgc-rx').textContent=wgcMbit(rate.rx||0);$('wgc-tx').textContent=wgcMbit(rate.tx||0);var warn=$('wgc-runtime-warning');warn.hidden=!s.error;warn.textContent=s.error||'';wgcUpdatePeerLive(s);}
+  function wgcSetSnapshot(s:any){s=s||{};var connected=!!s.connected;$('wgc-state').textContent=connected?'Conectado':'Desconectado';$('wgc-state').className='wgclient-state'+(connected?' up':'');$('wgc-connect').hidden=connected;$('wgc-disconnect').hidden=!connected;$('wgc-connect').disabled=!wgcSelected;$('wgc-interface').textContent=s.interface||'—';$('wgc-rx-total').textContent=wgcBytes(s.rxBytes||0)+' total';$('wgc-tx-total').textContent=wgcBytes(s.txBytes||0)+' total';$('wgc-handshake').textContent=wgcHandshake(s.latestHandshake);var p=wgcSelected?wgcProfileById(wgcSelected):null;$('wgc-endpoint-summary').textContent=wgcEndpoint(p);var rate=wgcSelected&&wgcStatus[wgcSelected]&&wgcStatus[wgcSelected]._rate||{};$('wgc-rx').textContent=wgcMbit(rate.rx||0);$('wgc-tx').textContent=wgcMbit(rate.tx||0);var warn=$('wgc-runtime-warning');warn.hidden=!s.error;warn.textContent=s.error||'';wgcUpdatePeerLive(s);wgcRenderLive(s);}
 
   function wgcApplyStatus(data:any){if(!data)return;var eng=data.engine||{};$('wgc-engine-name').textContent=eng.name||'WireGuard';$('wgc-engine-msg').textContent=eng.installed?(eng.message||eng.version||'WireGuard listo'):(eng.message||'Motor no disponible');$('wgc-engine-dot').className='wgclient-engine-dot'+(eng.installed?' ok':'');$('wgc-engine-install').hidden=!!eng.installed||!eng.canInstall;var now=Date.now();(data.profiles||[]).forEach(function(x){var snap=x.snapshot||{},prev=wgcPrev[x.id],rx=0,tx=0,peerRates:any={};if(prev&&snap.connected){var dt=(now-prev.t)/1000;if(dt>.3){rx=Math.max(0,(Number(snap.rxBytes||0)-prev.rx)/dt);tx=Math.max(0,(Number(snap.txBytes||0)-prev.tx)/dt);(snap.peers||[]).forEach(function(pp){var old=prev.peers&&prev.peers[pp.publicKey];if(old){peerRates[pp.publicKey]={rx:Math.max(0,(Number(pp.rxBytes||0)-old.rx)/dt),tx:Math.max(0,(Number(pp.txBytes||0)-old.tx)/dt)};}});}}var peerPrev:any={};(snap.peers||[]).forEach(function(pp){peerPrev[pp.publicKey]={rx:Number(pp.rxBytes||0),tx:Number(pp.txBytes||0)};});wgcPrev[x.id]={t:now,rx:Number(snap.rxBytes||0),tx:Number(snap.txBytes||0),peers:peerPrev};x._rate={rx:rx,tx:tx};x._peerRates=peerRates;wgcStatus[x.id]=x;});wgcRenderList();if(wgcSelected){var st=wgcStatus[wgcSelected];wgcSetSnapshot(st?st.snapshot:{connected:false,interface:(wgcProfileById(wgcSelected)||{}).interface});}}
   function wgcPoll(){api('/api/wireguard/estado').then(wgcApplyStatus).catch(function(){});}
   function cargarWireGuard(){api('/api/wireguard/perfiles').then(function(p){wgcProfiles=p||[];if(wgcSelected&&!wgcProfileById(wgcSelected))wgcSelected=null;if(!wgcSelected&&wgcProfiles.length)wgcSelected=wgcProfiles[0].id;if(wgcSelected)wgcLoadProfile(wgcSelected);else wgcClear();wgcPoll();if(wgcTimer)clearInterval(wgcTimer);wgcTimer=setInterval(function(){if(vistaActual==='wireguard')wgcPoll();},2000);}).catch(function(){wgcNote('No pude cargar los perfiles WireGuard.','err');});}
 
-  function wgcSave(connectAfter?:any){var req:any={id:wgcSelected||'',name:$('wgc-name').value.trim(),privateKey:$('wgc-private').value.trim(),addresses:wgcSplit($('wgc-address').value),dns:wgcSplit($('wgc-dns').value),mtu:Number($('wgc-mtu').value)||0,listenPort:Number($('wgc-listen').value)||0,table:$('wgc-table').value.trim(),notes:$('wgc-notes').value,autoConnect:!!$('wgc-auto').checked,allowHooks:!!$('wgc-hooks-allow').checked,preUp:wgcLines($('wgc-preup').value),postUp:wgcLines($('wgc-postup').value),preDown:wgcLines($('wgc-predown').value),postDown:wgcLines($('wgc-postdown').value),peers:wgcCollectPeers()};var b=$('wgc-save');b.disabled=true;wgcNote('Guardando perfil cifrado…','');return api('/api/wireguard/perfiles',{method:'POST',body:JSON.stringify(req)}).then(function(r){if(r.error){wgcNote(r.error,'err');throw new Error(r.error);}wgcSelected=r.profile.id;$('wgc-private').value='';wgcNote('Perfil guardado. PrivateKey y PresharedKey quedaron cifradas.','ok');return api('/api/wireguard/perfiles');}).then(function(list){wgcProfiles=list||[];wgcLoadProfile(wgcSelected);if(connectAfter)return wgcConnectNow();return;}).finally(function(){b.disabled=false;});}
+  function wgcSave(connectAfter?:any){var req:any={id:wgcSelected||'',name:$('wgc-name').value.trim(),privateKey:$('wgc-private').value.trim(),addresses:wgcSplit($('wgc-address').value),dns:wgcSplit($('wgc-dns').value),mtu:Number($('wgc-mtu').value)||0,listenPort:Number($('wgc-listen').value)||0,table:$('wgc-table').value.trim(),notes:$('wgc-notes').value,autoConnect:!!$('wgc-auto').checked,allowHooks:!!$('wgc-hooks-allow').checked,preUp:wgcLines($('wgc-preup').value),postUp:wgcLines($('wgc-postup').value),preDown:wgcLines($('wgc-predown').value),postDown:wgcLines($('wgc-postdown').value),peers:wgcCollectPeers()};var b=$('wgc-save');b.disabled=true;wgcNote('Guardando perfil cifrado…','');return api('/api/wireguard/perfiles',{method:'POST',body:JSON.stringify(req)}).then(function(r){if(r.error){wgcNote(r.error,'err');throw new Error(r.error);}wgcSelected=r.profile.id;$('wgc-private').value='';wgcNote('Perfil guardado. PrivateKey y PresharedKey quedaron cifradas.','ok');return api('/api/wireguard/perfiles');}).then(function(list){wgcProfiles=list||[];wgcLoadProfile(wgcSelected);wgcSetConfig(false);if(connectAfter)return wgcConnectNow();return;}).finally(function(){b.disabled=false;});}
   function wgcConnectNow(){if(!wgcSelected)return Promise.resolve();var b=$('wgc-connect');b.disabled=true;b.textContent='Conectando…';wgcNote('Activando túnel WireGuard integrado…','');return api('/api/wireguard/conectar',{method:'POST',body:JSON.stringify({id:wgcSelected})}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcNote('Túnel conectado.','ok');wgcPoll();}).finally(function(){b.disabled=false;b.textContent='Conectar';});}
 
   $('wgc-new').onclick=function(){wgcClear();$('wgc-name').focus();};$('wgc-search').oninput=wgcRenderList;$('wgc-add-peer').onclick=function(){var box=$('wgc-peers');box.appendChild(wgcPeerRow({},box.children.length));};
   $('wgc-generate').onclick=function(){api('/api/wireguard/generar-key',{method:'POST',body:'{}'}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}$('wgc-private').value=r.privateKey;$('wgc-private').type='text';$('wgc-public').value=r.publicKey;wgcSecretsVisible=true;wgcNote('Nuevo par de keys generado localmente. Guarda el perfil para cifrar la privada.','warn');});};
   $('wgc-reveal').onclick=function(){if(!wgcSelected){$('wgc-private').type=$('wgc-private').type==='password'?'text':'password';return;}if(wgcSecretsVisible){wgcSecretsVisible=false;$('wgc-private').type='password';$('wgc-private').value='';document.querySelectorAll('#wgc-peers [data-field=presharedKey]').forEach(function(x){x.type='password';x.value='';});this.textContent='Mostrar secretos';return;}if(!confirm('La clave privada se mostrará en pantalla. ¿Continuar?'))return;api('/api/wireguard/revelar',{method:'POST',body:JSON.stringify({id:wgcSelected})}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcSecretsVisible=true;$('wgc-private').type='text';$('wgc-private').value=r.privateKey||'';document.querySelectorAll('#wgc-peers [data-field=presharedKey]').forEach(function(x,i){x.type='text';x.value=(r.presharedKeys||[])[i]||'';});$('wgc-reveal').textContent='Ocultar secretos';});};
   $('wgc-copy-public').onclick=function(){var v=$('wgc-public').value;if(!v)return;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v);wgcNote('Clave pública copiada.','ok');}else{var e=$('wgc-public');e.select();document.execCommand('copy');wgcNote('Clave pública copiada.','ok');}};
-  $('wgc-save').onclick=function(){wgcSave(false).catch(function(){});};$('wgc-connect').onclick=function(){wgcSave(true).catch(function(){});};$('wgc-disconnect').onclick=function(){if(!wgcSelected)return;var b=this;b.disabled=true;b.textContent='Desconectando…';api('/api/wireguard/desconectar',{method:'POST',body:JSON.stringify({id:wgcSelected})}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcNote('Túnel desconectado.','ok');wgcPoll();}).finally(function(){b.disabled=false;b.textContent='Desconectar';});};
+  $('wgc-save').onclick=function(){wgcSave(false).catch(function(){});};
+  // Con la configuración cerrada no hay nada visible que guardar: se conecta directo.
+  $('wgc-connect').onclick=function(){if(wgcConfigAbierta){wgcSave(true).catch(function(){});}else{wgcConnectNow();}};
+  $('wgc-config-toggle').onclick=function(){if(!wgcSelected&&!wgcConfigAbierta){wgcNote('Selecciona un perfil o crea uno nuevo para configurarlo.','warn');}wgcSetConfig(!wgcConfigAbierta);};
+  $('wgc-config-close').onclick=function(){wgcSetConfig(false);};$('wgc-disconnect').onclick=function(){if(!wgcSelected)return;var b=this;b.disabled=true;b.textContent='Desconectando…';api('/api/wireguard/desconectar',{method:'POST',body:JSON.stringify({id:wgcSelected})}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcNote('Túnel desconectado.','ok');wgcPoll();}).finally(function(){b.disabled=false;b.textContent='Desconectar';});};
   $('wgc-full-tunnel').onclick=function(){var rows=document.querySelectorAll('#wgc-peers .wgclient-peer');if(!rows.length){$('wgc-add-peer').click();rows=document.querySelectorAll('#wgc-peers .wgclient-peer');}var ip=rows[0].querySelector('[data-field=allowedIPs]');ip.value='0.0.0.0/0, ::/0';wgcNote('El primer peer quedó como túnel completo IPv4 + IPv6. Activa “Excluir tráfico local” en ese peer si quieres conservar acceso a la LAN.','warn');};
   $('wgc-import').onclick=function(){$('wgc-import-file').click();};$('wgc-import-file').onchange=function(){var f=this.files&&this.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){var nm=f.name.replace(/\.conf$/i,'');api('/api/wireguard/importar',{method:'POST',body:JSON.stringify({name:nm,content:String(rd.result||'')})}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcSelected=r.profile.id;var warns=r.warnings||[];wgcNote('Perfil importado'+(warns.length?' · '+warns.join(' · '):'.'),'warn');cargarWireGuard();});};rd.readAsText(f);this.value='';};
   $('wgc-export').onclick=function(){if(!wgcSelected)return;if(!confirm('El archivo .conf exportado contiene la PrivateKey en texto legible. ¿Exportar?'))return;api('/api/wireguard/exportar',{method:'POST',body:JSON.stringify({id:wgcSelected})}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}if(r.cancelado){wgcNote('Exportación cancelada.','');return;}wgcNote('Perfil exportado en '+r.path,'ok');});};

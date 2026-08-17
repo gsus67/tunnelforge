@@ -1085,7 +1085,39 @@ else
     cargarResumen(); };
 $('mon-peer-refresh').onclick = cargarPeers;
 // ── WireGuard local ───────────────────────────────────
-var wgcProfiles = [], wgcSelected = null, wgcStatus = {}, wgcPrev = {}, wgcTimer = null, wgcSecretsVisible = false;
+var wgcProfiles = [], wgcSelected = null, wgcStatus = {}, wgcPrev = {}, wgcTimer = null, wgcSecretsVisible = false, wgcConfigAbierta = false;
+// La vista de WireGuard muestra por defecto SOLO estado y estadísticas del
+// túnel. El formulario completo (keys, peers, hooks) aparece únicamente
+// cuando el usuario pulsa "⚙ Configuración".
+function wgcSetConfig(abrir) {
+    wgcConfigAbierta = !!abrir;
+    var form = $('wgc-form');
+    if (form)
+        form.hidden = !wgcConfigAbierta;
+    var live = $('wgc-live');
+    if (live)
+        live.hidden = wgcConfigAbierta;
+    var btn = $('wgc-config-toggle');
+    if (btn) {
+        btn.textContent = wgcConfigAbierta ? '✕ Cerrar configuración' : '⚙ Configuración';
+        btn.className = 'wgclient-config-btn' + (wgcConfigAbierta ? ' abierto' : '');
+        btn.setAttribute('aria-expanded', wgcConfigAbierta ? 'true' : 'false');
+        btn.title = wgcConfigAbierta ? 'Volver al estado del túnel' : 'Abrir la configuración del perfil';
+    }
+    if (!wgcConfigAbierta && wgcSecretsVisible) {
+        // Al cerrar la configuración no dejamos secretos revelados en el DOM.
+        wgcSecretsVisible = false;
+        var priv = $('wgc-private');
+        if (priv) {
+            priv.type = 'password';
+            priv.value = '';
+        }
+        document.querySelectorAll('#wgc-peers [data-field=presharedKey]').forEach(function (x) { x.type = 'password'; x.value = ''; });
+        var rev = $('wgc-reveal');
+        if (rev)
+            rev.textContent = 'Mostrar secretos';
+    }
+}
 function wgcNote(texto, tipo) { var e = $('wgc-note'); if (!e)
     return; e.textContent = texto || ''; e.className = 'wgclient-note' + (tipo ? ' ' + tipo : ''); }
 function wgcSplit(v) { return String(v || '').split(/[,\n]/).map(function (x) { return x.trim(); }).filter(Boolean); }
@@ -1171,6 +1203,7 @@ function wgcCollectPeers() { var out = []; document.querySelectorAll('#wgc-peers
 function wgcClear() {
     wgcSelected = null;
     wgcSecretsVisible = false;
+    wgcSetConfig(true);
     $('wgc-title').textContent = 'Nuevo perfil';
     $('wgc-subtitle').textContent = 'Configura un túnel o importa un archivo .conf.';
     ['wgc-name', 'wgc-address', 'wgc-private', 'wgc-public', 'wgc-dns', 'wgc-mtu', 'wgc-listen', 'wgc-table', 'wgc-notes', 'wgc-preup', 'wgc-postup', 'wgc-predown', 'wgc-postdown'].forEach(function (id) { $(id).value = ''; });
@@ -1185,18 +1218,74 @@ function wgcClear() {
     wgcRenderList();
 }
 function wgcLoadProfile(id) { var p = wgcProfileById(id); if (!p)
-    return; wgcSelected = id; wgcSecretsVisible = false; $('wgc-title').textContent = p.name; $('wgc-subtitle').textContent = (p.addresses || []).join(', ') + ' · ' + wgcEndpoint(p); $('wgc-name').value = p.name || ''; $('wgc-address').value = (p.addresses || []).join(', '); $('wgc-private').value = ''; $('wgc-private').type = 'password'; $('wgc-public').value = p.publicKey || ''; $('wgc-dns').value = (p.dns || []).join(', '); $('wgc-mtu').value = p.mtu || ''; $('wgc-listen').value = p.listenPort || ''; $('wgc-table').value = p.table || ''; $('wgc-notes').value = p.notes || ''; $('wgc-preup').value = (p.preUp || []).join('\n'); $('wgc-postup').value = (p.postUp || []).join('\n'); $('wgc-predown').value = (p.preDown || []).join('\n'); $('wgc-postdown').value = (p.postDown || []).join('\n'); $('wgc-auto').checked = !!p.autoConnect; $('wgc-hooks-allow').checked = !!p.allowHooks; wgcRenderPeers(p.peers || []); $('wgc-export').hidden = false; $('wgc-delete').hidden = false; wgcRenderList(); var st = wgcStatus[id] && wgcStatus[id].snapshot; wgcSetSnapshot(st || { connected: false, interface: p.interface }); }
+    return; var cambioDePerfil = wgcSelected !== id; wgcSelected = id; wgcSecretsVisible = false; if (cambioDePerfil)
+    wgcSetConfig(false); $('wgc-title').textContent = p.name; $('wgc-subtitle').textContent = (p.addresses || []).join(', ') + ' · ' + wgcEndpoint(p); $('wgc-name').value = p.name || ''; $('wgc-address').value = (p.addresses || []).join(', '); $('wgc-private').value = ''; $('wgc-private').type = 'password'; $('wgc-public').value = p.publicKey || ''; $('wgc-dns').value = (p.dns || []).join(', '); $('wgc-mtu').value = p.mtu || ''; $('wgc-listen').value = p.listenPort || ''; $('wgc-table').value = p.table || ''; $('wgc-notes').value = p.notes || ''; $('wgc-preup').value = (p.preUp || []).join('\n'); $('wgc-postup').value = (p.postUp || []).join('\n'); $('wgc-predown').value = (p.preDown || []).join('\n'); $('wgc-postdown').value = (p.postDown || []).join('\n'); $('wgc-auto').checked = !!p.autoConnect; $('wgc-hooks-allow').checked = !!p.allowHooks; wgcRenderPeers(p.peers || []); $('wgc-export').hidden = false; $('wgc-delete').hidden = false; wgcRenderList(); var st = wgcStatus[id] && wgcStatus[id].snapshot; wgcSetSnapshot(st || { connected: false, interface: p.interface }); }
 function wgcRenderList() { var box = $('wgc-profile-list'); vaciar(box); var q = String($('wgc-search').value || '').toLowerCase(); var arr = wgcProfiles.filter(function (p) { return !q || String(p.name).toLowerCase().includes(q) || wgcEndpoint(p).toLowerCase().includes(q); }); if (!arr.length) {
     box.appendChild(nodo('div', 'wgclient-empty', wgcProfiles.length ? 'No coincide ningún perfil.' : 'No hay perfiles WireGuard.'));
     return;
 } arr.forEach(function (p) { var st = wgcStatus[p.id] && wgcStatus[p.id].snapshot || {}; var row = nodo('div', 'wgclient-profile' + (p.id === wgcSelected ? ' active' : '')); row.onclick = function () { wgcLoadProfile(p.id); }; var dot = nodo('span', 'wgclient-profile-dot' + (st.connected ? ' up' : '')); row.appendChild(dot); var m = nodo('div', 'wgclient-profile-main'); m.appendChild(nodo('b', '', p.name)); m.appendChild(nodo('small', '', wgcEndpoint(p) + (p.autoConnect ? ' · auto' : ''))); row.appendChild(m); var rate = wgcStatus[p.id] && wgcStatus[p.id]._rate || {}; row.appendChild(nodo('div', 'wgclient-profile-rate', st.connected ? ('↓ ' + wgcMbit(rate.rx || 0) + '\n↑ ' + wgcMbit(rate.tx || 0)) : 'OFF')); box.appendChild(row); }); }
+// Lista de solo lectura con el estado real del túnel: un peer por fila, con
+// su tráfico instantáneo y su último handshake. Combina lo que el perfil sabe
+// (nombre amigable, endpoint) con lo que reporta el motor WireGuard.
+function wgcRenderLive(s) {
+    var box = $('wgc-live-list');
+    if (!box)
+        return;
+    vaciar(box);
+    var perfil = wgcSelected ? wgcProfileById(wgcSelected) : null;
+    var sub = $('wgc-live-sub');
+    if (!perfil) {
+        if (sub)
+            sub.textContent = 'Selecciona un perfil de la izquierda o crea uno nuevo.';
+        box.appendChild(nodo('div', 'wgclient-live-empty', 'Sin perfil seleccionado.'));
+        return;
+    }
+    var conectado = !!(s && s.connected);
+    if (sub)
+        sub.textContent = conectado ? 'Tráfico por peer, actualizado cada pocos segundos.' : 'El túnel está desconectado; se muestran los peers configurados.';
+    var rates = (wgcSelected && wgcStatus[wgcSelected] && wgcStatus[wgcSelected]._peerRates) || {};
+    var vivos = {};
+    ((s && s.peers) || []).forEach(function (p) { vivos[String(p.publicKey || '').trim()] = p; });
+    var lista = (perfil.peers || []).slice();
+    // Peers que reporta el motor pero que no están en el perfil (p. ej. tras
+    // importar un .conf editado a mano): se muestran igual, no se ocultan.
+    Object.keys(vivos).forEach(function (k) {
+        var existe = lista.some(function (p) { return String(p.publicKey || '').trim() === k; });
+        if (!existe)
+            lista.push({ name: '', publicKey: k, endpoint: '', allowedIPs: [] });
+    });
+    if (!lista.length) {
+        box.appendChild(nodo('div', 'wgclient-live-empty', 'Este perfil todavía no tiene peers. Ábrelo con ⚙ Configuración para agregar uno.'));
+        return;
+    }
+    lista.forEach(function (p, i) {
+        var clave = String(p.publicKey || '').trim();
+        var info = vivos[clave];
+        var activo = !!(info && info.latestHandshake);
+        var row = nodo('div', 'wgclient-live-row' + (activo ? ' up' : ' off'));
+        var id = nodo('div', 'wgclient-live-id');
+        id.appendChild(nodo('b', '', p.name || ('Peer ' + (i + 1))));
+        var detalle = p.endpoint || (info && info.endpoint) || 'sin endpoint';
+        var rutas = (p.allowedIPs && p.allowedIPs.length) ? p.allowedIPs.join(', ') : (info && info.allowedIPs) || '';
+        id.appendChild(nodo('small', '', detalle + (rutas ? (' · ' + rutas) : '')));
+        row.appendChild(id);
+        var nums = nodo('div', 'wgclient-live-nums');
+        var rate = (info && rates[info.publicKey]) || {};
+        function celda(clase, titulo, valor) { var d = nodo('div', clase); d.appendChild(nodo('span', '', titulo)); d.appendChild(nodo('b', '', valor)); nums.appendChild(d); }
+        celda('rx', 'Descarga', conectado ? wgcMbit(rate.rx || 0) : '—');
+        celda('tx', 'Subida', conectado ? wgcMbit(rate.tx || 0) : '—');
+        celda('hs', 'Handshake', info ? wgcHandshake(info.latestHandshake) : (conectado ? 'sin datos' : '—'));
+        row.appendChild(nums);
+        box.appendChild(row);
+    });
+}
 function wgcUpdatePeerLive(s) { var rates = wgcSelected && wgcStatus[wgcSelected] && wgcStatus[wgcSelected]._peerRates || {}; var peers = (s && s.peers) || []; var byKey = {}; peers.forEach(function (p) { byKey[p.publicKey] = p; }); document.querySelectorAll('#wgc-peers .wgclient-peer').forEach(function (row) { var pk = row.querySelector('[data-field=publicKey]'); var live = row.querySelector('[data-role=live]'); if (!live || !pk)
     return; var info = byKey[pk.value.trim()]; if (!info) {
     live.textContent = s && s.connected ? 'Sin datos del peer' : 'Sin telemetría';
     live.className = 'wgclient-peer-live';
     return;
 } var rate = rates[info.publicKey] || {}; live.textContent = '↓ ' + wgcMbit(rate.rx || 0) + ' · ↑ ' + wgcMbit(rate.tx || 0) + ' · ' + wgcHandshake(info.latestHandshake); live.className = 'wgclient-peer-live' + (info.latestHandshake ? ' up' : ''); }); }
-function wgcSetSnapshot(s) { s = s || {}; var connected = !!s.connected; $('wgc-state').textContent = connected ? 'Conectado' : 'Desconectado'; $('wgc-state').className = 'wgclient-state' + (connected ? ' up' : ''); $('wgc-connect').hidden = connected; $('wgc-disconnect').hidden = !connected; $('wgc-connect').disabled = !wgcSelected; $('wgc-interface').textContent = s.interface || '—'; $('wgc-rx-total').textContent = wgcBytes(s.rxBytes || 0) + ' total'; $('wgc-tx-total').textContent = wgcBytes(s.txBytes || 0) + ' total'; $('wgc-handshake').textContent = wgcHandshake(s.latestHandshake); var p = wgcSelected ? wgcProfileById(wgcSelected) : null; $('wgc-endpoint-summary').textContent = wgcEndpoint(p); var rate = wgcSelected && wgcStatus[wgcSelected] && wgcStatus[wgcSelected]._rate || {}; $('wgc-rx').textContent = wgcMbit(rate.rx || 0); $('wgc-tx').textContent = wgcMbit(rate.tx || 0); var warn = $('wgc-runtime-warning'); warn.hidden = !s.error; warn.textContent = s.error || ''; wgcUpdatePeerLive(s); }
+function wgcSetSnapshot(s) { s = s || {}; var connected = !!s.connected; $('wgc-state').textContent = connected ? 'Conectado' : 'Desconectado'; $('wgc-state').className = 'wgclient-state' + (connected ? ' up' : ''); $('wgc-connect').hidden = connected; $('wgc-disconnect').hidden = !connected; $('wgc-connect').disabled = !wgcSelected; $('wgc-interface').textContent = s.interface || '—'; $('wgc-rx-total').textContent = wgcBytes(s.rxBytes || 0) + ' total'; $('wgc-tx-total').textContent = wgcBytes(s.txBytes || 0) + ' total'; $('wgc-handshake').textContent = wgcHandshake(s.latestHandshake); var p = wgcSelected ? wgcProfileById(wgcSelected) : null; $('wgc-endpoint-summary').textContent = wgcEndpoint(p); var rate = wgcSelected && wgcStatus[wgcSelected] && wgcStatus[wgcSelected]._rate || {}; $('wgc-rx').textContent = wgcMbit(rate.rx || 0); $('wgc-tx').textContent = wgcMbit(rate.tx || 0); var warn = $('wgc-runtime-warning'); warn.hidden = !s.error; warn.textContent = s.error || ''; wgcUpdatePeerLive(s); wgcRenderLive(s); }
 function wgcApplyStatus(data) { if (!data)
     return; var eng = data.engine || {}; $('wgc-engine-name').textContent = eng.name || 'WireGuard'; $('wgc-engine-msg').textContent = eng.installed ? (eng.message || eng.version || 'WireGuard listo') : (eng.message || 'Motor no disponible'); $('wgc-engine-dot').className = 'wgclient-engine-dot' + (eng.installed ? ' ok' : ''); $('wgc-engine-install').hidden = !!eng.installed || !eng.canInstall; var now = Date.now(); (data.profiles || []).forEach(function (x) { var snap = x.snapshot || {}, prev = wgcPrev[x.id], rx = 0, tx = 0, peerRates = {}; if (prev && snap.connected) {
     var dt = (now - prev.t) / 1000;
@@ -1223,7 +1312,7 @@ else
 function wgcSave(connectAfter) { var req = { id: wgcSelected || '', name: $('wgc-name').value.trim(), privateKey: $('wgc-private').value.trim(), addresses: wgcSplit($('wgc-address').value), dns: wgcSplit($('wgc-dns').value), mtu: Number($('wgc-mtu').value) || 0, listenPort: Number($('wgc-listen').value) || 0, table: $('wgc-table').value.trim(), notes: $('wgc-notes').value, autoConnect: !!$('wgc-auto').checked, allowHooks: !!$('wgc-hooks-allow').checked, preUp: wgcLines($('wgc-preup').value), postUp: wgcLines($('wgc-postup').value), preDown: wgcLines($('wgc-predown').value), postDown: wgcLines($('wgc-postdown').value), peers: wgcCollectPeers() }; var b = $('wgc-save'); b.disabled = true; wgcNote('Guardando perfil cifrado…', ''); return api('/api/wireguard/perfiles', { method: 'POST', body: JSON.stringify(req) }).then(function (r) { if (r.error) {
     wgcNote(r.error, 'err');
     throw new Error(r.error);
-} wgcSelected = r.profile.id; $('wgc-private').value = ''; wgcNote('Perfil guardado. PrivateKey y PresharedKey quedaron cifradas.', 'ok'); return api('/api/wireguard/perfiles'); }).then(function (list) { wgcProfiles = list || []; wgcLoadProfile(wgcSelected); if (connectAfter)
+} wgcSelected = r.profile.id; $('wgc-private').value = ''; wgcNote('Perfil guardado. PrivateKey y PresharedKey quedaron cifradas.', 'ok'); return api('/api/wireguard/perfiles'); }).then(function (list) { wgcProfiles = list || []; wgcLoadProfile(wgcSelected); wgcSetConfig(false); if (connectAfter)
     return wgcConnectNow(); return; }).finally(function () { b.disabled = false; }); }
 function wgcConnectNow() { if (!wgcSelected)
     return Promise.resolve(); var b = $('wgc-connect'); b.disabled = true; b.textContent = 'Conectando…'; wgcNote('Activando túnel WireGuard integrado…', ''); return api('/api/wireguard/conectar', { method: 'POST', body: JSON.stringify({ id: wgcSelected }) }).then(function (r) { if (r.error) {
@@ -1264,7 +1353,17 @@ else {
     wgcNote('Clave pública copiada.', 'ok');
 } };
 $('wgc-save').onclick = function () { wgcSave(false).catch(function () { }); };
-$('wgc-connect').onclick = function () { wgcSave(true).catch(function () { }); };
+// Con la configuración cerrada no hay nada visible que guardar: se conecta directo.
+$('wgc-connect').onclick = function () { if (wgcConfigAbierta) {
+    wgcSave(true).catch(function () { });
+}
+else {
+    wgcConnectNow();
+} };
+$('wgc-config-toggle').onclick = function () { if (!wgcSelected && !wgcConfigAbierta) {
+    wgcNote('Selecciona un perfil o crea uno nuevo para configurarlo.', 'warn');
+} wgcSetConfig(!wgcConfigAbierta); };
+$('wgc-config-close').onclick = function () { wgcSetConfig(false); };
 $('wgc-disconnect').onclick = function () { if (!wgcSelected)
     return; var b = this; b.disabled = true; b.textContent = 'Desconectando…'; api('/api/wireguard/desconectar', { method: 'POST', body: JSON.stringify({ id: wgcSelected }) }).then(function (r) { if (r.error) {
     wgcNote(r.error, 'err');

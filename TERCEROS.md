@@ -11,6 +11,7 @@ Gateway WISP Access se distribuye bajo **MIT**, pero interactúa con software de
 | [Wails v2](https://github.com/wailsapp/wails) | Shell de escritorio nativo Windows/Linux y puente Go↔frontend | MIT © Wails contributors |
 | [coder/websocket](https://github.com/coder/websocket) | WebSocket del terminal | ISC © Coder Technologies |
 | [golang.org/x/crypto/scrypt](https://pkg.go.dev/golang.org/x/crypto/scrypt) | Derivación de clave para backups | BSD-3-Clause © The Go Authors |
+| [golang.org/x/sys/windows](https://pkg.go.dev/golang.org/x/sys/windows) | Consulta del estado del servicio WireGuard en el SCM de Windows | BSD-3-Clause © The Go Authors |
 | [pkg/sftp](https://github.com/pkg/sftp) | Gestor de archivos remoto | BSD-2-Clause © The pkg/sftp authors |
 | [Go](https://go.dev) | Lenguaje y biblioteca estándar | BSD-3-Clause © The Go Authors |
 | [TypeScript](https://github.com/microsoft/TypeScript) | Compilación del frontend (dependencia de build; no se distribuye como runtime separado) | Apache-2.0 © Microsoft |
