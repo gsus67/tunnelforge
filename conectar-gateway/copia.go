@@ -136,7 +136,7 @@ func manejarExportar(w http.ResponseWriter, r *http.Request) {
 		Password         string
 		IncluirClaves    bool // contraseñas de los servidores
 		IncluirKeys      bool // contenido de las claves SSH privadas
-		IncluirMonitoreo bool // Prometheus/Grafana, targets, puertos y credenciales
+		IncluirMonitoreo bool // Prometheus, targets y puertos
 	}
 	if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
 		responderError(w, err)

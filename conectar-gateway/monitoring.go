@@ -1,21 +1,18 @@
 // Copyright (c) 2026 Gsus — Licencia MIT (ver LICENSE)
 //
 // Monitoreo centralizado de Gateway WISP Access.
-// Grafana/Prometheus/node_exporter se ejecutan como programas independientes;
-// esta aplicación únicamente los instala/configura y los comunica por SSH.
+// Prometheus/node_exporter se ejecutan como programas independientes;
+// esta aplicación los instala/configura y los comunica por SSH.
 package main
 
 import (
 	"bufio"
-	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"sort"
@@ -45,8 +42,6 @@ type MonitoringConfig struct {
 	MonitorServer string             `json:"monitorServer"`
 	PortStart     int                `json:"portStart"`
 	PortEnd       int                `json:"portEnd"`
-	GrafanaUser   string             `json:"grafanaUser"`
-	GrafanaPass   string             `json:"grafanaPassword"`
 	Targets       []MonitoringTarget `json:"targets"`
 	Preparado     bool               `json:"preparado"`
 	Actualizado   string             `json:"actualizado,omitempty"`
@@ -136,11 +131,10 @@ func manejarMonitoringProgreso(w http.ResponseWriter, r *http.Request) {
 
 func monitoringDefault() MonitoringConfig {
 	return MonitoringConfig{
-		Formato:     monitoringFormato,
-		PortStart:   monitoringPuertoInicio,
-		PortEnd:     monitoringPuertoFin,
-		GrafanaUser: "admin",
-		Targets:     []MonitoringTarget{},
+		Formato:   monitoringFormato,
+		PortStart: monitoringPuertoInicio,
+		PortEnd:   monitoringPuertoFin,
+		Targets:   []MonitoringTarget{},
 	}
 }
 
@@ -163,9 +157,6 @@ func cargarMonitoring() MonitoringConfig {
 	}
 	if guardada.PortEnd < guardada.PortStart || guardada.PortEnd > 65535 {
 		guardada.PortEnd = monitoringPuertoFin
-	}
-	if guardada.GrafanaUser == "" {
-		guardada.GrafanaUser = "admin"
 	}
 	if guardada.Targets == nil {
 		guardada.Targets = []MonitoringTarget{}
@@ -192,24 +183,14 @@ func guardarMonitoring(cfg MonitoringConfig) error {
 
 func monitoringPublica(cfg MonitoringConfig) map[string]any {
 	return map[string]any{
-		"formato":              cfg.Formato,
-		"monitorServer":        cfg.MonitorServer,
-		"portStart":            cfg.PortStart,
-		"portEnd":              cfg.PortEnd,
-		"grafanaUser":          cfg.GrafanaUser,
-		"tieneGrafanaPassword": cfg.GrafanaPass != "",
-		"targets":              cfg.Targets,
-		"preparado":            cfg.Preparado,
-		"actualizado":          cfg.Actualizado,
+		"formato":       cfg.Formato,
+		"monitorServer": cfg.MonitorServer,
+		"portStart":     cfg.PortStart,
+		"portEnd":       cfg.PortEnd,
+		"targets":       cfg.Targets,
+		"preparado":     cfg.Preparado,
+		"actualizado":   cfg.Actualizado,
 	}
-}
-
-func monitoringPassword() (string, error) {
-	b := make([]byte, 18)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func monitoringDatosServidor(nombre string) (*Conexion, Servidor, string, error) {
@@ -304,8 +285,6 @@ func monitoringUsuarioValido(s string) bool {
 	return true
 }
 
-func monitoringGrafanaUserValido(s string) bool { return monitoringUsuarioValido(s) && len(s) <= 64 }
-
 func monitoringPreflightScript() string {
 	return `set -eu
 command -v apt-get >/dev/null 2>&1 || { echo "Sistema no soportado: preparación automática requiere Debian/Ubuntu" >&2; exit 42; }
@@ -326,29 +305,13 @@ func monitoringPackagesScript() string {
 	return `set -eu
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -o Acquire::Retries=3
-apt-get install -y prometheus prometheus-node-exporter openssh-client ca-certificates wget gnupg curl
+apt-get install -y prometheus prometheus-node-exporter openssh-client ca-certificates wget
 printf 'PACKAGES_OK\n'
 `
 }
 
-func monitoringGrafanaPackageScript() string {
-	return `set -eu
-export DEBIAN_FRONTEND=noninteractive
-install -d -m 0755 /etc/apt/keyrings
-if [ ! -s /etc/apt/keyrings/grafana.asc ]; then
-  wget -q --tries=3 --timeout=20 -O /etc/apt/keyrings/grafana.asc.tmp https://apt.grafana.com/gpg-full.key
-  mv /etc/apt/keyrings/grafana.asc.tmp /etc/apt/keyrings/grafana.asc
-fi
-chmod 0644 /etc/apt/keyrings/grafana.asc
-printf 'deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main\n' > /etc/apt/sources.list.d/grafana.list
-apt-get update -o Acquire::Retries=3
-apt-get install -y grafana
-printf 'GRAFANA_PACKAGE_OK\n'
-`
-}
-
 func monitoringConfigureScript(cfg MonitoringConfig) string {
-	return fmt.Sprintf(`set -eu
+	return `set -eu
 install -d -m 0700 /var/lib/gateway-wisp-monitor
 install -d -m 0755 /etc/gateway-wisp-monitor /var/lib/gateway-wisp-prometheus
 if [ ! -s /var/lib/gateway-wisp-monitor/id_ed25519 ]; then
@@ -382,196 +345,22 @@ chmod 0750 /etc/gateway-wisp-monitor
 systemctl disable --now prometheus.service >/dev/null 2>&1 || true
 systemctl daemon-reload
 systemctl enable --now gateway-wisp-prometheus.service
-mkdir -p /etc/grafana/provisioning/datasources /etc/grafana/provisioning/dashboards /var/lib/grafana/dashboards
-cat > /etc/grafana/provisioning/datasources/gateway-wisp.yml <<'DS'
-apiVersion: 1
-datasources:
-  - name: Gateway WISP Prometheus
-    uid: gateway-wisp-prometheus
-    type: prometheus
-    access: proxy
-    url: http://127.0.0.1:9090
-    isDefault: true
-    editable: false
-DS
-cat > /etc/grafana/provisioning/dashboards/gateway-wisp.yml <<'DB'
-apiVersion: 1
-providers:
-  - name: Gateway WISP Access
-    orgId: 1
-    folder: Gateway WISP
-    type: file
-    disableDeletion: false
-    updateIntervalSeconds: 10
-    options:
-      path: /var/lib/grafana/dashboards
-DB
-cat > /etc/grafana/grafana.ini <<'GRAF'
-[server]
-http_addr = 127.0.0.1
-http_port = 3000
-root_url = http://127.0.0.1:3000/monitor/grafana/
-serve_from_sub_path = true
-[security]
-admin_user = %s
-admin_password = %s
-cookie_secure = false
-cookie_samesite = strict
-allow_embedding = true
-[auth.anonymous]
-enabled = true
-org_role = Viewer
-[users]
-allow_sign_up = false
-[analytics]
-reporting_enabled = false
-check_for_updates = true
-GRAF
-systemctl enable grafana-server.service >/dev/null 2>&1 || true
 systemctl restart gateway-wisp-prometheus.service
-systemctl restart grafana-server.service
-printf 'CONFIG_OK\n'
-`, cfg.GrafanaUser, cfg.GrafanaPass)
+`
 }
 
 func monitoringVerifyScript() string {
 	return `set -eu
 systemctl is-active --quiet gateway-wisp-prometheus.service
-systemctl is-active --quiet grafana-server.service
-for n in 1 2 3 4 5 6 7 8 9 10; do curl -fsS --max-time 2 http://127.0.0.1:9090/-/ready >/dev/null && break; sleep 1; done
-curl -fsS --max-time 3 http://127.0.0.1:9090/-/ready >/dev/null
-for n in 1 2 3 4 5 6 7 8 9 10; do curl -fsS --max-time 2 http://127.0.0.1:3000/api/health >/dev/null && break; sleep 1; done
-curl -fsS --max-time 3 http://127.0.0.1:3000/api/health >/dev/null
-printf 'VERIFY_OK\n'
-`
-}
-
-func monitoringInstallerMonitor(cfg MonitoringConfig) string {
-	// Grafana OSS se instala desde el repositorio oficial en Debian/Ubuntu.
-	// Prometheus usa el paquete de la distribución y corre con una unidad propia
-	// ligada a 127.0.0.1 para no exponer ni Grafana ni Prometheus a Internet.
-	return fmt.Sprintf(`set -eu
-if ! command -v apt-get >/dev/null 2>&1; then
-  echo "Por seguridad, la instalación automática de 3.2.1 soporta Debian/Ubuntu en esta primera versión." >&2
-  exit 42
-fi
-export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y prometheus prometheus-node-exporter openssh-client ca-certificates wget gnupg
-mkdir -p /etc/apt/keyrings
-wget -q -O /etc/apt/keyrings/grafana.asc https://apt.grafana.com/gpg-full.key
-chmod 0644 /etc/apt/keyrings/grafana.asc
-printf 'deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main\n' > /etc/apt/sources.list.d/grafana.list
-apt-get update
-apt-get install -y grafana
-
-install -d -m 0700 /var/lib/gateway-wisp-monitor
-install -d -m 0755 /etc/gateway-wisp-monitor /var/lib/gateway-wisp-prometheus
-if [ ! -s /var/lib/gateway-wisp-monitor/id_ed25519 ]; then
-  ssh-keygen -q -t ed25519 -N '' -C gateway-wisp-monitor -f /var/lib/gateway-wisp-monitor/id_ed25519
-fi
-: > /var/lib/gateway-wisp-monitor/known_hosts
-chmod 0600 /var/lib/gateway-wisp-monitor/known_hosts
-
-cat > /etc/gateway-wisp-monitor/prometheus.yml <<'PROM'
-global:
-  scrape_interval: 5s
-  evaluation_interval: 5s
-scrape_configs: []
-PROM
-cat > /etc/systemd/system/gateway-wisp-prometheus.service <<'UNIT'
-[Unit]
-Description=Gateway WISP Access Prometheus
-After=network-online.target
-Wants=network-online.target
-[Service]
-Type=simple
-User=prometheus
-ExecStart=/usr/bin/prometheus --config.file=/etc/gateway-wisp-monitor/prometheus.yml --storage.tsdb.path=/var/lib/gateway-wisp-prometheus --web.listen-address=127.0.0.1:9090
-Restart=on-failure
-RestartSec=3
-[Install]
-WantedBy=multi-user.target
-UNIT
-chown -R prometheus:prometheus /var/lib/gateway-wisp-prometheus /etc/gateway-wisp-monitor
-chmod 0750 /etc/gateway-wisp-monitor
-systemctl disable --now prometheus.service >/dev/null 2>&1 || true
-systemctl daemon-reload
-systemctl enable --now gateway-wisp-prometheus.service
-
-mkdir -p /etc/grafana/provisioning/datasources /etc/grafana/provisioning/dashboards /var/lib/grafana/dashboards
-cat > /etc/grafana/provisioning/datasources/gateway-wisp.yml <<'DS'
-apiVersion: 1
-datasources:
-  - name: Gateway WISP Prometheus
-    uid: gateway-wisp-prometheus
-    type: prometheus
-    access: proxy
-    url: http://127.0.0.1:9090
-    isDefault: true
-    editable: false
-DS
-cat > /etc/grafana/provisioning/dashboards/gateway-wisp.yml <<'DB'
-apiVersion: 1
-providers:
-  - name: Gateway WISP Access
-    orgId: 1
-    folder: Gateway WISP
-    type: file
-    disableDeletion: false
-    updateIntervalSeconds: 10
-    options:
-      path: /var/lib/grafana/dashboards
-DB
-
-cat > /etc/grafana/grafana.ini <<'GRAF'
-[server]
-http_addr = 127.0.0.1
-http_port = 3000
-root_url = http://127.0.0.1:3000/monitor/grafana/
-serve_from_sub_path = true
-[security]
-admin_user = %s
-admin_password = %s
-cookie_secure = false
-cookie_samesite = strict
-allow_embedding = true
-[auth.anonymous]
-enabled = true
-org_role = Viewer
-[users]
-allow_sign_up = false
-[analytics]
-reporting_enabled = false
-check_for_updates = true
-GRAF
-systemctl enable --now grafana-server.service
-systemctl restart grafana-server.service
-printf 'MONITOR_OK\n'
-`, cfg.GrafanaUser, cfg.GrafanaPass)
-}
-
-func dashboardOverviewJSON() string {
-	// Dashboard original de Gateway WISP Access, no copiado de Grafana.com.
-	return `{"annotations":{"list":[]},"editable":true,"graphTooltip":1,"panels":[{"type":"stat","title":"Servidores UP","id":1,"gridPos":{"h":4,"w":6,"x":0,"y":0},"targets":[{"expr":"sum(up{job=\"gateway-wisp\"})","refId":"A"}]},{"type":"timeseries","title":"CPU por servidor (%)","id":2,"gridPos":{"h":8,"w":12,"x":0,"y":4},"targets":[{"expr":"100 - (avg by (server) (rate(node_cpu_seconds_total{job=\"gateway-wisp\",mode=\"idle\"}[2m])) * 100)","legendFormat":"{{server}}","refId":"A"}]},{"type":"timeseries","title":"RAM por servidor (%)","id":3,"gridPos":{"h":8,"w":12,"x":12,"y":4},"targets":[{"expr":"100 * (1 - (node_memory_MemAvailable_bytes{job=\"gateway-wisp\"} / node_memory_MemTotal_bytes{job=\"gateway-wisp\"}))","legendFormat":"{{server}}","refId":"A"}]},{"type":"timeseries","title":"Tráfico RX (Mbit/s)","id":4,"gridPos":{"h":8,"w":12,"x":0,"y":12},"targets":[{"expr":"sum by (server) (rate(node_network_receive_bytes_total{job=\"gateway-wisp\",device!~\"lo\"}[1m])) * 8 / 1000000","legendFormat":"{{server}}","refId":"A"}]},{"type":"timeseries","title":"Tráfico TX (Mbit/s)","id":5,"gridPos":{"h":8,"w":12,"x":12,"y":12},"targets":[{"expr":"sum by (server) (rate(node_network_transmit_bytes_total{job=\"gateway-wisp\",device!~\"lo\"}[1m])) * 8 / 1000000","legendFormat":"{{server}}","refId":"A"}]}],"refresh":"5s","schemaVersion":39,"tags":["gateway-wisp-access"],"templating":{"list":[]},"time":{"from":"now-6h","to":"now"},"title":"Gateway WISP - Infraestructura","uid":"gateway-wisp-overview","version":1}`
-}
-
-func dashboardWireGuardJSON() string {
-	return `{"annotations":{"list":[]},"editable":true,"graphTooltip":1,"panels":[{"type":"stat","title":"Peers con handshake reciente","id":1,"gridPos":{"h":4,"w":6,"x":0,"y":0},"targets":[{"expr":"count((time() - gateway_wisp_wireguard_peer_latest_handshake_seconds) < 180)","refId":"A"}]},{"type":"timeseries","title":"RX por peer (Mbit/s)","id":2,"gridPos":{"h":9,"w":12,"x":0,"y":4},"targets":[{"expr":"irate(gateway_wisp_wireguard_peer_receive_bytes_total[30s]) * 8 / 1000000","legendFormat":"{{server}} · {{peer_name}}","refId":"A"}]},{"type":"timeseries","title":"TX por peer (Mbit/s)","id":3,"gridPos":{"h":9,"w":12,"x":12,"y":4},"targets":[{"expr":"irate(gateway_wisp_wireguard_peer_transmit_bytes_total[30s]) * 8 / 1000000","legendFormat":"{{server}} · {{peer_name}}","refId":"A"}]},{"type":"table","title":"Peers WireGuard","id":4,"gridPos":{"h":10,"w":24,"x":0,"y":13},"targets":[{"expr":"gateway_wisp_wireguard_peer_latest_handshake_seconds","format":"table","instant":true,"refId":"A"}]}],"refresh":"5s","schemaVersion":39,"tags":["gateway-wisp-access","wireguard"],"templating":{"list":[]},"time":{"from":"now-3h","to":"now"},"title":"Gateway WISP - WireGuard Peers","uid":"gateway-wisp-wireguard","version":1}`
-}
-
-func monitoringEscribirDashboards(cfg MonitoringConfig) error {
-	ov := base64.StdEncoding.EncodeToString([]byte(dashboardOverviewJSON()))
-	wg := base64.StdEncoding.EncodeToString([]byte(dashboardWireGuardJSON()))
-	script := fmt.Sprintf(`set -eu
-install -d -m 0755 /var/lib/grafana/dashboards
-printf %%s %s | base64 -d > /var/lib/grafana/dashboards/gateway-wisp-overview.json
-printf %%s %s | base64 -d > /var/lib/grafana/dashboards/gateway-wisp-wireguard.json
-chown grafana:grafana /var/lib/grafana/dashboards/*.json
-systemctl restart grafana-server.service
-`, shellQ(ov), shellQ(wg))
-	_, err := monitoringRoot(cfg.MonitorServer, script)
-	return err
+for i in 1 2 3 4 5 6; do
+  if wget -q -T 3 -O /dev/null http://127.0.0.1:9090/-/ready; then
+    echo PROMETHEUS_OK
+    exit 0
+  fi
+  sleep 2
+done
+echo "Prometheus no respondió en 127.0.0.1:9090" >&2
+exit 47`
 }
 
 func monitoringInstalarAgente(nombre string) error {
@@ -587,7 +376,7 @@ if command -v apt-get >/dev/null 2>&1; then
   systemctl enable prometheus-node-exporter.service >/dev/null 2>&1 || true
   systemctl restart prometheus-node-exporter.service
 else
-  echo "La instalación automática del agente de 3.2.0 soporta Debian/Ubuntu en esta primera versión. Instala node_exporter manualmente en otras distribuciones." >&2
+  echo "La instalación automática del agente de Monitoreo soporta Debian/Ubuntu. Instala node_exporter manualmente en otras distribuciones." >&2
   exit 43
 fi
 cat > /usr/local/lib/gateway-wisp-access/wg-peer-metrics.sh <<'WGEOF'
@@ -625,7 +414,7 @@ for pat in patterns:
     try: cols=[r[1] for r in con.execute(f'pragma table_info("{table}")')]
     except Exception: continue
     norm={c.lower().replace('-','_'):c for c in cols}
-    kcol=next((norm[k] for k in ('public_key','publickey','peer_public_key','peerpublickey') if k in norm),None)
+    kcol=next((norm[k] for k in ('public_key','publickey','peer_public_key','peerpublickey','id') if k in norm),None)
     ncol=next((norm[k] for k in ('name','peer_name','peername','client_name','clientname') if k in norm),None)
     if not kcol or not ncol: continue
     try:
@@ -836,7 +625,7 @@ func monitoringQuitarTunel(cfg MonitoringConfig, target string) error {
 
 func monitoringAplicarTarget(cfg *MonitoringConfig, nombre string) error {
 	if cfg.MonitorServer == "" {
-		return fmt.Errorf("primero selecciona el servidor Prometheus/Grafana")
+		return fmt.Errorf("primero selecciona el servidor de monitoreo")
 	}
 	if !cfg.Preparado {
 		return fmt.Errorf("primero prepara el servidor de monitoreo")
@@ -919,9 +708,8 @@ func manejarMonitoringEstado(w http.ResponseWriter, r *http.Request) {
 		}
 		servidores = append(servidores, item)
 	}
-	grafanaOnline := monitoringServicioOnline(cfg, 3000)
 	prometheusOnline := monitoringServicioOnline(cfg, 9090)
-	responder(w, map[string]any{"ok": true, "config": monitoringPublica(cfg), "servidores": servidores, "grafanaProxy": "/monitor/grafana/", "grafanaOnline": grafanaOnline, "prometheusOnline": prometheusOnline})
+	responder(w, map[string]any{"ok": true, "config": monitoringPublica(cfg), "servidores": servidores, "prometheusOnline": prometheusOnline})
 }
 
 func manejarMonitoringConfig(w http.ResponseWriter, r *http.Request) {
@@ -930,11 +718,9 @@ func manejarMonitoringConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var pet struct {
-		MonitorServer   string `json:"monitorServer"`
-		PortStart       int    `json:"portStart"`
-		PortEnd         int    `json:"portEnd"`
-		GrafanaUser     string `json:"grafanaUser"`
-		GrafanaPassword string `json:"grafanaPassword"`
+		MonitorServer string `json:"monitorServer"`
+		PortStart     int    `json:"portStart"`
+		PortEnd       int    `json:"portEnd"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&pet); err != nil {
 		responderError(w, err)
@@ -962,33 +748,6 @@ func manejarMonitoringConfig(w http.ResponseWriter, r *http.Request) {
 	cfg.MonitorServer = pet.MonitorServer
 	cfg.PortStart = pet.PortStart
 	cfg.PortEnd = pet.PortEnd
-	if strings.TrimSpace(pet.GrafanaUser) != "" {
-		u := strings.TrimSpace(pet.GrafanaUser)
-		if !monitoringGrafanaUserValido(u) {
-			responderError(w, fmt.Errorf("usuario Grafana no válido"))
-			return
-		}
-		cfg.GrafanaUser = u
-	}
-	if pet.GrafanaPassword != "" {
-		if strings.ContainsAny(pet.GrafanaPassword, "\r\n") || len(pet.GrafanaPassword) > 128 {
-			responderError(w, fmt.Errorf("contraseña Grafana no válida"))
-			return
-		}
-		if len(pet.GrafanaPassword) < 10 {
-			responderError(w, fmt.Errorf("la contraseña de Grafana debe tener al menos 10 caracteres"))
-			return
-		}
-		cfg.GrafanaPass = pet.GrafanaPassword
-	}
-	if cfg.GrafanaPass == "" {
-		p, e := monitoringPassword()
-		if e != nil {
-			responderError(w, e)
-			return
-		}
-		cfg.GrafanaPass = p
-	}
 	if err := guardarMonitoring(cfg); err != nil {
 		responderError(w, err)
 		return
@@ -1009,52 +768,32 @@ func manejarMonitoringPreparar(w http.ResponseWriter, r *http.Request) {
 		responderError(w, fmt.Errorf("configura el servidor de monitoreo"))
 		return
 	}
-	if cfg.GrafanaPass == "" {
-		p, e := monitoringPassword()
-		if e != nil {
-			fail("No pude generar la contraseña de Grafana", "", e)
-			return
-		}
-		cfg.GrafanaPass = p
-	}
-	monitoringProgreso("1/6 · Preflight: sistema, systemd y bloqueos de paquetes…", 8)
+	monitoringProgreso("1/4 · Preflight: sistema, systemd y bloqueos de paquetes…", 10)
 	out, err := monitoringRoot(cfg.MonitorServer, monitoringPreflightScript())
 	monitoringProgresoLog(out)
 	if err != nil {
 		fail("Falló el preflight", out, err)
 		return
 	}
-	monitoringProgreso("2/6 · Instalando Prometheus, node_exporter y herramientas…", 22)
+	monitoringProgreso("2/4 · Instalando Prometheus, node_exporter y herramientas…", 35)
 	out, err = monitoringRoot(cfg.MonitorServer, monitoringPackagesScript())
 	monitoringProgresoLog(out)
 	if err != nil {
 		fail("Falló la instalación de paquetes base", out, err)
 		return
 	}
-	monitoringProgreso("3/6 · Configurando repositorio e instalando Grafana OSS…", 44)
-	out, err = monitoringRoot(cfg.MonitorServer, monitoringGrafanaPackageScript())
-	monitoringProgresoLog(out)
-	if err != nil {
-		fail("Falló la instalación de Grafana", out, err)
-		return
-	}
-	monitoringProgreso("4/6 · Creando servicios locales y configuración segura…", 64)
+	monitoringProgreso("3/4 · Creando Prometheus y la infraestructura SSH segura…", 70)
 	out, err = monitoringRoot(cfg.MonitorServer, monitoringConfigureScript(cfg))
 	monitoringProgresoLog(out)
 	if err != nil {
-		fail("Falló la configuración de servicios", out, err)
+		fail("Falló la configuración de Prometheus", out, err)
 		return
 	}
-	monitoringProgreso("5/6 · Provisionando dashboards…", 80)
-	if err = monitoringEscribirDashboards(cfg); err != nil {
-		fail("Falló el provisionado de dashboards", "", err)
-		return
-	}
-	monitoringProgreso("6/6 · Verificando Prometheus y Grafana por HTTP local…", 94)
+	monitoringProgreso("4/4 · Verificando Prometheus por HTTP local…", 94)
 	out, err = monitoringRoot(cfg.MonitorServer, monitoringVerifyScript())
 	monitoringProgresoLog(out)
 	if err != nil {
-		fail("Los servicios no respondieron correctamente", out, err)
+		fail("Prometheus no respondió correctamente", out, err)
 		return
 	}
 	cfg.Preparado = true
@@ -1062,8 +801,8 @@ func manejarMonitoringPreparar(w http.ResponseWriter, r *http.Request) {
 		fail("No pude guardar el estado de monitoreo", "", err)
 		return
 	}
-	monitoringProgresoFin("Prometheus y Grafana preparados y verificados.", true)
-	responder(w, map[string]any{"ok": true, "mensaje": "Monitor preparado y verificado. Prometheus y Grafana responden correctamente."})
+	monitoringProgresoFin("Prometheus preparado y verificado.", true)
+	responder(w, map[string]any{"ok": true, "mensaje": "Monitor preparado y verificado. Prometheus está listo."})
 }
 
 func manejarMonitoringTargets(w http.ResponseWriter, r *http.Request) {
@@ -1125,15 +864,6 @@ func manejarMonitoringTargets(w http.ResponseWriter, r *http.Request) {
 	}
 	monitoringProgresoFin("Selección aplicada y verificada.", true)
 	responder(w, map[string]any{"ok": true, "targets": cfg.Targets})
-}
-
-func manejarMonitoringCredenciales(w http.ResponseWriter, r *http.Request) {
-	cfg := cargarMonitoring()
-	if cfg.GrafanaPass == "" {
-		responderError(w, fmt.Errorf("Grafana aún no está configurada"))
-		return
-	}
-	responder(w, map[string]any{"ok": true, "usuario": cfg.GrafanaUser, "password": cfg.GrafanaPass})
 }
 
 type prometheusVectorResponse struct {
@@ -1276,8 +1006,14 @@ func manejarMonitoringPeers(w http.ResponseWriter, r *http.Request) {
 	tx, _ := monitoringPromQuery(cfg, `irate(gateway_wisp_wireguard_peer_transmit_bytes_total[30s]) * 8 / 1000000`)
 	hs, _ := monitoringPromQuery(cfg, `time() - gateway_wisp_wireguard_peer_latest_handshake_seconds`)
 	type peer struct {
-		Nombre, Servidor, Interfaz, AllowedIPs, Key string
-		RxMbit, TxMbit, HandshakeAge                float64
+		Nombre       string  `json:"nombre"`
+		Servidor     string  `json:"servidor"`
+		Interfaz     string  `json:"interfaz"`
+		AllowedIPs   string  `json:"allowedIps"`
+		Key          string  `json:"key"`
+		RxMbit       float64 `json:"rxMbit"`
+		TxMbit       float64 `json:"txMbit"`
+		HandshakeAge float64 `json:"handshakeAge"`
 	}
 	m := map[string]*peer{}
 	keyOf := func(mm map[string]string) string {
@@ -1323,55 +1059,6 @@ func manejarMonitoringPeers(w http.ResponseWriter, r *http.Request) {
 		return strings.ToLower(peers[i].Servidor) < strings.ToLower(peers[j].Servidor)
 	})
 	responder(w, map[string]any{"ok": true, "peers": peers})
-}
-
-// Proxy de Grafana dentro de la propia WebView. El primer request requiere el
-// token local de la app y deja una cookie HttpOnly restringida a este path.
-func crearGrafanaProxy(token string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cookieOK := false
-		if c, e := r.Cookie("gwmon"); e == nil && c.Value == token {
-			cookieOK = true
-		}
-		if !cookieOK && r.URL.Query().Get("t") == token {
-			http.SetCookie(w, &http.Cookie{Name: "gwmon", Value: token, Path: "/monitor/grafana/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
-			cookieOK = true
-		}
-		if !cookieOK {
-			http.Error(w, "no autorizado", 403)
-			return
-		}
-		q := r.URL.Query()
-		q.Del("t")
-		r.URL.RawQuery = q.Encode()
-		cfg := cargarMonitoring()
-		if cfg.MonitorServer == "" || !cfg.Preparado {
-			http.Error(w, "monitoreo no configurado", 503)
-			return
-		}
-		mu.Lock()
-		con := conexiones[cfg.MonitorServer]
-		mu.Unlock()
-		if con == nil {
-			http.Error(w, "conecta el servidor de monitoreo para ver Grafana", 503)
-			return
-		}
-		target, _ := url.Parse("http://127.0.0.1:3000")
-		proxy := httputil.NewSingleHostReverseProxy(target)
-		proxy.Transport = &http.Transport{DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return con.cliente.Dial("tcp", "127.0.0.1:3000")
-		}}
-		proxy.ModifyResponse = func(resp *http.Response) error {
-			if loc := resp.Header.Get("Location"); strings.HasPrefix(loc, "http://127.0.0.1:3000/monitor/grafana/") {
-				resp.Header.Set("Location", strings.TrimPrefix(loc, "http://127.0.0.1:3000"))
-			}
-			return nil
-		}
-		proxy.ErrorHandler = func(rw http.ResponseWriter, req *http.Request, e error) {
-			http.Error(rw, "Grafana no disponible: "+e.Error(), 502)
-		}
-		proxy.ServeHTTP(w, r)
-	}
 }
 
 // Comprobación rápida de servicios ligados a localhost en el monitor.

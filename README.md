@@ -20,28 +20,27 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 ---
 
 
-## Monitoreo / Grafana
+## Monitoreo
 
-Gateway WISP Access puede preparar un servidor central con **Prometheus + Grafana OSS** y monitorizar únicamente los perfiles que el usuario seleccione. Los agentes `node_exporter` quedan ligados a `127.0.0.1:9100`; Prometheus accede a ellos mediante túneles SSH persistentes administrados por la aplicación.
+Gateway WISP Access puede preparar un servidor central con **Prometheus** y monitorizar únicamente los perfiles que el usuario seleccione. Los agentes `node_exporter` quedan ligados a `127.0.0.1:9100`; Prometheus accede a ellos mediante túneles SSH persistentes administrados por la aplicación.
 
 - Puertos locales de túnel asignados automáticamente (rango 19100–19999 configurable).
-- Grafana embebida dentro de la ventana de la aplicación.
-- CPU, RAM y tráfico de red en Mbit/s.
+- Resumen nativo de CPU, RAM, disco y tráfico RX/TX en Mbit/s por servidor.
 - Vista compacta de peers WireGuard, un peer por fila, con nombre amigable, RX/TX en Mbit/s y último handshake.
 - Búsqueda y orden de peers por nombre, descarga, subida o actividad.
 - Diagnóstico por servidor para comprobar SSH, node_exporter, túnel y Prometheus sin cambiar la configuración.
-- Progreso visible durante la preparación de Prometheus/Grafana y al aplicar targets, para saber qué paso está ejecutándose.
-- Configuración y credenciales de Monitoreo cifradas localmente.
-- Resumen nativo responsive con CPU, RAM, disco y tráfico por servidor, sin depender del layout del dashboard de Grafana.
-- Preparación guiada por fases con verificación real de Prometheus/Grafana antes de marcar el monitor como listo.
-- Nombres de peers obtenidos de WGDashboard cuando existe una base SQLite compatible y con fallback a comentarios WireGuard.
-- La copia `.cgw` puede transportar también la configuración de Monitoreo/Grafana.
+- Progreso visible durante la preparación de Prometheus y al aplicar targets.
+- Configuración de Monitoreo cifrada localmente.
+- Nombres de peers obtenidos de WGDashboard cuando existe una base SQLite compatible y con fallback a comentarios WireGuard/AllowedIPs.
+- La copia `.cgw` puede transportar toda la configuración de Monitoreo junto con servidores, túneles y claves SSH.
 
-La preparación muestra ahora cada etapa en la propia interfaz. La instalación automática inicial está deliberadamente limitada a **Debian/Ubuntu** para evitar aplicar comandos de paquetes no verificados sobre distribuciones distintas. Consulte `TERCEROS.md` para las licencias de Grafana, Prometheus, node_exporter y WireGuard tools.
+Desde **v3.2.3 Grafana ya no es necesario ni se instala por la aplicación**: la vista nativa cubre el resumen y los peers, mientras Prometheus permanece como motor de recolección e historial. Si una versión anterior instaló Grafana en un servidor, la actualización no lo desinstala automáticamente para evitar eliminar software que el usuario pueda estar utilizando por separado.
+
+La instalación automática inicial está deliberadamente limitada a **Debian/Ubuntu** para evitar aplicar comandos de paquetes no verificados sobre distribuciones distintas. Consulte `TERCEROS.md` para las licencias de Prometheus, node_exporter y WireGuard tools.
 
 ### Evolución de la interfaz
 
-La versión estable continúa usando la UI WebView actual mientras se valida Monitoreo 3.2.2. `frontend-next/` conserva la base TypeScript para la migración a **Go + Wails + TypeScript**; el cambio de shell se hará después de validar esta corrección para no mezclar una migración estructural con fallos funcionales.
+La versión estable continúa usando la UI WebView actual. `frontend-next/` conserva la base TypeScript para la migración progresiva a **Go + Wails + TypeScript**, que se completa por etapas sin sustituir funciones estables antes de validarlas.
 
 ## Qué hace
 

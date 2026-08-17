@@ -1,3 +1,16 @@
+## v3.2.3
+
+### Monitoreo simplificado y WireGuard peers
+
+- Eliminada la dependencia funcional de Grafana: la app ya no lo instala, configura ni embebe.
+- Prometheus permanece como motor de métricas e historial; la visualización diaria se hace con la interfaz nativa de Gateway WISP Access.
+- Preparación del monitor reducida a cuatro fases: preflight, paquetes, configuración segura y verificación de Prometheus.
+- Corregido el contrato JSON de WireGuard peers (`nombre`, `servidor`, `interfaz`, `allowedIps`, `rxMbit`, `txMbit`, `handshakeAge`). Este error hacía que la interfaz mostrara “Peer WireGuard”, `wg` y 0.00 Mbit/s aunque el backend tuviera métricas.
+- Se mantiene la resolución de nombres desde WGDashboard/configuración WireGuard y el fallback a AllowedIPs/clave corta.
+- Backups de Monitoreo ya no guardan credenciales de Grafana. Backups antiguos siguen siendo importables; los campos legacy se ignoran.
+- Una instalación previa de Grafana no se desinstala automáticamente al actualizar, para no borrar software potencialmente reutilizado por el usuario.
+- Metadata de Windows sincronizada completamente a 3.2.3.
+
 ## v3.2.2
 
 - Corregida la publicación de GitHub Releases para reemplazar assets existentes de forma determinista con GitHub CLI y evitar conflictos de borradores duplicados.

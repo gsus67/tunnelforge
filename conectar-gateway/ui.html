@@ -741,10 +741,10 @@
   .gw-terminal-side{min-height:0;display:flex;flex-direction:column;background:#050c12}.gw-terminal-head{height:36px;flex:none;padding:0 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(77,134,184,.14);font-size:10.5px;color:var(--suave)}#gw-term{flex:1;min-height:0;padding:6px}.gw-terminal-note{font-size:9.5px;color:var(--suave)}
   @media(max-width:980px){.gw-body{grid-template-columns:1fr}.gw-left{max-height:45vh;border-right:0;border-bottom:1px solid var(--linea)}}
 
-  /* Monitoreo / Grafana */
+  /* Monitoreo */
   .monitoring-view{padding:0!important;background:none!important;border:0!important;box-shadow:none!important}
   .monitor-layout{display:grid;grid-template-columns:minmax(330px,390px) minmax(0,1fr);gap:10px;height:calc(100vh - 124px);min-height:560px}
-  .monitor-control,.monitor-grafana{min-height:0;height:100%;overflow:hidden}
+  .monitor-control,.monitor-display{min-height:0;height:100%;overflow:hidden}
   .monitor-control{display:flex;flex-direction:column;gap:8px}
   .monitor-status-row{display:flex;gap:12px;align-items:center;padding:7px 9px;background:rgba(8,22,35,.72);border:1px solid var(--borde-frio);border-radius:8px;font-size:11px;color:var(--texto-2)}
   .monitor-status-row span{display:flex;align-items:center;gap:5px}.status-dot{width:7px;height:7px;border-radius:50%;background:#657789;display:inline-block}.status-dot.ok{background:var(--verde);box-shadow:0 0 8px rgba(77,225,154,.4)}
@@ -756,8 +756,7 @@
   .mon-server-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:7px 8px;border-bottom:1px solid rgba(77,134,184,.10)}.mon-server-row:last-child{border-bottom:0}.mon-server-row input{width:14px;height:14px}.mon-server-main{min-width:0;display:flex;flex-direction:column}.mon-server-main b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mon-server-main small{font-size:10px;color:var(--suave)}.mon-server-state{font-size:10px;color:var(--suave);text-align:right}.mon-server-state.on{color:var(--verde)}.mon-diag-btn{padding:3px 6px!important;font-size:9px!important}
   .monitor-note{font-size:10.5px;color:var(--suave);line-height:1.35;min-height:14px}.monitor-note.err{color:#ff9a9a}.monitor-note.ok{color:var(--verde)}
   .monitor-advanced{font-size:11px;border-top:1px solid var(--borde-frio-2);padding-top:6px}.monitor-advanced summary{cursor:pointer;color:var(--texto-2)}.monitor-port-map{padding:7px 0;font:10px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--suave)}.monitor-advanced button{padding:6px 8px!important;font-size:10.5px!important}
-  .monitor-grafana{display:flex;flex-direction:column;padding:0!important}.grafana-toolbar{height:42px;display:flex;justify-content:space-between;align-items:center;padding:0 10px;border-bottom:1px solid var(--borde-frio-2);flex:none}.grafana-tabs{display:flex;height:100%;gap:4px}.grafana-tabs button{border:0!important;background:transparent!important;border-radius:0!important;padding:0 10px!important;font-size:12px!important;border-bottom:2px solid transparent!important}.grafana-tabs button.activo{color:var(--texto);border-bottom-color:#5aa9ff!important}.grafana-help{display:flex;gap:8px;align-items:center;color:var(--suave);font-size:10px}.grafana-help button{padding:5px 7px!important}
-  .grafana-frame-wrap{position:relative;flex:1;min-height:0;background:#0b1118}.grafana-frame-wrap iframe{width:100%;height:100%;border:0;display:none;background:#0b1118}.grafana-frame-wrap iframe.visible{display:block}.grafana-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:30px;color:var(--suave)}.grafana-placeholder b{font-size:15px;color:var(--texto-2)}.grafana-placeholder span{font-size:12px;max-width:480px;line-height:1.5}.grafana-placeholder.hidden{display:none}
+  .monitor-display{display:flex;flex-direction:column;padding:0!important}.monitor-toolbar{height:42px;display:flex;justify-content:space-between;align-items:center;padding:0 10px;border-bottom:1px solid var(--borde-frio-2);flex:none}.monitor-tabs{display:flex;height:100%;gap:4px}.monitor-tabs button{border:0!important;background:transparent!important;border-radius:0!important;padding:0 10px!important;font-size:12px!important;border-bottom:2px solid transparent!important}.monitor-tabs button.activo{color:var(--texto);border-bottom-color:#5aa9ff!important}.monitor-help{display:flex;gap:8px;align-items:center;color:var(--suave);font-size:10px}.monitor-help button{padding:5px 7px!important}
   .wg-legend{flex:none;padding:6px 10px;border-top:1px solid var(--borde-frio-2);font-size:9.5px;color:var(--suave)}
   @media(max-width:1050px){.monitor-layout{grid-template-columns:330px minmax(0,1fr)}}
 
@@ -778,9 +777,9 @@
   @media(max-width:1180px){.mon-peer-row{grid-template-columns:minmax(130px,1.4fr) 80px 80px 82px}.mon-peer-server{display:none}}
 
 
-  /* 3.2.2: resumen nativo responsive para Monitoreo */
+  /* 3.2.3: resumen nativo responsive para Monitoreo */
   .monitor-layout{grid-template-columns:clamp(300px,26vw,390px) minmax(0,1fr)!important;height:calc(100vh - 112px)!important;min-height:500px!important;align-items:stretch}
-  .monitor-grafana{min-width:0!important}
+  .monitor-display{min-width:0!important}
   .mon-summary-view{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
   .mon-summary-view[hidden]{display:none!important}
   .mon-kpis{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:8px}
@@ -792,10 +791,9 @@
   .mon-health-name{min-width:0}.mon-health-name b{display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mon-health-name small{display:block;font-size:9.5px;color:var(--suave);margin-top:3px}.mon-live-dot{width:7px;height:7px;border-radius:50%;background:#627587;flex:none}.mon-live-dot.ok{background:var(--verde);box-shadow:0 0 7px rgba(77,225,154,.35)}
   .mon-health-metric span{display:block;font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--suave);margin-bottom:3px}.mon-health-metric b{font-size:11px;font-variant-numeric:tabular-nums}.mon-mini{height:3px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-top:4px}.mon-mini i{display:block;height:100%;background:linear-gradient(90deg,#4fe1a0,#5aa9ff);max-width:100%}
   .mon-health-net{grid-column:1/-1;display:flex;justify-content:flex-end;gap:14px;border-top:1px solid rgba(111,159,195,.08);padding-top:6px;font-size:9.5px;color:var(--texto-2)}.mon-health-net b{font-variant-numeric:tabular-nums}.mon-health-net .rx{color:#69b7ff}.mon-health-net .tx{color:#67dda7}
-  .grafana-frame-wrap[hidden]{display:none!important}.grafana-frame-wrap iframe{min-width:0!important}
   @media(min-width:1550px){.mon-health-list{grid-template-columns:repeat(3,minmax(280px,1fr))}.mon-kpis{grid-template-columns:repeat(4,minmax(160px,1fr))}}
   @media(max-width:1180px){.monitor-layout{grid-template-columns:310px minmax(0,1fr)!important}.mon-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))}.mon-health-list{grid-template-columns:1fr}.mon-health-card{grid-template-columns:minmax(110px,1fr) repeat(3,60px)}}
-  @media(max-width:900px){.monitor-layout{grid-template-columns:1fr!important;height:auto!important}.monitor-control,.monitor-grafana{height:auto!important}.mon-summary-view{max-height:none}.mon-health-list{grid-template-columns:1fr}}
+  @media(max-width:900px){.monitor-layout{grid-template-columns:1fr!important;height:auto!important}.monitor-control,.monitor-display{height:auto!important}.mon-summary-view{max-height:none}.mon-health-list{grid-template-columns:1fr}}
 
 </style>
 </head>
@@ -961,7 +959,7 @@
                 <div class="check"><input type="checkbox" id="exp-keys" checked>
                   <label for="exp-keys" style="margin:0">Incluir claves SSH privadas</label></div>
                 <div class="check"><input type="checkbox" id="exp-monitoring" checked>
-                  <label for="exp-monitoring" style="margin:0">Incluir Monitoreo / Grafana</label></div>
+                  <label for="exp-monitoring" style="margin:0">Incluir Monitoreo</label></div>
                 <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar…</button>
                 <div class="res" id="exp-res"></div>
               </div>
@@ -989,21 +987,16 @@
           <div class="monitor-layout">
             <aside class="panel monitor-control">
               <div class="panel-header">
-                <div class="panel-title"><div class="ico">▥</div><div><h3>Monitoreo centralizado</h3><p>Prometheus + Grafana por túneles SSH persistentes.</p></div></div>
+                <div class="panel-title"><div class="ico">▥</div><div><h3>Monitoreo centralizado</h3><p>Prometheus por túneles SSH persistentes.</p></div></div>
               </div>
               <div class="monitor-status-row">
                 <span><i class="status-dot" id="mon-prom-dot"></i> Prometheus</span>
-                <span><i class="status-dot" id="mon-graf-dot"></i> Grafana</span>
                 <span id="mon-target-count">0 targets</span>
               </div>
-              <div class="campo"><label>Servidor Prometheus + Grafana</label><select id="mon-server"></select></div>
+              <div class="campo"><label>Servidor de monitoreo (Prometheus)</label><select id="mon-server"></select></div>
               <div class="monitor-two">
                 <div class="campo"><label>Puerto inicial</label><input type="number" id="mon-port-start" min="1024" max="65535" value="19100"></div>
                 <div class="campo"><label>Puerto final</label><input type="number" id="mon-port-end" min="1024" max="65535" value="19999"></div>
-              </div>
-              <div class="monitor-two">
-                <div class="campo"><label>Usuario Grafana</label><input type="text" id="mon-graf-user" value="admin"></div>
-                <div class="campo"><label>Contraseña Grafana</label><input type="password" id="mon-graf-pass" placeholder="dejar vacío para conservar/generar"></div>
               </div>
               <div class="monitor-actions"><button id="mon-save">Guardar</button><button class="principal" id="mon-prepare">Preparar monitor</button></div>
               <div class="monitor-progress" id="mon-progress" hidden><div class="monitor-progress-head"><b id="mon-progress-title">Preparando…</b><span id="mon-progress-pct">0%</span></div><div class="monitor-progress-track"><i id="mon-progress-bar"></i></div><div class="monitor-progress-stage" id="mon-progress-stage">Esperando…</div><div class="monitor-progress-log" id="mon-progress-log"></div></div>
@@ -1012,21 +1005,17 @@
               <div class="monitor-server-list" id="mon-server-list"></div>
               <button class="principal monitor-apply" id="mon-apply">Aplicar selección</button>
               <div class="monitor-note" id="mon-note">Selecciona el servidor monitor y los equipos que quieres supervisar.</div>
-              <details class="monitor-advanced"><summary>Detalles avanzados</summary><div id="mon-port-map" class="monitor-port-map"></div><button id="mon-creds">Ver credenciales Grafana</button></details>
+              <details class="monitor-advanced"><summary>Detalles avanzados</summary><div id="mon-port-map" class="monitor-port-map"></div></details>
             </aside>
-            <section class="panel monitor-grafana">
-              <div class="grafana-toolbar">
-                <div class="grafana-tabs"><button class="activo" id="mon-tab-overview">Resumen</button><button id="mon-tab-wg">WireGuard peers</button><button id="mon-tab-grafana">Grafana</button></div>
-                <div class="grafana-help"><span id="mon-view-label">Vista rápida nativa</span><button id="mon-reload">↻</button></div>
+            <section class="panel monitor-display">
+              <div class="monitor-toolbar">
+                <div class="monitor-tabs"><button class="activo" id="mon-tab-overview">Resumen</button><button id="mon-tab-wg">WireGuard peers</button></div>
+                <div class="monitor-help"><span id="mon-view-label">Vista rápida nativa</span><button id="mon-reload">↻</button></div>
               </div>
               <div class="mon-summary-view" id="mon-summary-view">
                 <div class="mon-kpis" id="mon-kpis"><div class="mon-kpi"><span>Estado</span><b>—</b><small>Cargando métricas…</small></div></div>
                 <div class="mon-summary-title"><div><b>Servidores</b><small> · métricas en tiempo real</small></div><small>Actualización 5 s</small></div>
                 <div class="mon-health-list" id="mon-health-list"><div class="mon-peer-empty">Todavía no hay métricas.</div></div>
-              </div>
-              <div class="grafana-frame-wrap" id="mon-grafana-wrap" hidden>
-                <div class="grafana-placeholder" id="mon-placeholder"><b>Grafana todavía no está disponible.</b><span>Conecta y prepara el servidor de monitoreo. Después selecciona los servidores que quieres supervisar.</span></div>
-                <iframe id="mon-grafana-frame" title="Grafana" referrerpolicy="same-origin"></iframe>
               </div>
               <div class="mon-peer-view" id="mon-peer-view" hidden>
                 <div class="mon-peer-head"><div><b>Peers WireGuard</b><small>Tráfico instantáneo por peer, actualizado automáticamente.</small></div><button id="mon-peer-refresh">↻</button></div><div class="mon-peer-tools"><input id="mon-peer-search" type="search" placeholder="Buscar peer o servidor…"><select id="mon-peer-sort"><option value="name">Nombre</option><option value="rx">Mayor descarga</option><option value="tx">Mayor subida</option><option value="active">Más activos</option></select></div>
@@ -1130,8 +1119,7 @@
             <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a>
             <a href="https://github.com/pkg/sftp" target="_blank">pkg/sftp</a>
             <a href="https://github.com/webview/webview" target="_blank">webview</a>
-            <a href="https://github.com/grafana/grafana" target="_blank">Grafana OSS · AGPL-3.0</a>
-            <a href="https://github.com/prometheus/prometheus" target="_blank">Prometheus · Apache-2.0</a>
+<a href="https://github.com/prometheus/prometheus" target="_blank">Prometheus · Apache-2.0</a>
           </div>
         </div>
       </div>
@@ -2080,19 +2068,11 @@
   // ── Monitoreo ────────────────────────────────────────────────
   var monCache=null, monDashboard='overview', monProgressTimer=null, monPeerTimer=null, monSummaryTimer=null;
   function monNota(txt,tipo){ var e=$('mon-note'); if(!e)return; e.textContent=txt||''; e.className='monitor-note'+(tipo?' '+tipo:''); }
-  function monGrafanaURL(){ return '/monitor/grafana/d/gateway-wisp-overview/gateway-wisp-infraestructura?t='+encodeURIComponent(TOKEN)+'&kiosk&refresh=5s'; }
-  function monCargarFrame(){
-    if(monDashboard!=='grafana') return;
-    if(!monCache || !monCache.config || !monCache.config.preparado || !monCache.grafanaOnline){ $('mon-grafana-frame').classList.remove('visible'); $('mon-placeholder').classList.remove('hidden'); return; }
-    var monitor=(monCache.servidores||[]).find(function(s){return s.nombre===monCache.config.monitorServer;});
-    if(!monitor || !monitor.conectado){ $('mon-grafana-frame').classList.remove('visible'); $('mon-placeholder').classList.remove('hidden'); $('mon-placeholder').querySelector('b').textContent='Conecta el servidor de monitoreo para ver Grafana.'; return; }
-    $('mon-placeholder').classList.add('hidden'); $('mon-grafana-frame').classList.add('visible'); $('mon-grafana-frame').src=monGrafanaURL();
-  }
   function renderMonitoring(data){
     monCache=data; var cfg=data.config||{}; var servers=data.servidores||[];
     var sel=$('mon-server'); var previo=sel.value; vaciar(sel); var vac=nodo('option','','Selecciona servidor…');vac.value='';sel.appendChild(vac);
     servers.forEach(function(s){var o=nodo('option','',s.nombre+' · '+s.host);o.value=s.nombre;sel.appendChild(o);});
-    sel.value=cfg.monitorServer||previo||''; $('mon-port-start').value=cfg.portStart||19100; $('mon-port-end').value=cfg.portEnd||19999; $('mon-graf-user').value=cfg.grafanaUser||'admin';
+    sel.value=cfg.monitorServer||previo||''; $('mon-port-start').value=cfg.portStart||19100; $('mon-port-end').value=cfg.portEnd||19999;
     var list=$('mon-server-list');vaciar(list); var targets=cfg.targets||[]; var targetNames={};targets.forEach(function(t){targetNames[t.servidor]=t;});
     servers.forEach(function(s){
       var row=nodo('label','mon-server-row'); var cb=document.createElement('input');cb.type='checkbox';cb.dataset.server=s.nombre;cb.checked=!!targetNames[s.nombre];row.appendChild(cb);
@@ -2100,9 +2080,9 @@
       var state=nodo('span','mon-server-state'+(s.monitorizado?' on':''),s.monitorizado?('● '+(targetNames[s.nombre].localPort||9100)):(s.conectado?'Conectado':'Conectar primero'));row.appendChild(state);if(s.monitorizado){var d=nodo('button','mon-diag-btn','Diagnosticar');d.type='button';d.dataset.server=s.nombre;d.onclick=function(ev){ev.preventDefault();ev.stopPropagation();var btn=this;btn.disabled=true;monNota('Diagnosticando '+btn.dataset.server+'…','');api('/api/monitoring/diagnostico',{method:'POST',body:JSON.stringify({servidor:btn.dataset.server})}).then(function(r){if(r.error){monNota(r.error,'err');return;}var txt=(r.pasos||[]).map(function(x){return (x.ok?'✓ ':'✗ ')+x.nombre;}).join(' · ');monNota(btn.dataset.server+': '+txt,r.saludable?'ok':'err');}).finally(function(){btn.disabled=false;});};row.appendChild(d);}list.appendChild(row);
     });
     $('mon-target-count').textContent=targets.length+' target'+(targets.length===1?'':'s');
-    $('mon-prom-dot').classList.toggle('ok',!!data.prometheusOnline); $('mon-graf-dot').classList.toggle('ok',!!data.grafanaOnline);
+    $('mon-prom-dot').classList.toggle('ok',!!data.prometheusOnline);
     var map=$('mon-port-map');vaciar(map); if(!targets.length)map.appendChild(nodo('div','','Sin túneles de monitoreo todavía.'));targets.forEach(function(t){map.appendChild(nodo('div','',t.servidor+' · 127.0.0.1:'+t.localPort+' → SSH → :'+t.remotePort));});
-    if(monDashboard==='overview') cargarResumen(); else if(monDashboard==='grafana') monCargarFrame(); else if(monDashboard==='wg') cargarPeers();
+    if(monDashboard==='overview') cargarResumen(); else if(monDashboard==='wg') cargarPeers();
   }
   function cargarMonitoring(){ return api('/api/monitoring/estado').then(function(r){if(r.error){monNota(r.error,'err');return;}renderMonitoring(r);}).catch(function(){monNota('No pude cargar la configuración de monitoreo.','err');}); }
   function monRenderProgress(p){
@@ -2139,20 +2119,19 @@
   }
   function cargarPeers(){if(monDashboard!=='wg')return;api('/api/monitoring/peers').then(function(r){if(r.error){var l=$('mon-peer-list');vaciar(l);l.appendChild(nodo('div','mon-peer-empty',r.error));return;}renderPeers(r);});}
   function monSetTab(tab){
-    monDashboard=tab;var wg=tab==='wg', graf=tab==='grafana', summary=tab==='overview';
-    $('mon-tab-wg').classList.toggle('activo',wg);$('mon-tab-overview').classList.toggle('activo',summary);$('mon-tab-grafana').classList.toggle('activo',graf);
-    $('mon-grafana-wrap').hidden=!graf;$('mon-peer-view').hidden=!wg;$('mon-summary-view').hidden=!summary;$('mon-wg-legend').hidden=!wg;
-    $('mon-view-label').textContent=graf?'Grafana embebida':(wg?'Peers en tiempo real':'Vista rápida nativa');
+    monDashboard=tab;var wg=tab==='wg', summary=tab==='overview';
+    $('mon-tab-wg').classList.toggle('activo',wg);$('mon-tab-overview').classList.toggle('activo',summary);
+    $('mon-peer-view').hidden=!wg;$('mon-summary-view').hidden=!summary;$('mon-wg-legend').hidden=!wg;
+    $('mon-view-label').textContent=wg?'Peers en tiempo real':'Vista rápida nativa';
     if(monPeerTimer){clearInterval(monPeerTimer);monPeerTimer=null;} if(monSummaryTimer){clearInterval(monSummaryTimer);monSummaryTimer=null;}
-    if(wg){cargarPeers();monPeerTimer=setInterval(cargarPeers,3000);}else if(graf){monCargarFrame();}else{cargarResumen();monSummaryTimer=setInterval(cargarResumen,5000);}
+    if(wg){cargarPeers();monPeerTimer=setInterval(cargarPeers,3000);}else{cargarResumen();monSummaryTimer=setInterval(cargarResumen,5000);}
   }
   $('mon-refresh').onclick=cargarMonitoring;
-  $('mon-save').onclick=function(){var b=this;b.disabled=true;monNota('Guardando configuración…','');api('/api/monitoring/config',{method:'POST',body:JSON.stringify({monitorServer:$('mon-server').value,portStart:Number($('mon-port-start').value),portEnd:Number($('mon-port-end').value),grafanaUser:$('mon-graf-user').value.trim(),grafanaPassword:$('mon-graf-pass').value})}).then(function(r){if(r.error){monNota(r.error,'err');return;}$('mon-graf-pass').value='';monNota('Configuración cifrada y guardada.','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;});};
+  $('mon-save').onclick=function(){var b=this;b.disabled=true;monNota('Guardando configuración…','');api('/api/monitoring/config',{method:'POST',body:JSON.stringify({monitorServer:$('mon-server').value,portStart:Number($('mon-port-start').value),portEnd:Number($('mon-port-end').value)})}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota('Configuración cifrada y guardada.','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;});};
   $('mon-prepare').onclick=function(){var b=this;b.disabled=true;monNota('Preparando servidor de monitoreo…','');monPollProgress();api('/api/monitoring/preparar',{method:'POST',body:'{}'}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota(r.mensaje||'Servidor monitor preparado.','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;monStopProgress();});};
   $('mon-apply').onclick=function(){var elegidos=[];document.querySelectorAll('#mon-server-list input[type=checkbox]:checked').forEach(function(c){elegidos.push(c.dataset.server);});var b=this;b.disabled=true;monNota('Aplicando selección…','');monPollProgress();api('/api/monitoring/targets',{method:'POST',body:JSON.stringify({servidores:elegidos})}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota('Monitoreo aplicado. Prometheus ya tiene '+(r.targets||[]).length+' target(s).','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;monStopProgress();});};
   $('mon-peer-search').oninput=cargarPeers;$('mon-peer-sort').onchange=cargarPeers;
-  $('mon-tab-overview').onclick=function(){monSetTab('overview');}; $('mon-tab-wg').onclick=function(){monSetTab('wg');}; $('mon-tab-grafana').onclick=function(){monSetTab('grafana');}; $('mon-reload').onclick=function(){if(monDashboard==='wg')cargarPeers();else if(monDashboard==='grafana')monCargarFrame();else cargarResumen();}; $('mon-peer-refresh').onclick=cargarPeers;
-  $('mon-creds').onclick=function(){api('/api/monitoring/credenciales').then(function(r){if(r.error){aviso(r.error,false);return;}window.alert('Grafana\nUsuario: '+r.usuario+'\nContraseña: '+r.password+'\n\nLa contraseña está almacenada cifrada por Gateway WISP Access.');});};
+  $('mon-tab-overview').onclick=function(){monSetTab('overview');}; $('mon-tab-wg').onclick=function(){monSetTab('wg');}; $('mon-reload').onclick=function(){if(monDashboard==='wg')cargarPeers();else cargarResumen();}; $('mon-peer-refresh').onclick=cargarPeers;
 
   // ── Actualizaciones privadas y firmadas ───────────────────────
   var updUltima = null;
@@ -2268,7 +2247,7 @@
     dashboard:['Dashboard','Servidores guardados y conexiones activas en una sola vista.'],
     profiles:['Perfil SSH','Agrega un servidor nuevo o edita un perfil existente.'],
     backup:['Copia de seguridad','Exporta o restaura servidores, túneles, contraseñas guardadas, claves SSH y monitoreo.'],
-    monitoring:['Monitoreo','Prometheus y Grafana integrados, peers WireGuard en tiempo real, búsqueda y diagnóstico de la cadena SSH → exporter → túnel → Prometheus.'],
+    monitoring:['Monitoreo','Prometheus, métricas nativas y peers WireGuard en tiempo real por túneles SSH persistentes.'],
     updates:['Actualizaciones','Comprueba e instala versiones firmadas desde el repositorio privado.'],
     info:['Gateway WISP Access','Información de seguridad, componentes y versión instalada.']
   };

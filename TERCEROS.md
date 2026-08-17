@@ -20,14 +20,13 @@ Estos componentes **no se incorporan al binario de Gateway WISP Access**. Se ins
 
 | Proyecto | Uso | Licencia |
 |---|---|---|
-| [Grafana OSS](https://github.com/grafana/grafana) | Dashboards y visualización | AGPL-3.0-only (con excepciones indicadas por el proyecto) |
 | [Prometheus](https://github.com/prometheus/prometheus) | Base de datos y recolección de métricas | Apache-2.0 |
-| [Prometheus node_exporter](https://github.com/prometheus/node_exporter) | Métricas del sistema Linux | Apache-2.0 |
+| [Prometheus node_exporter](https://github.com/prometheus/node_exporter) | Métricas del sistema Linux y textfile collector | Apache-2.0 |
 | [WireGuard tools](https://git.zx2c4.com/wireguard-tools/) | Lectura de peers/contadores WireGuard | GPL-2.0 |
 
-Gateway WISP Access instala **Grafana OSS**, no Grafana Enterprise. Los dashboards y scripts `gateway_wisp_*` generados por esta aplicación son originales del proyecto Gateway WISP Access y se distribuyen bajo MIT.
+Los scripts y métricas `gateway_wisp_*` generados por Gateway WISP Access son código propio del proyecto y se distribuyen bajo MIT. Los componentes anteriores se ejecutan como procesos independientes y no se enlazan con el binario de la aplicación.
 
-La interfaz puede mostrar Grafana mediante un proxy local sobre SSH. Grafana sigue ejecutándose como un servicio independiente en el servidor de monitoreo y no se enlaza con el código de Gateway WISP Access.
+**Compatibilidad histórica:** las versiones 3.2.0–3.2.2 podían instalar Grafana OSS como servicio independiente. Desde v3.2.3 la aplicación no instala ni utiliza Grafana. Una actualización no lo elimina automáticamente de servidores donde ya esté presente.
 
 Las fuentes de la interfaz (Barlow Condensed, JetBrains Mono) se cargan desde Google Fonts bajo SIL Open Font License.
 
