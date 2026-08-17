@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gateway WISP Access</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/xterm.css">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand-card">
+      <div class="brand-logo" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z'/><path d='M9.25 11.25V9.9a2.75 2.75 0 0 1 5.5 0v1.35'/><rect x='8.4' y='11.2' width='7.2' height='5.5' rx='1.2'/></svg></div>
+      <div class="brand-text">Gateway WISP Access<small>SSH · túneles · archivos</small></div>
+    </div>
+    <nav class="side-nav">
+      <a class="nav-item activo" href="#dashboard" data-nav="dashboard"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='4' y='4' width='6' height='6' rx='1.2'/><rect x='14' y='4' width='6' height='6' rx='1.2'/><rect x='4' y='14' width='6' height='6' rx='1.2'/><rect x='14' y='14' width='6' height='6' rx='1.2'/></svg></span><span>Dashboard</span></a>
+      <a class="nav-item" href="#editor-panel" data-nav="profiles"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='8.2' r='3.2'/><path d='M5 19a7 7 0 0 1 14 0'/></svg></span><span>Perfiles</span></a>
+      <a class="nav-item" href="#copia-panel" data-nav="backup"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='8' y='8' width='10' height='12' rx='2'/><path d='M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1'/></svg></span><span>Copias</span></a>
+      <a class="nav-item" href="#monitoring-panel" data-nav="monitoring"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg></span><span>Monitoreo</span></a>
+      <a class="nav-item" href="#wireguard-panel" data-nav="wireguard"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12c2.2-4.8 5-7.2 8-7.2s5.8 2.4 8 7.2c-2.2 4.8-5 7.2-8 7.2S6.2 16.8 4 12z"/><path d="M8 12h8M12 8v8"/></svg></span><span>WireGuard</span></a>
+      <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M20 11a8 8 0 1 0 2 5.3'/><path d='M20 4v7h-7'/></svg></span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
+      <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M12 10v6'/><path d='M12 7h.01'/></svg></span><span>Info</span></a>
+    </nav>
+    <div class="side-spacer"></div>
+    <div class="side-status">
+      <div class="st1"><span class="dot"></span><span>Seguridad SSH</span></div>
+      <div class="mini">TOFU + ED25519<br>Hardening reversible<br>Updates firmados</div>
+    </div>
+    <div class="side-footer"><span>Build</span><span id="ver">—</span></div>
+  </aside>
+
+  <div class="content-shell">
+    <div class="ssh-bg" aria-hidden="true">
+      <span class="bg-item i1">ssh-ed25519</span>
+      <span class="bg-item i2">curve25519</span>
+      <span class="bg-item small i3">aes256-gcm</span>
+      <span class="bg-item i4">chacha20-poly1305</span>
+      <span class="bg-item i5">public key</span>
+      <span class="bg-item i6">authorized_keys</span>
+      <span class="bg-item small" style="bottom:208px; right:40px;">sha256 fingerprint</span>
+      <span class="bg-line l1"></span><span class="bg-line l2"></span><span class="bg-line l3"></span><span class="bg-line l4"></span>
+      <span class="bg-lock">◇</span><span class="bg-key">⌁</span>
+    </div>
+
+    <div class="topbar">
+      <div class="hero-title">
+        <h1 id="view-title">Dashboard</h1>
+        <p id="view-subtitle">Resumen de conexiones y herramientas.</p>
+      </div>
+      <div class="top-actions">
+        <button class="toolbar-btn" id="btn-import-toolbar"><span class="tb-ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 15V4'/><path d='M8 8l4-4 4 4'/><path d='M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4'/></svg></span>Importar servidor</button>
+        <button class="toolbar-btn primary" id="btn-new-toolbar"><span class="tb-ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 5v14M5 12h14'/></svg></span>Nuevo servidor <span class="caret">▾</span></button>
+      </div>
+    </div>
+
+    <main>
+      <section class="dash-grid app-view activa" id="dashboard" data-view="dashboard">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='4' y='5' width='16' height='6' rx='1.4'/><rect x='4' y='13' width='16' height='6' rx='1.4'/><path d='M8 8h.01M8 16h.01M12 8h5M12 16h5'/></svg></div>
+              <div>
+                <h3>Servidores guardados</h3>
+                <p>Perfiles de conexión SSH listos para conectar o editar.</p>
+              </div>
+            </div>
+            <span class="panel-count" id="srv-cuenta"></span>
+          </div>
+          <div class="seccion desplegable abierta internal-toggle-hidden" id="srv-cabecera"><span class="flecha">▶</span></div>
+          <div class="plegable abierto" id="srv-caja">
+            <div class="buscador-row">
+              <div class="buscador"><input type="text" id="buscador" placeholder="Buscar servidores…"></div>
+              <div class="view-switch">
+                <button type="button" id="srv-view-grid" title="Vista de tarjetas"><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='4' y='4' width='6' height='6' rx='1.2'/><rect x='14' y='4' width='6' height='6' rx='1.2'/><rect x='4' y='14' width='6' height='6' rx='1.2'/><rect x='14' y='14' width='6' height='6' rx='1.2'/></svg></button>
+                <button type="button" id="srv-view-list" title="Vista compacta"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M8 7h12M8 12h12M8 17h12'/><circle cx='4' cy='7' r='1'/><circle cx='4' cy='12' r='1'/><circle cx='4' cy='17' r='1'/></svg></button>
+              </div>
+            </div>
+            <div class="servidores" id="lista"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="ico" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M5 12a7 7 0 0 1 14 0'/><path d='M8 12a4 4 0 0 1 8 0'/><path d='M12 12h.01'/></svg></div>
+              <div>
+                <h3>Servidores conectados</h3>
+                <p>Conexiones activas</p>
+              </div>
+            </div>
+            <button id="btn-desc-todo">Desconectar todo</button>
+          </div>
+          <div class="conexiones" id="conexiones">
+            <div class="sin-conexion">Sin conexiones. Elige un servidor guardado y dale a Conectar.</div>
+          </div>
+        </div>
+
+
+      </section>
+
+      <div class="stack-grid">
+        <section class="panel app-view" id="editor-panel" data-view="profiles">
+          <div class="seccion desplegable internal-toggle-hidden" id="form-cabecera">
+            <span class="flecha">▶</span>
+            <span>Agregar / editar servidor</span>
+            <span class="cuenta">— clic para desplegar</span>
+          </div>
+          <form id="form" class="plegable abierto" onsubmit="return false">
+            <div><label>Nombre</label><input type="text" id="f-nombre" placeholder="gateway-1"></div>
+            <div><label>IP o host</label><input type="text" id="f-host" placeholder="203.0.113.10"></div>
+            <div><label>Puerto SSH</label><input type="number" id="f-puerto" value="22"></div>
+            <div><label>Usuario</label><input type="text" id="f-usuario" placeholder="root"></div>
+            <div class="ancho"><label>Key SSH — ruta de la clave privada (vacío = usar contraseña)</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <input type="text" id="f-key" placeholder="C:\Users\gsusb\.ssh\id_ed25519" style="flex:1;min-width:240px">
+                <button type="button" id="btn-buscar-key">Buscar…</button>
+                <button type="button" id="btn-probar-key">Probar</button>
+                <button type="button" class="principal" id="btn-crear-key">🔑 Crear e instalar Key</button>
+              </div>
+              <div class="nota" id="key-res" style="margin-top:6px"></div></div>
+            <div class="ancho" id="zona-pass">
+              <label id="lbl-pass">Contraseña</label>
+              <input type="password" id="f-pass" placeholder="se pide al conectar si no la guardas">
+              <div class="check" style="margin-top:10px">
+                <input type="checkbox" id="f-guardar"><label for="f-guardar" style="margin:0">Recordar contraseña en este equipo (cifrada)</label>
+              </div>
+            </div>
+            <div class="ancho" style="margin-top:4px">
+              <div class="tun-desplegable" id="tun-cabecera-form">
+                <span class="flecha">▶</span>
+                <b>Túneles de este servidor</b>
+                <span class="cuenta" id="tun-cuenta">— plegado</span>
+              </div>
+              <div class="tuneles plegable" id="tun-caja-form">
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+                  <button type="button" id="tun-defecto">Usar predeterminados</button>
+                </div>
+                <div class="tun-cab"><span>Puerto</span><span>Nombre</span><span>Ruta web</span><span>Auto web</span><span></span></div>
+                <div id="tun-lista"></div>
+                <button type="button" id="tun-agregar">+ Agregar puerto</button>
+                <div class="nota" style="margin-top:8px">Marca <b>Auto web</b> para abrir ese panel automáticamente en tu navegador cuando el túnel quede activo.</div>
+              </div>
+            </div>
+            <div class="ancho nota">Las contraseñas guardadas se cifran (AES-256) con una llave local en <b>secreto.bin</b>. Máxima seguridad: usa key SSH. Atajo: <b>Ctrl+Enter</b> guarda el servidor desde este formulario.</div>
+            <div class="ancho" style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+              <button type="button" id="btn-limpiar">Limpiar</button>
+              <button type="button" class="principal" id="btn-guardar">Guardar servidor</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel app-view" id="copia-panel" data-view="backup">
+          <div class="seccion desplegable internal-toggle-hidden" id="copia-cabecera">
+            <span class="flecha">▶</span>
+            <span>Copia de seguridad</span>
+            <span class="cuenta">— exportar / importar servidores, túneles y claves</span>
+          </div>
+          <div class="copia plegable abierto" id="copia-caja">
+            <div class="col">
+              <div>
+                <h4>Exportar</h4>
+                <div class="campo">
+                  <label>Contraseña para proteger la copia (mín. 8)</label>
+                  <input type="password" id="exp-pass" placeholder="la necesitarás para importar">
+                </div>
+                <div class="check"><input type="checkbox" id="exp-claves" checked>
+                  <label for="exp-claves" style="margin:0">Incluir contraseñas guardadas</label></div>
+                <div class="check"><input type="checkbox" id="exp-keys" checked>
+                  <label for="exp-keys" style="margin:0">Incluir claves SSH privadas</label></div>
+                <div class="check"><input type="checkbox" id="exp-monitoring" checked>
+                  <label for="exp-monitoring" style="margin:0">Incluir Monitoreo</label></div>
+                <div class="check"><input type="checkbox" id="exp-wireguard" checked>
+                  <label for="exp-wireguard" style="margin:0">Incluir perfiles WireGuard</label></div>
+                <button class="principal" id="btn-exportar" style="margin-top:8px">Exportar…</button>
+                <div class="res" id="exp-res"></div>
+              </div>
+              <div>
+                <h4>Importar</h4>
+                <div class="campo">
+                  <label>Archivo de copia (.cgw)</label>
+                  <input type="file" id="imp-archivo" accept=".cgw,application/json">
+                </div>
+                <div class="campo">
+                  <label>Contraseña de la copia</label>
+                  <input type="password" id="imp-pass" placeholder="la que usaste al exportar">
+                </div>
+                <div class="check"><input type="checkbox" id="imp-reemplazar">
+                  <label for="imp-reemplazar" style="margin:0">Reemplazar todo (por defecto: fusionar)</label></div>
+                <button class="principal" id="btn-importar" style="margin-top:8px">Importar</button>
+                <div class="res" id="imp-res"></div>
+              </div>
+            </div>
+            <div class="nota" style="margin-top:12px">La copia va cifrada con tu contraseña (no con la llave de este equipo), así que se puede llevar a otra PC. Sin esa contraseña el archivo es ilegible: <b>guárdala bien, no hay forma de recuperarla</b>.</div>
+          </div>
+        </section>
+
+        <section class="app-view monitoring-view" id="monitoring-panel" data-view="monitoring">
+          <div class="monitor-layout">
+            <aside class="panel monitor-control">
+              <div class="panel-header">
+                <div class="panel-title"><div class="ico">▥</div><div><h3>Monitoreo centralizado</h3><p>Prometheus por túneles SSH persistentes.</p></div></div>
+              </div>
+              <div class="monitor-status-row">
+                <span><i class="status-dot" id="mon-prom-dot"></i> Prometheus</span>
+                <span id="mon-target-count">0 targets</span>
+              </div>
+              <div class="campo"><label>Servidor de monitoreo (Prometheus)</label><select id="mon-server"></select></div>
+              <div class="monitor-two">
+                <div class="campo"><label>Puerto inicial</label><input type="number" id="mon-port-start" min="1024" max="65535" value="19100"></div>
+                <div class="campo"><label>Puerto final</label><input type="number" id="mon-port-end" min="1024" max="65535" value="19999"></div>
+              </div>
+              <div class="monitor-actions"><button id="mon-save">Guardar</button><button class="principal" id="mon-prepare">Preparar monitor</button></div>
+              <div class="monitor-progress" id="mon-progress" hidden><div class="monitor-progress-head"><b id="mon-progress-title">Preparando…</b><span id="mon-progress-pct">0%</span></div><div class="monitor-progress-track"><i id="mon-progress-bar"></i></div><div class="monitor-progress-stage" id="mon-progress-stage">Esperando…</div><div class="monitor-progress-log" id="mon-progress-log"></div></div>
+              <div class="monitor-separator"></div>
+              <div class="monitor-list-head"><div><b>Servidores monitorizados</b><small>node_exporter queda en 127.0.0.1:9100.</small></div><button id="mon-refresh" title="Actualizar">↻</button></div>
+              <div class="monitor-server-list" id="mon-server-list"></div>
+              <button class="principal monitor-apply" id="mon-apply">Aplicar selección</button>
+              <div class="monitor-note" id="mon-note">Selecciona el servidor monitor y los equipos que quieres supervisar.</div>
+              <details class="monitor-advanced"><summary>Detalles avanzados</summary><div id="mon-port-map" class="monitor-port-map"></div></details>
+            </aside>
+            <section class="panel monitor-display">
+              <div class="monitor-toolbar">
+                <div class="monitor-tabs"><button class="activo" id="mon-tab-overview">Resumen</button><button id="mon-tab-wg">WireGuard peers</button></div>
+                <div class="monitor-help"><span id="mon-view-label">Vista rápida nativa</span><button id="mon-reload">↻</button></div>
+              </div>
+              <div class="mon-summary-view" id="mon-summary-view">
+                <div class="mon-kpis" id="mon-kpis"><div class="mon-kpi"><span>Estado</span><b>—</b><small>Cargando métricas…</small></div></div>
+                <div class="mon-summary-title"><div><b>Servidores</b><small> · métricas en tiempo real</small></div><small>Actualización 5 s</small></div>
+                <div class="mon-health-list" id="mon-health-list"><div class="mon-peer-empty">Todavía no hay métricas.</div></div>
+              </div>
+              <div class="mon-peer-view" id="mon-peer-view" hidden>
+                <div class="mon-peer-head"><div><b>Peers WireGuard</b><small>Tráfico instantáneo por peer, actualizado automáticamente.</small></div><button id="mon-peer-refresh">↻</button></div><div class="mon-peer-tools"><input id="mon-peer-search" type="search" placeholder="Buscar peer o servidor…"><select id="mon-peer-sort"><option value="name">Nombre</option><option value="rx">Mayor descarga</option><option value="tx">Mayor subida</option><option value="active">Más activos</option></select></div>
+                <div class="mon-peer-list" id="mon-peer-list"><div class="mon-peer-empty">Todavía no hay datos de peers.</div></div>
+              </div>
+              <div class="wg-legend" id="mon-wg-legend">Los nombres se buscan primero en <b>WGDashboard</b> y después en comentarios de WireGuard; RX/TX se calculan en <b>Mbit/s</b> desde Prometheus.</div>
+            </section>
+          </div>
+        </section>
+
+        <section class="app-view wgclient-view" id="wireguard-panel" data-view="wireguard">
+          <div class="wgclient-layout">
+            <aside class="panel wgclient-sidebar">
+              <div class="wgclient-engine">
+                <div class="wgclient-engine-head"><div><span class="wgclient-label">Motor VPN</span><b id="wgc-engine-name">WireGuard</b></div><span class="wgclient-engine-dot" id="wgc-engine-dot"></span></div>
+                <small id="wgc-engine-msg">Comprobando WireGuard integrado…</small>
+                <button id="wgc-engine-install" class="wgclient-secondary" hidden>Instalar herramientas WireGuard (Linux)</button>
+              </div>
+              <div class="wgclient-side-actions">
+                <button class="principal" id="wgc-new">+ Nuevo perfil</button>
+                <button id="wgc-import">Importar .conf</button>
+                <input type="file" id="wgc-import-file" accept=".conf,text/plain" hidden>
+              </div>
+              <div class="wgclient-search"><input id="wgc-search" type="search" placeholder="Buscar perfil…"></div>
+              <div class="wgclient-profile-list" id="wgc-profile-list"><div class="wgclient-empty">No hay perfiles WireGuard.</div></div>
+            </aside>
+
+            <section class="panel wgclient-main">
+              <div class="wgclient-main-head">
+                <div>
+                  <span class="wgclient-label">WireGuard</span>
+                  <h2 id="wgc-title">Nuevo perfil</h2>
+                  <p id="wgc-subtitle">Configura un túnel o importa un archivo .conf.</p>
+                </div>
+                <div class="wgclient-head-actions">
+                  <span class="wgclient-state" id="wgc-state">Desconectado</span>
+                  <button class="principal" id="wgc-connect">Conectar</button>
+                  <button id="wgc-disconnect" hidden>Desconectar</button>
+                </div>
+              </div>
+
+              <div class="wgclient-metrics" id="wgc-metrics">
+                <div><span>Descarga</span><b id="wgc-rx">0.00 Mbit/s</b><small id="wgc-rx-total">0 B total</small></div>
+                <div><span>Subida</span><b id="wgc-tx">0.00 Mbit/s</b><small id="wgc-tx-total">0 B total</small></div>
+                <div><span>Handshake</span><b id="wgc-handshake">—</b><small>último peer activo</small></div>
+                <div><span>Interfaz</span><b id="wgc-interface">—</b><small id="wgc-endpoint-summary">sin endpoint</small></div>
+              </div>
+              <div id="wgc-runtime-warning" class="wgclient-runtime-warning" hidden></div>
+
+              <form id="wgc-form" class="wgclient-form" onsubmit="return false">
+                <div class="wgclient-section-title"><div><b>Interfaz</b><small>Identidad y red local del cliente.</small></div><div class="wgclient-form-actions"><button type="button" id="wgc-reveal">Mostrar secretos</button><button type="button" id="wgc-generate">Generar keys</button></div></div>
+                <div class="wgclient-grid">
+                  <div><label>Nombre del perfil</label><input id="wgc-name" type="text" placeholder="Casa / Gateway Norte"></div>
+                  <div><label>Dirección(es)</label><input id="wgc-address" type="text" placeholder="10.8.0.2/32, fd00::2/128"></div>
+                  <div class="span2"><label>Clave privada</label><input id="wgc-private" type="password" autocomplete="off" placeholder="Guardada cifrada · déjala vacía para conservarla"></div>
+                  <div class="span2"><label>Clave pública</label><div class="wgclient-copy-row"><input id="wgc-public" type="text" readonly placeholder="Se calcula desde la privada"><button type="button" id="wgc-copy-public">Copiar</button></div></div>
+                  <div><label>DNS</label><input id="wgc-dns" type="text" placeholder="1.1.1.1, 1.0.0.1"></div>
+                  <div><label>MTU</label><input id="wgc-mtu" type="number" min="0" max="65535" placeholder="Automático"></div>
+                </div>
+
+                <div class="wgclient-section-title peers"><div><b>Peers</b><small>Servidor(es) y rutas permitidas.</small></div><button type="button" id="wgc-add-peer">+ Agregar peer</button></div>
+                <div id="wgc-peers" class="wgclient-peers"></div>
+
+                <details class="wgclient-advanced">
+                  <summary>Opciones avanzadas</summary>
+                  <div class="wgclient-grid advanced-grid">
+                    <div><label>ListenPort</label><input id="wgc-listen" type="number" min="0" max="65535" placeholder="Automático"></div>
+                    <div><label>Table</label><input id="wgc-table" type="text" placeholder="auto / off / 123"></div>
+                    <div class="span2"><label>Notas</label><textarea id="wgc-notes" rows="2" placeholder="Descripción opcional del túnel"></textarea></div>
+                    <div class="span2 wgclient-hook-warning"><label class="check"><input id="wgc-hooks-allow" type="checkbox"><span>Permitir hooks PreUp/PostUp/PreDown/PostDown</span></label><small>Desactivados por defecto. Un .conf importado puede contener comandos con privilegios: actívalos solo si confías en el archivo.</small></div>
+                    <div class="span2"><label>PreUp</label><textarea id="wgc-preup" rows="2"></textarea></div>
+                    <div class="span2"><label>PostUp</label><textarea id="wgc-postup" rows="2"></textarea></div>
+                    <div class="span2"><label>PreDown</label><textarea id="wgc-predown" rows="2"></textarea></div>
+                    <div class="span2"><label>PostDown</label><textarea id="wgc-postdown" rows="2"></textarea></div>
+                  </div>
+                </details>
+
+                <div class="wgclient-options">
+                  <label class="check"><input id="wgc-auto" type="checkbox"><span>Autoconectar este perfil</span></label>
+                  <button type="button" id="wgc-full-tunnel">Usar túnel completo (0.0.0.0/0 + ::/0)</button>
+                </div>
+                <div class="wgclient-savebar">
+                  <div id="wgc-note" class="wgclient-note">Las claves privadas y PresharedKey se guardan cifradas. El archivo .conf exportado sí contiene secretos.</div>
+                  <div><button type="button" id="wgc-delete" class="danger" hidden>Eliminar</button><button type="button" id="wgc-export" hidden>Exportar .conf</button><button type="button" class="principal" id="wgc-save">Guardar perfil</button></div>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <section class="panel app-view" id="upd-panel" data-view="updates">
+          <div class="update-page-status" id="upd-cabecera">
+            <span>Estado</span><b id="upd-resumen">— sin comprobar</b>
+          </div>
+          <div class="updapp plegable abierto" id="upd-caja">
+            <div class="txt">Versión instalada: <b id="app-ver">—</b><br>
+            Repo privado: usa un token <b>fine-grained</b> con acceso únicamente a este repositorio y permiso <b>Contents: read</b>.
+            En Windows el token se protege con DPAPI y queda ligado a tu usuario de Windows. Las actualizaciones además deben pasar firma Ed25519 + SHA-256.</div>
+            <div class="acciones">
+              <div class="token"><input type="password" id="upd-token" autocomplete="off" placeholder="github_pat_… (solo se usa contra api.github.com)">
+              <button class="principal" id="upd-guardar">Guardar token</button></div>
+              <button id="upd-token-web">Crear token</button>
+              <button id="upd-borrar">Borrar token</button>
+              <button id="upd-buscar">Buscar actualización</button>
+              <button id="btn-releases">Ver Releases</button>
+              <button class="principal" id="upd-instalar" style="display:none">Actualizar ahora</button>
+            </div>
+            <div class="check" style="width:100%;margin-top:12px"><input type="checkbox" id="upd-inicio"><label for="upd-inicio" style="margin:0">Buscar actualizaciones al iniciar</label></div>
+            <div class="estado" id="upd-estado">Configura el token una sola vez para habilitar las actualizaciones privadas.</div>
+            <div class="notas" id="upd-notas"></div>
+          </div>
+        </section>
+
+        <div class="panel app-view info-panel" id="pie-final" data-view="info">
+          <div class="info-overview">
+            <div class="info-app-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z"/><path d="M9.25 11.25V9.9a2.75 2.75 0 0 1 5.5 0v1.35"/><rect x="8.4" y="11.2" width="7.2" height="5.5" rx="1.2"/></svg>
+            </div>
+            <div class="info-intro">
+              <h2>Gateway WISP Access</h2>
+              <p>Administrador SSH para operar varios gateways y servidores desde una sola ventana: conexiones, terminal, archivos, túneles y herramientas.</p>
+            </div>
+            <div class="info-version-box">
+              <span>Versión instalada</span>
+              <b id="info-version">—</b>
+              <small id="info-update-status">Actualizaciones firmadas</small>
+            </div>
+          </div>
+
+          <div class="info-stats">
+            <div class="info-stat"><span>Servidores guardados</span><b id="info-saved">—</b><small>Perfiles SSH configurados</small></div>
+            <div class="info-stat"><span>Conectados ahora</span><b id="info-connected">—</b><small>Sesiones activas</small></div>
+            <div class="info-stat wide"><span>Destino localhost</span><b id="info-localhost">Ninguno</b><small>Servidor que responde en los puertos compartidos</small></div>
+          </div>
+
+          <div class="info-sections">
+            <section class="info-block">
+              <h3>Operación</h3>
+              <ul>
+                <li>Terminal SSH integrada con historial de comandos.</li>
+                <li>Gestor SFTP para subir, bajar y administrar archivos.</li>
+                <li>Túneles locales por servidor con acceso rápido a paneles web.</li>
+                <li>Tráfico de red real del servidor en el Dashboard, expresado en Mbit/s.</li>
+                <li>Monitoreo centralizado con preparación por fases, verificación de servicios y resumen nativo responsive de CPU, RAM, disco y tráfico.</li>
+                <li>Peers WireGuard en lista compacta con nombres de WGDashboard/configuración WireGuard, RX/TX en Mbit/s y último handshake en tiempo real.</li>
+                <li>WireGuard integrado con perfiles, importación/exportación .conf, múltiples peers, autoconexión, generación de keys/PSK y tráfico en tiempo real. En Windows el motor viene embebido en la app; Linux utiliza wireguard-tools del sistema.</li>
+              </ul>
+            </section>
+            <section class="info-block">
+              <h3>Seguridad</h3>
+              <ul>
+                <li>Keys ED25519 y verificación TOFU de la huella del host.</li>
+                <li>Hardening SSH reversible con validación antes de aplicar cambios.</li>
+                <li>Contraseñas guardadas cifradas localmente.</li>
+                <li>PrivateKey y PresharedKey de WireGuard cifradas en almacenamiento local y en backups portables; hooks importados desactivados hasta autorización explícita.</li>
+                <li>Updates privados verificados con firma Ed25519 y SHA-256.</li>
+              </ul>
+            </section>
+            <section class="info-block">
+              <h3>Herramientas</h3>
+              <ul>
+                <li>Cargar scripts locales al servidor y ejecutarlos viendo la salida en Terminal.</li>
+                <li>Test de velocidad a Internet desde el servidor conectado.</li>
+                <li>Firewall: detección de UFW, firewalld y nftables con apertura/cierre seguro de puertos.</li>
+                <li>Selector de servidor para resolver puertos compartidos en <code>localhost:puerto</code>.</li>
+                <li>Más utilidades pueden añadirse sin recargar el Dashboard.</li>
+              </ul>
+            </section>
+            <section class="info-block">
+              <h3>Atajos</h3>
+              <ul>
+                <li><kbd>Ctrl</kbd> + <kbd>Enter</kbd> guarda el perfil que estás editando.</li>
+                <li><kbd>Esc</kbd> cierra Terminal, Archivos, Herramientas y diálogos.</li>
+                <li>Un clic en un comando del historial vuelve a enviarlo a la Terminal.</li>
+                <li>La casilla verde en un conectado lo convierte en destino de localhost.</li>
+              </ul>
+            </section>
+          </div>
+
+          <div class="info-components">
+            <span>Componentes principales</span>
+            <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a>
+            <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a>
+            <a href="https://github.com/pkg/sftp" target="_blank">pkg/sftp</a>
+            <a href="https://github.com/wailsapp/wails" target="_blank">Wails</a>
+            <a href="https://www.typescriptlang.org/" target="_blank">TypeScript</a>
+<a href="https://github.com/prometheus/prometheus" target="_blank">Prometheus · Apache-2.0</a>
+            <a href="https://www.wireguard.com/" target="_blank">WireGuard · motor integrado</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer" id="app-footer">
+      <div class="footer-legal">
+        <span>Gateway WISP Access <b id="pie-ver">—</b> · © 2026 Gsus · MIT</span>
+        <span class="footer-libs">· <a href="https://pkg.go.dev/golang.org/x/crypto/ssh" target="_blank">x/crypto/ssh</a> · <a href="https://github.com/xtermjs/xterm.js" target="_blank">xterm.js</a> · <a href="https://github.com/wailsapp/wails" target="_blank">Wails</a></span>
+      </div>
+      <div class="footer-updates" id="dashboard-footer">
+        <span class="upd-punto amarillo" id="upd-punto-dash" title="Estado de actualizaciones"></span>
+        <b id="upd-dash-status">Sin comprobar</b>
+        <span class="footer-divider"></span>
+        <span><b id="dash-app-ver">—</b></span>
+        <span>Stable</span>
+        <span class="footer-update-note" id="dash-next-check">Updates firmados</span>
+        <button id="dash-upd-search" class="footer-check" title="Comprobar actualizaciones" aria-label="Comprobar actualizaciones">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5.3"/><path d="M20 4v7h-7"/></svg>
+        </button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- Terminal SSH integrado -->
+<div class="term-velo" id="term-velo">
+  <div class="term-barra">
+    <span class="t">Terminal — <b id="term-srv"></b></span>
+    <span class="sep"></span>
+    <button id="term-cerrar">Cerrar terminal <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="term-cuerpo">
+    <div id="term"></div>
+    <div class="term-hist">
+      <h5>Historial</h5>
+      <div id="term-hist-lista"><div class="vacio-hist">Sin comandos todavía.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Gestor de archivos integrado -->
+<div class="fx-velo" id="fx-velo">
+  <div class="fx-barra-superior">
+    <span class="t">Archivos — <b id="fx-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <select id="fx-servidor" style="background:var(--fondo);border:1px solid var(--linea);border-radius:7px;color:var(--texto);padding:8px 10px;font-size:13px"></select>
+    <button id="fx-abrir">Abrir servidor</button>
+    <button id="fx-cerrar">Cerrar archivos <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="fx-cuerpo">
+    <div class="fx" id="fx-caja">
+      <div class="cols">
+        <div>
+          <h4>Servidor remoto</h4>
+          <div class="barra">
+            <input class="ruta" id="fx-ruta-rem" placeholder="/root">
+            <button id="fx-ir-rem">Ir</button>
+            <button id="fx-arriba-rem" title="Subir un nivel">↑</button>
+            <button id="fx-nueva-carpeta" title="Nueva carpeta">+📁</button>
+          </div>
+          <div class="items" id="fx-lista-rem"><div class="vacio-fx">Selecciona un servidor conectado.</div></div>
+        </div>
+        <div>
+          <h4>Tu equipo</h4>
+          <div class="barra">
+            <input class="ruta" id="fx-ruta-loc" placeholder="carpeta local">
+            <button id="fx-ir-loc">Ir</button>
+            <button id="fx-arriba-loc" title="Subir un nivel">↑</button>
+          </div>
+          <div class="items" id="fx-lista-loc"><div class="vacio-fx">Cargando…</div></div>
+        </div>
+      </div>
+      <div class="nota" style="margin-top:10px">Usa <b>⬆ Subir</b> en un archivo local para enviarlo a la carpeta remota abierta,
+      y <b>⬇ Bajar</b> en uno remoto para traerlo a la carpeta local abierta. Requiere SFTP activo en el servidor.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Herramientas del servidor -->
+<div class="tools-velo" id="tools-velo">
+  <div class="tools-barra">
+    <span class="t">Herramientas — <b id="tools-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <button id="tools-cerrar">Cerrar <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="tools-cuerpo">
+    <div class="tools-grid">
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.3 2.3-3-3 2.3-2.3z"/><path d="M14 18l2 2 4-4-2-2"/></svg></div>
+        <div><h4>Cargar y ejecutar script</h4><p>Elige un script de tu equipo. Gateway lo copia por SFTP a <b>/tmp/gateway-wisp-access/scripts</b> y abre la terminal para mostrar su ejecución en vivo.</p><button class="principal" id="tool-script">Elegir script</button></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 17a8 8 0 0 1 16 0"/><path d="M12 13l4-4"/><path d="M7 17h10"/><path d="M6.4 11.5l-1.7-1"/><path d="M17.6 11.5l1.7-1"/><path d="M12 9V7"/></svg></div>
+        <div><h4>Test de velocidad</h4><p>Mide latencia, descarga y subida desde este servidor hacia Internet usando la red de Cloudflare. El resultado se muestra en la terminal.</p><button class="principal" id="tool-speedtest">Probar velocidad</button></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg></div>
+        <div><h4>Firewall</h4><p>Detecta UFW, firewalld o nftables, muestra las reglas y permite abrir o cerrar puertos con protección del puerto SSH y copia previa.</p><button class="principal" id="tool-firewall">Administrar firewall</button></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l3 3"/></svg></div>
+        <div><h4>SSH Key</h4><p>Crea una ED25519 nueva o carga una key privada que ya tengas. La app prueba una conexión independiente antes de asignarla al perfil.</p><button class="principal" id="tool-key">Administrar SSH</button></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/><path d="M4 4v16"/></svg></div>
+        <div><h4>Puerto SSH</h4><p>Asistente en dos fases: deja el puerto actual activo, prueba automáticamente una segunda conexión real por el nuevo puerto y solo después permite aplicar.</p><button class="principal" id="tool-ssh-port-btn">Cambiar de forma segura</button></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16V8l-8-5-8 5v11z"/><path d="M8 19v-6h8v6"/></svg></div>
+        <div><h4>Gateway WISP</h4><p>Paquete modular para instalar el gateway completo o administrar WireGuard, firewall, QoS, DNS, CrowdSec, Netdata y panel por separado.</p><button class="principal" id="tool-gw-install">Abrir Gateway WISP</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="tools-footer"><div class="tool-note">Los scripts se ejecutan con los permisos del usuario SSH conectado. Esta ventana queda preparada para añadir más herramientas después.</div></div>
+</div>
+
+
+<!-- Administración SSH del servidor -->
+<div class="sshadmin-velo" id="sshadmin-velo">
+  <div class="modal-tool-bar">
+    <span class="t">SSH — <b id="sshadmin-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <button id="sshadmin-cerrar">Cerrar <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="sshadmin-body">
+    <section class="sshadmin-card">
+      <h3>Clave SSH</h3>
+      <p>Usa una key privada existente o crea una ED25519 nueva. Si eliges una key local, Gateway instala únicamente su parte pública en el servidor (si hace falta), abre una segunda conexión SSH independiente y solo entonces la guarda en el perfil. La privada nunca sale de este equipo.</p>
+      <div class="ssh-field"><label>Key privada para este perfil</label>
+        <div class="ssh-row"><input type="text" id="ssh-key-path" placeholder="C:\Users\usuario\.ssh\id_ed25519"><button id="ssh-key-buscar">Buscar…</button></div>
+      </div>
+      <div class="ssh-field"><label>Passphrase (si la key tiene)</label><input type="password" id="ssh-key-pass" placeholder="opcional"></div>
+      <label style="font-size:10px;color:var(--suave)"><input type="checkbox" id="ssh-key-recordar"> recordar passphrase cifrada en este equipo</label>
+      <div class="ssh-row" style="margin-top:10px"><button class="principal" id="ssh-key-usar">Instalar, probar y usar esta key</button><button id="ssh-key-crear">Crear e instalar nueva ED25519</button></div>
+      <div class="ssh-status" id="ssh-key-status">Selecciona una key o crea una nueva.</div>
+    </section>
+
+    <section class="sshadmin-card">
+      <h3>Cambiar puerto SSH</h3>
+      <p>El cambio se realiza en dos fases. Primero SSH escucha temporalmente en el puerto actual y el nuevo; la aplicación abre una segunda conexión real por el nuevo puerto. Solo después se habilita <b>Aplicar cambio</b>.</p>
+      <div class="ssh-row"><span class="gw-chip">Puerto actual: <b id="ssh-port-actual">—</b></span></div>
+      <div class="ssh-field"><label>Nuevo puerto</label><input type="number" id="ssh-port-nuevo" min="1" max="65535" value="2222"></div>
+      <div class="ssh-field"><label>Contraseña sudo (solo si tu usuario no es root y sudo la solicita)</label><input type="password" id="ssh-port-sudo" placeholder="no se guarda"></div>
+      <label style="font-size:10px;color:var(--suave)"><input type="checkbox" id="ssh-port-close-old" checked> cerrar el puerto anterior en el firewall después de verificar</label>
+      <div class="ssh-steps"><div class="ssh-step" id="ssh-step-config">1 · Preparar</div><div class="ssh-step" id="ssh-step-test">2 · Probar conexión</div><div class="ssh-step" id="ssh-step-apply">3 · Aplicar</div></div>
+      <div class="ssh-row"><button class="principal" id="ssh-port-probar">Probar nuevo puerto</button><button class="principal" id="ssh-port-aplicar" disabled>Aplicar cambio</button><button id="ssh-port-cancelar" disabled>Cancelar prueba</button></div>
+      <div class="ssh-status" id="ssh-port-status">Todavía no se ha cambiado nada.</div>
+      <div class="ssh-port-console" id="ssh-port-console">Esperando una prueba. La conexión actual no se cerrará.</div>
+    </section>
+  </div>
+  <div class="sshadmin-footer">La sesión SSH actual permanece abierta durante todo el proceso. Si la prueba falla, Gateway restaura la configuración anterior automáticamente.</div>
+</div>
+
+<!-- Gateway WISP modular -->
+<div class="gw-velo" id="gw-velo">
+  <div class="modal-tool-bar">
+    <span class="t">Gateway WISP — <b id="gw-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <button id="gw-refresh">Actualizar estado</button>
+    <button id="gw-cerrar">Cerrar <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="gw-body">
+    <div class="gw-left">
+      <div class="gw-intro">
+        <h3>Gateway WISP</h3>
+        <p>Convierte un VPS Debian/Ubuntu en gateway de salida WISP con WireGuard, nftables/NAT, QoS CAKE, DNS filtrado, CrowdSec, Netdata y panel local. Puedes instalar todo o manejar cada componente por separado. Las preguntas de configuración aparecen en la terminal de esta misma ventana.</p>
+        <div class="gw-state"><span class="gw-chip" id="gw-state-main">Consultando…</span><span class="gw-chip">Paquete <b id="gw-bundle-ver">—</b></span><span class="gw-chip" id="gw-package-state">Preparando paquete…</span><span class="gw-chip">Instalado <b id="gw-installed-ver">—</b></span></div>
+        <div class="gw-main-actions"><button class="principal" id="gw-install-all">Instalar / configurar todo</button><button class="peligro" id="gw-uninstall-all">Desinstalar Gateway WISP</button></div>
+      </div>
+      <div class="gw-components" id="gw-components">
+        <div class="gw-component" data-comp="system"><div><h4><span class="gw-dot"></span> Sistema base</h4><p>Forwarding, buffers, conntrack, GRO, parches de seguridad y utilidades. No hace full-upgrade automático.</p></div><div class="gw-comp-actions"><button data-a="install">Preparar</button><button data-a="uninstall">Quitar tuning</button></div></div>
+        <div class="gw-component" data-comp="wireguard"><div><h4><span class="gw-dot"></span> WireGuard</h4><p>Motor VPN y herramientas del túnel.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar integración</button></div></div>
+        <div class="gw-component" data-comp="firewall"><div><h4><span class="gw-dot"></span> Firewall / NAT</h4><p>nftables, NAT, aislamiento y reglas persistentes.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Restaurar</button></div></div>
+        <div class="gw-component" data-comp="qos"><div><h4><span class="gw-dot"></span> QoS CAKE</h4><p>Prioridad por DSCP y reparto justo.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar</button></div></div>
+        <div class="gw-component" data-comp="dns"><div><h4><span class="gw-dot"></span> DNS filtrado</h4><p>ControlD, AdGuard Home o Technitium.</p></div><div class="gw-comp-actions"><button data-a="install">Configurar</button><button data-a="uninstall">Quitar integración</button></div></div>
+        <div class="gw-component" data-comp="wgdashboard"><div><h4><span class="gw-dot"></span> WGDashboard</h4><p>Gestión web de peers WireGuard.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
+        <div class="gw-component" data-comp="crowdsec"><div><h4><span class="gw-dot"></span> CrowdSec</h4><p>Detección y baneo de atacantes.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
+        <div class="gw-component" data-comp="netdata"><div><h4><span class="gw-dot"></span> Netdata</h4><p>Monitoreo en tiempo real.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
+        <div class="gw-component" data-comp="panel"><div><h4><span class="gw-dot"></span> Panel WISP</h4><p>Panel local y API en localhost.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar</button></div></div>
+        <div class="gw-component" data-comp="maintenance"><div><h4><span class="gw-dot"></span> Backups</h4><p>Backup diario y rotación. El auto-update Git no se activa en el paquete embebido.</p></div><div class="gw-comp-actions"><button data-a="install">Activar</button><button data-a="uninstall">Desactivar</button></div></div>
+      </div>
+    </div>
+    <div class="gw-terminal-side">
+      <div class="gw-terminal-head"><span>Terminal interactiva del instalador</span><span class="gw-terminal-note">Responde aquí las preguntas del componente.</span></div>
+      <div id="gw-term"></div>
+    </div>
+  </div>
+  <div class="gw-footer">Paquete modular automático para Debian/Ubuntu. Desinstalar es conservador: crea backup y no purga paquetes o datos de terceros. El firewall usa el puerto SSH real y valida nftables antes de aplicar.</div>
+</div>
+
+<!-- Firewall del servidor -->
+<div class="velo" id="m-firewall">
+  <div class="modal firewall-modal">
+    <h3>Firewall — <span id="fw-srv">sin servidor</span></h3>
+    <div class="fw-head">
+      <span class="fw-badge" id="fw-backend">Detectando…</span>
+      <span class="fw-badge" id="fw-estado">—</span>
+      <span class="fw-badge" id="fw-ssh">SSH protegido</span>
+    </div>
+    <div class="fw-rules"><pre id="fw-reglas">Consultando firewall…</pre></div>
+    <div class="fw-actions">
+      <label>Puerto<input type="number" id="fw-puerto" min="1" max="65535" placeholder="8080"></label>
+      <label>Protocolo<select id="fw-proto"><option value="tcp">TCP</option><option value="udp">UDP</option></select></label>
+      <button class="principal" id="fw-abrir">Abrir puerto</button>
+      <button class="peligro" id="fw-cerrar-puerto">Cerrar puerto</button>
+    </div>
+    <div class="fw-note" id="fw-nota">Gateway crea una copia del firewall antes de modificarlo.</div>
+    <div class="botones">
+      <button id="fw-refrescar">Actualizar estado</button>
+      <button id="fw-salir">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmar huella -->
+<div class="velo" id="m-huella">
+  <div class="modal">
+    <h3>Primera conexión a este servidor</h3>
+    <p>Verifica que esta huella coincide con la del servidor (en el VPS: <span style="font-family:'JetBrains Mono',monospace">ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</span>). Si coincide, confía — quedará guardada y se exigirá siempre.</p>
+    <div class="huella" id="huella-txt"></div>
+    <div class="botones">
+      <button id="huella-no">Cancelar</button>
+      <button class="principal" id="huella-si">Confiar y conectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: pedir contraseña -->
+<div class="velo" id="m-pass">
+  <div class="modal">
+    <h3>Contraseña requerida</h3>
+    <p id="pass-para"></p>
+    <input type="password" id="pass-input" placeholder="contraseña (Enter o Ctrl+Enter para conectar)" style="margin-bottom:14px">
+    <div class="botones">
+      <button id="pass-no">Cancelar</button>
+      <button class="principal" id="pass-si">Conectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: asegurar SSH después de instalar una key -->
+<div class="velo" id="m-seguridad">
+  <div class="modal">
+    <h3>¿Asegurar SSH ahora?</h3>
+    <p>La nueva key ya fue instalada y comprobada. Gateway puede endurecer el acceso SSH para que el servidor deje de aceptar contraseñas.</p>
+    <div class="seg-lista">
+      <div>✓ <b>PubkeyAuthentication yes</b> — mantiene el acceso por key.</div>
+      <div>✓ <b>PasswordAuthentication no</b> — bloquea login por contraseña.</div>
+      <div>✓ <b>KbdInteractiveAuthentication no</b> — bloquea autenticación interactiva.</div>
+      <div>✓ <b>PermitRootLogin prohibit-password</b> — root queda permitido solo mediante key.</div>
+    </div>
+    <p class="nota">Gateway crea un respaldo de <b>/etc/ssh/sshd_config</b>, aplica el bloque seguro con prioridad, valida con <b>sshd -t</b>, recarga SSH y hace una prueba real intentando autenticarse otra vez con contraseña. Solo confirma el endurecimiento si la key funciona y la contraseña ya es rechazada. Root no se desactiva por completo: queda disponible solo con key.</p>
+    <div class="botones">
+      <button id="seg-no">Ahora no</button>
+      <button class="principal" id="seg-si">Sí, asegurar SSH</button>
+    </div>
+  </div>
+</div>
+
+<div id="aviso"></div>
+
+<script src="/static/xterm.js"></script>
+<script src="/static/addon-fit.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
