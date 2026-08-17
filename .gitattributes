@@ -1,4 +1,6 @@
-# Go genera go.mod/go.sum con LF. Fuerza LF también en checkout de Windows
-# para que `go mod tidy -diff` no falle por CRLF sin cambios reales.
+# Go genera y formatea sus fuentes y módulos con LF. Fuerza LF también en
+# checkout de Windows para que gofmt y go mod tidy -diff no fallen por una
+# conversión CRLF que no representa ningún cambio real de código.
+*.go text eol=lf
 conectar-gateway/go.mod text eol=lf
 conectar-gateway/go.sum text eol=lf
