@@ -1090,6 +1090,18 @@
         <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg></div>
         <div><h4>Firewall</h4><p>Detecta UFW, firewalld o nftables, muestra las reglas y permite abrir o cerrar puertos con protección del puerto SSH y copia previa.</p><button class="principal" id="tool-firewall">Administrar firewall</button></div>
       </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l3 3"/></svg></div>
+        <div><h4>SSH Key</h4><p>Genera una ED25519 local, instala únicamente la pública usando la sesión activa, prueba una conexión nueva y actualiza el perfil.</p><button class="principal" id="tool-key">Crear e instalar key</button></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/><path d="M4 4v16"/></svg></div>
+        <div><h4>Puerto SSH</h4><p>Cambia el puerto de forma segura: abre firewall, valida sshd, prueba una segunda conexión y hace rollback si falla.</p><div style="display:flex;gap:6px"><input id="tool-ssh-port" type="number" min="1" max="65535" value="2222" style="width:92px"><button class="principal" id="tool-ssh-port-btn">Cambiar</button></div><label style="font-size:11px;color:var(--suave)"><input type="checkbox" id="tool-ssh-close-old" checked> cerrar puerto anterior tras verificar</label></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16V8l-8-5-8 5v11z"/><path d="M8 19v-6h8v6"/></svg></div>
+        <div><h4>Gateway WISP</h4><p>Sube el paquete Gateway WISP incluido con esta versión y abre su instalador interactivo en la terminal.</p><button class="principal" id="tool-gw-install">Instalar / configurar</button></div>
+      </div>
     </div>
   </div>
   <div class="tools-footer"><div class="tool-note">Los scripts se ejecutan con los permisos del usuario SSH conectado. Esta ventana queda preparada para añadir más herramientas después.</div></div>
@@ -2036,6 +2048,21 @@
       pintarFirewall(r);
     }).catch(function(){ $('fw-reglas').textContent='No pude consultar el firewall.'; $('fw-nota').textContent='No pude consultar el firewall.'; $('fw-nota').className='fw-note err'; });
   }
+  $('tool-key').onclick=function(){
+    if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
+    var srv=toolsServidor; if(!confirm('Se generará una nueva key ED25519 y se instalará en '+srv+'.\n\nLa clave privada nunca se enviará al servidor. ¿Continuar?')) return;
+    api('/api/herramientas/crear-key',{servidor:srv}).then(function(r){ if(!r.ok) throw new Error(r.error||'No se pudo crear la key'); aviso('Key creada, instalada y verificada. Perfil actualizado.',true); }).catch(function(e){ aviso(e.message,false); });
+  };
+  $('tool-ssh-port-btn').onclick=function(){
+    if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
+    var puerto=parseInt($('tool-ssh-port').value,10); if(!puerto||puerto<1||puerto>65535){ aviso('Puerto inválido.',false); return; }
+    var srv=toolsServidor; if(!confirm('Cambiar SSH de '+srv+' al puerto '+puerto+'? La sesión actual se mantendrá abierta hasta verificar el nuevo puerto.')) return;
+    api('/api/herramientas/cambiar-puerto-ssh',{servidor:srv,puerto:puerto,cerrarAnterior:$('tool-ssh-close-old').checked}).then(function(r){ if(!r.ok) throw new Error(r.error||'No se pudo cambiar el puerto'); aviso('SSH verificado en el puerto '+r.puerto+'. Perfil actualizado.',true); refrescar(); }).catch(function(e){ aviso(e.message,false); });
+  };
+  $('tool-gw-install').onclick=function(){
+    if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; } var srv=toolsServidor;
+    api('/api/herramientas/gateway-wisp/preparar',{servidor:srv}).then(function(r){ if(!r.ok) throw new Error(r.error||'No se pudo preparar Gateway WISP'); cerrarHerramientas(); abrirTerminal(srv); setTimeout(function(){ enviarTerminal(r.comando+'\n'); },650); }).catch(function(e){ aviso(e.message,false); });
+  };
   $('tool-firewall').onclick=function(){
     if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
     firewallServidor=toolsServidor;

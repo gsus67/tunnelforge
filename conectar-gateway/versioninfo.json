@@ -18,8 +18,8 @@
     "FileDescription": "Tuneles SSH y terminal para gateways WISP",
     "LegalCopyright": "Copyright (c) 2026 Gsus - Licencia MIT",
     "CompanyName": "Gsus",
-    "FileVersion": "3.1.12",
-    "ProductVersion": "3.1.12",
+    "FileVersion": "3.1.13",
+    "ProductVersion": "3.1.13",
     "InternalName": "conectar-gateway",
     "OriginalFilename": "Conectar-Gateway.exe"
   },

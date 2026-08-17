@@ -1,3 +1,10 @@
+## v3.1.13
+
+- Herramientas SSH: crear e instalar una key ED25519 usando la sesión activa y verificarla antes de actualizar el perfil.
+- Cambio seguro del puerto SSH con validación, prueba de una segunda conexión y rollback ante fallo.
+- Integración inicial Gateway WISP: paquete incluido y lanzamiento del instalador interactivo desde la terminal integrada.
+- Conserva Firewall, Speed Test, scripts y tráfico real en Mbit/s de 3.1.12.
+
 ## v3.1.12
 
 ### Herramientas y servidor
