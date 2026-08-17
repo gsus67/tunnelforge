@@ -556,7 +556,12 @@ func wgWriteRuntimeConfig(p WGProfile) (string, error) {
 	return path, nil
 }
 
-func wgRemoveRuntimeConfig(p WGProfile) { _ = os.Remove(wgRuntimeConfigPath(p)) }
+func wgRemoveRuntimeConfig(p WGProfile) {
+	path := wgRuntimeConfigPath(p)
+	_ = os.Remove(path)
+	_ = os.Remove(path + ".stats.bin")
+	_ = os.Remove(path + ".stats.bin.tmp")
+}
 
 func parseWGDump(out string) WGTunnelSnapshot {
 	s := WGTunnelSnapshot{Connected: true, Peers: []WGPeerSnapshot{}}

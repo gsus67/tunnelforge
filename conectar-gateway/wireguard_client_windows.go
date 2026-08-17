@@ -10,18 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
-	"unsafe"
-)
-
-const (
-	wgWinInterfaceSize = 80
-	wgWinPeerSize      = 136
-	wgWinAllowedIPSize = 24
-	wgWinErrMoreData   = syscall.Errno(234)
 )
 
 func wgWindowsCommand(name string, args ...string) *exec.Cmd {
@@ -202,6 +193,7 @@ func wgWindowsServiceFailureDetail(service, configPath string) string {
 func wgAdminRemoveService(name string) error {
 	service := "WireGuardTunnel$" + name
 	if exists, _ := wgWindowsServiceStatus(name); !exists {
+		_ = os.Remove(wgServiceStatsPath(p))
 		return nil
 	}
 	_ = wgSC("stop", service)
@@ -267,6 +259,7 @@ func wgConnectProfile(p WGProfile, configPath string) error {
 	}
 	errorPath := filepath.Join(engineDir, "admin-connect-error.txt")
 	_ = os.Remove(errorPath)
+	_ = os.Remove(wgServiceStatsPath(p))
 	if err := wgRunElevated(exe, "--wg-admin-connect", name, configPath, engineDir, mode); err != nil {
 		if b, readErr := os.ReadFile(errorPath); readErr == nil && strings.TrimSpace(string(b)) != "" {
 			return fmt.Errorf("WireGuard no pudo conectar: %s", strings.TrimSpace(string(b)))
@@ -286,103 +279,68 @@ func wgDisconnectProfile(p WGProfile) error {
 	if err != nil {
 		return err
 	}
-	return wgRunElevated(exe, "--wg-admin-disconnect", name)
+	if err := wgRunElevated(exe, "--wg-admin-disconnect", name); err != nil {
+		return err
+	}
+	_ = os.Remove(wgServiceStatsPath(p))
+	return nil
 }
 
-func wgReadWireGuardNTConfig(name, engineDir string) ([]byte, error) {
-	dll, err := syscall.LoadDLL(filepath.Join(engineDir, "wireguard.dll"))
-	if err != nil {
-		return nil, err
-	}
-	defer dll.Release()
-	openAdapter, err := dll.FindProc("WireGuardOpenAdapter")
-	if err != nil {
-		return nil, err
-	}
-	closeAdapter, err := dll.FindProc("WireGuardCloseAdapter")
-	if err != nil {
-		return nil, err
-	}
-	getConfig, err := dll.FindProc("WireGuardGetConfiguration")
-	if err != nil {
-		return nil, err
-	}
-	nameW, err := syscall.UTF16PtrFromString(name)
-	if err != nil {
-		return nil, err
-	}
-	handle, _, openErr := openAdapter.Call(uintptr(unsafe.Pointer(nameW)))
-	runtime.KeepAlive(nameW)
-	if handle == 0 {
-		return nil, fmt.Errorf("WireGuardOpenAdapter: %v", openErr)
-	}
-	defer closeAdapter.Call(handle)
+const (
+	wgServiceStatsHeaderSize = 20
+	wgServiceStatsPeerSize   = 56
+	wgServiceStatsVersion    = 1
+	wgServiceStatsMagic      = "GWAWGST1"
+)
 
-	size := uint32(64 * 1024)
-	for attempt := 0; attempt < 5; attempt++ {
-		if size < wgWinInterfaceSize {
-			size = wgWinInterfaceSize
-		}
-		if size > 16*1024*1024 {
-			return nil, fmt.Errorf("configuración WireGuard demasiado grande")
-		}
-		buf := make([]byte, int(size))
-		requested := size
-		r, _, callErr := getConfig.Call(
-			handle,
-			uintptr(unsafe.Pointer(&buf[0])),
-			uintptr(unsafe.Pointer(&requested)),
-		)
-		runtime.KeepAlive(buf)
-		if r != 0 {
-			if requested > uint32(len(buf)) {
-				return nil, fmt.Errorf("WireGuard devolvió un tamaño inválido")
-			}
-			return buf[:requested], nil
-		}
-		if errno, ok := callErr.(syscall.Errno); ok && errno == wgWinErrMoreData {
-			size = requested
-			continue
-		}
-		return nil, fmt.Errorf("WireGuardGetConfiguration: %v", callErr)
-	}
-	return nil, fmt.Errorf("WireGuardGetConfiguration cambió de tamaño demasiadas veces")
+func wgServiceStatsPath(p WGProfile) string {
+	return wgRuntimeConfigPath(p) + ".stats.bin"
 }
 
-func wgFiletimeToUnix(v uint64) int64 {
-	if v == 0 {
-		return 0
-	}
-	const epochDeltaSeconds = uint64(11644473600)
-	secs := v / 10000000
-	if secs <= epochDeltaSeconds {
-		return 0
-	}
-	return int64(secs - epochDeltaSeconds)
-}
-
-func wgParseWireGuardNTConfig(p WGProfile, name string, buf []byte) (WGTunnelSnapshot, error) {
+func wgReadServiceStats(p WGProfile, name string) (WGTunnelSnapshot, error) {
 	snap := WGTunnelSnapshot{Connected: true, Interface: name, Peers: []WGPeerSnapshot{}}
-	if len(buf) < wgWinInterfaceSize {
-		return snap, fmt.Errorf("respuesta WireGuardNT demasiado corta")
+	path := wgServiceStatsPath(p)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return snap, fmt.Errorf("esperando telemetría del servicio WireGuard")
+		}
+		return snap, err
 	}
-	snap.ListenPort = int(binary.LittleEndian.Uint16(buf[4:6]))
-	peersCount := binary.LittleEndian.Uint32(buf[72:76])
-	offset := wgWinInterfaceSize
+	if st, statErr := os.Stat(path); statErr == nil && time.Since(st.ModTime()) > 8*time.Second {
+		return snap, fmt.Errorf("la telemetría del servicio WireGuard está desactualizada")
+	}
+	if len(b) < wgServiceStatsHeaderSize {
+		return snap, fmt.Errorf("telemetría WireGuard demasiado corta")
+	}
+	if string(b[:8]) != wgServiceStatsMagic {
+		return snap, fmt.Errorf("formato de telemetría WireGuard desconocido")
+	}
+	version := binary.LittleEndian.Uint32(b[8:12])
+	if version != wgServiceStatsVersion {
+		return snap, fmt.Errorf("versión de telemetría WireGuard no soportada: %d", version)
+	}
+	snap.ListenPort = int(binary.LittleEndian.Uint16(b[12:14]))
+	peerCount := binary.LittleEndian.Uint32(b[16:20])
+	if peerCount > 65535 {
+		return snap, fmt.Errorf("cantidad de peers WireGuard inválida")
+	}
+	expected := uint64(wgServiceStatsHeaderSize) + uint64(peerCount)*uint64(wgServiceStatsPeerSize)
+	if expected != uint64(len(b)) {
+		return snap, fmt.Errorf("telemetría WireGuard truncada o inválida")
+	}
+
 	profilePeers := make(map[string]WGPeer, len(p.Peers))
 	for _, peer := range p.Peers {
 		profilePeers[strings.TrimSpace(peer.PublicKey)] = peer
 	}
-	for i := uint32(0); i < peersCount; i++ {
-		if offset+wgWinPeerSize > len(buf) {
-			return snap, fmt.Errorf("respuesta WireGuardNT truncada en peer %d", i+1)
-		}
-		peerBuf := buf[offset : offset+wgWinPeerSize]
-		publicKey := base64.StdEncoding.EncodeToString(peerBuf[8:40])
-		tx := int64(binary.LittleEndian.Uint64(peerBuf[104:112]))
-		rx := int64(binary.LittleEndian.Uint64(peerBuf[112:120]))
-		handshake := wgFiletimeToUnix(binary.LittleEndian.Uint64(peerBuf[120:128]))
-		allowedCount := binary.LittleEndian.Uint32(peerBuf[128:132])
+	offset := wgServiceStatsHeaderSize
+	for i := uint32(0); i < peerCount; i++ {
+		rec := b[offset : offset+wgServiceStatsPeerSize]
+		publicKey := base64.StdEncoding.EncodeToString(rec[:32])
+		tx := int64(binary.LittleEndian.Uint64(rec[32:40]))
+		rx := int64(binary.LittleEndian.Uint64(rec[40:48]))
+		handshake := wgFiletimeToUnix(binary.LittleEndian.Uint64(rec[48:56]))
 		ps := WGPeerSnapshot{
 			PublicKey:       publicKey,
 			LatestHandshake: handshake,
@@ -399,14 +357,21 @@ func wgParseWireGuardNTConfig(p WGProfile, name string, buf []byte) (WGTunnelSna
 		if handshake > snap.LatestHandshake {
 			snap.LatestHandshake = handshake
 		}
-		offset += wgWinPeerSize
-		skip := uint64(allowedCount) * wgWinAllowedIPSize
-		if skip > uint64(len(buf)-offset) {
-			return snap, fmt.Errorf("respuesta WireGuardNT truncada en AllowedIPs")
-		}
-		offset += int(skip)
+		offset += wgServiceStatsPeerSize
 	}
 	return snap, nil
+}
+
+func wgFiletimeToUnix(v uint64) int64 {
+	if v == 0 {
+		return 0
+	}
+	const epochDeltaSeconds = uint64(11644473600)
+	secs := v / 10000000
+	if secs <= epochDeltaSeconds {
+		return 0
+	}
+	return int64(secs - epochDeltaSeconds)
 }
 
 func wgTunnelSnapshot(p WGProfile) (WGTunnelSnapshot, error) {
@@ -416,19 +381,9 @@ func wgTunnelSnapshot(p WGProfile) (WGTunnelSnapshot, error) {
 	if !exists || !running {
 		return snap, nil
 	}
-	engineDir, err := wgEnsureEmbeddedEngine()
+	parsed, err := wgReadServiceStats(p, name)
 	if err != nil {
-		snap.Error = err.Error()
-		return snap, nil
-	}
-	buf, err := wgReadWireGuardNTConfig(name, engineDir)
-	if err != nil {
-		snap.Error = "túnel activo; no pude leer estadísticas: " + err.Error()
-		return snap, nil
-	}
-	parsed, err := wgParseWireGuardNTConfig(p, name, buf)
-	if err != nil {
-		snap.Error = err.Error()
+		snap.Error = "túnel activo; " + err.Error()
 		return snap, nil
 	}
 	return parsed, nil

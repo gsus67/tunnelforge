@@ -1,3 +1,14 @@
+## v3.4.6
+
+### WireGuard — telemetría desde el servicio elevado
+
+- Corregido `WireGuardOpenAdapter: Acceso denegado` en Windows: la UI ya no intenta abrir WireGuardNT desde el proceso Wails sin privilegios.
+- El host nativo del servicio consulta RX/TX/handshake desde el contexto elevado que ya controla el túnel y publica una telemetría local saneada.
+- El archivo de telemetría contiene únicamente public keys y contadores; no guarda PrivateKey, PresharedKey, configuración completa ni secretos.
+- La UI lee la telemetría del servicio sin pedir UAC adicional ni obligar a ejecutar toda la aplicación como administrador.
+- La telemetría se escribe de forma atómica cada segundo y se elimina al detener el túnel para evitar mostrar datos antiguos.
+- Metadata de aplicación sincronizada con v3.4.6.
+
 ## v3.4.5
 
 ### WireGuard — telemetría, conexión y tráfico local

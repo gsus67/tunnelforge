@@ -21,7 +21,7 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 ## WireGuard
 
-> **v3.4.5** mantiene WireGuard completamente integrado en el ejecutable de Windows, conserva la corrección del host nativo de v3.4.3 y endurece la publicación de Releases frente a errores HTTP 5xx de GitHub. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
+> **v3.4.6** mantiene WireGuard completamente integrado en el ejecutable de Windows, conserva la corrección del host nativo de v3.4.3 y endurece la publicación de Releases frente a errores HTTP 5xx de GitHub. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
 
 Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. A partir de **v3.4.3**, el build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `Conectar-Gateway.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
 
@@ -37,7 +37,7 @@ Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linu
 - Los perfiles pueden incluirse en el backup portable `.cgw`; sus secretos viajan dentro del contenedor cifrado del backup y se vuelven a cifrar al restaurar.
 - Los hooks `PreUp`, `PostUp`, `PreDown` y `PostDown` importados se conservan, pero quedan **deshabilitados por defecto** hasta que el usuario los autoriza expresamente.
 
-En Windows **no hace falta instalar ningún cliente WireGuard aparte**: Gateway WISP Access registra un servicio `WireGuardTunnel$...` cuyo ejecutable es el host nativo privado extraído desde la propia aplicación; ese host carga el motor oficial `tunnel.dll`. Para el usuario sigue siendo una sola aplicación, sin instalador adicional. Las estadísticas RX/TX y handshake se consultan directamente mediante la API de WireGuardNT. En Linux se mantiene `wireguard-tools` (`wg`/`wg-quick`) del sistema y puede instalarse mediante el gestor de paquetes compatible cuando hay `pkexec`.
+En Windows **no hace falta instalar ningún cliente WireGuard aparte**: Gateway WISP Access registra un servicio `WireGuardTunnel$...` cuyo ejecutable es el host nativo privado extraído desde la propia aplicación; ese host carga el motor oficial `tunnel.dll`. Para el usuario sigue siendo una sola aplicación, sin instalador adicional. Las estadísticas RX/TX y handshake las consulta el host del servicio mediante la API de WireGuardNT y entrega a la UI únicamente telemetría sin secretos; la aplicación completa no necesita ejecutarse como administrador. En Linux se mantiene `wireguard-tools` (`wg`/`wg-quick`) del sistema y puede instalarse mediante el gestor de paquetes compatible cuando hay `pkexec`.
 
 > Gateway WISP Access no es el cliente oficial de WireGuard. El nombre WireGuard se utiliza para describir compatibilidad e integración con el software/protocolo correspondiente; cada componente externo conserva su licencia y autoría. Consulte [TERCEROS.md](TERCEROS.md).
 
