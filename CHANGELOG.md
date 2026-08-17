@@ -1,5 +1,7 @@
 ## v3.2.2
 
+- Corregida la publicación de GitHub Releases para reemplazar assets existentes de forma determinista con GitHub CLI y evitar conflictos de borradores duplicados.
+
 ### Monitoreo
 
 - Preparación del servidor monitor dividida en 6 fases verificables con progreso y errores más claros.
