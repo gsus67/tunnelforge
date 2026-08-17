@@ -5,7 +5,8 @@ conectar-gateway-linux
 # Datos personales del operador (IPs, huellas): NUNCA al repo
 conexiones.json
 
-# Recursos generados por el workflow
+# Recursos PE generados temporalmente por Wails; nunca se versionan.
+# Si un .syso antiguo ya estaba trackeado, el workflow lo elimina antes del build.
 *.syso
 
 # Artefactos de Wails/TypeScript

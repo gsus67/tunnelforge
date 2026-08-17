@@ -35,6 +35,17 @@ jobs:
           go mod download
           go mod tidy
 
+      - name: Limpiar recursos Windows legacy
+        working-directory: conectar-gateway
+        shell: pwsh
+        run: |
+          # Versiones pre-Wails podían dejar .syso ya trackeados. Wails genera su
+          # propio recurso desde build/windows; dos recursos PE provocan
+          # "too many .rsrc sections" en el linker de Go.
+          Get-ChildItem -Path . -Filter "*.syso" -File -ErrorAction SilentlyContinue | Remove-Item -Force
+          if (Test-Path "app.manifest") { Remove-Item "app.manifest" -Force }
+          if (Test-Path "versioninfo.json") { Remove-Item "versioninfo.json" -Force }
+
       - name: Compilar Windows
         working-directory: conectar-gateway
         shell: pwsh
@@ -76,6 +87,11 @@ jobs:
         run: |
           go mod download
           go mod tidy
+
+      - name: Limpiar recursos legacy
+        working-directory: conectar-gateway
+        run: |
+          find . -maxdepth 1 -type f -name '*.syso' -delete
 
       - name: Compilar Linux
         working-directory: conectar-gateway
