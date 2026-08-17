@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "3.1.13"
+const version = "3.1.14"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -903,8 +903,13 @@ func main() {
 	mux.HandleFunc("/api/herramientas/test-velocidad", proteger(manejarTestVelocidad))
 	mux.HandleFunc("/api/herramientas/firewall", proteger(manejarFirewall))
 	mux.HandleFunc("/api/herramientas/crear-key", proteger(manejarToolCrearKey))
+	mux.HandleFunc("/api/herramientas/usar-key", proteger(manejarToolUsarKey))
 	mux.HandleFunc("/api/herramientas/cambiar-puerto-ssh", proteger(manejarToolCambiarPuertoSSH))
+	mux.HandleFunc("/api/herramientas/ssh-puerto/probar", proteger(manejarToolPuertoSSHProbar))
+	mux.HandleFunc("/api/herramientas/ssh-puerto/aplicar", proteger(manejarToolPuertoSSHAplicar))
+	mux.HandleFunc("/api/herramientas/ssh-puerto/cancelar", proteger(manejarToolPuertoSSHCancelar))
 	mux.HandleFunc("/api/herramientas/gateway-wisp/preparar", proteger(manejarGatewayWISPPreparar))
+	mux.HandleFunc("/api/herramientas/gateway-wisp/comando", proteger(manejarGatewayWISPComando))
 	mux.HandleFunc("/api/herramientas/gateway-wisp/estado", proteger(manejarGatewayWISPEstado))
 
 	// Reordenar servidores (arrastrar en la interfaz): recibe la lista de

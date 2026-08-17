@@ -1,9 +1,36 @@
+## v3.1.14
+
+### Integración Gateway WISP y SSH
+
+- Gateway WISP modular 1.5.0 queda embebido dentro de la aplicación y se transfiere al servidor desde la ventana dedicada de Herramientas.
+- Ventana Gateway WISP con descripción, estado, instalación/desinstalación, administración por componentes y terminal xterm interactiva para responder preguntas del instalador.
+- Flujo SSH Key revisado: permite crear una ED25519 o cargar una key privada existente, instala solo la pública y verifica una segunda conexión antes de asignarla al perfil.
+- Cambio de puerto SSH en dos fases: prepara el nuevo puerto manteniendo el anterior, prueba automáticamente una segunda conexión interna y solo después permite aplicar definitivamente el cambio.
+- Metadata de versión de Windows sincronizada completamente a 3.1.14.
+
 ## v3.1.13
 
-- Herramientas SSH: crear e instalar una key ED25519 usando la sesión activa y verificarla antes de actualizar el perfil.
-- Cambio seguro del puerto SSH con validación, prueba de una segunda conexión y rollback ante fallo.
-- Integración inicial Gateway WISP: paquete incluido y lanzamiento del instalador interactivo desde la terminal integrada.
-- Conserva Firewall, Speed Test, scripts y tráfico real en Mbit/s de 3.1.12.
+### Herramientas SSH
+
+- Ventana dedicada de administración SSH por servidor conectado.
+- **Crear e instalar ED25519** genera la privada solo en el equipo local, instala únicamente la pública y abre una segunda conexión SSH real antes de guardar el perfil.
+- **Usar key existente** permite elegir una privada local como en Editar servidor; instala su pública si falta, prueba una segunda conexión y solo después la asigna al perfil.
+- **Cambio seguro de puerto SSH en dos fases**: prepara puerto actual+nuevo, valida `sshd -t`, abre firewall, prueba automáticamente una segunda conexión interna y habilita Aplicar solo tras el éxito.
+- La sesión actual permanece abierta. En systemd se programa además un rollback de seguridad de 5 minutos si el flujo se abandona antes de confirmar.
+- Soporte para `ssh.socket`; un nftables personalizado no gestionado se rechaza antes de cambiar SSH para evitar un puerto no persistente.
+
+### Gateway WISP modular
+
+- Nueva ventana propia **Gateway WISP** con descripción, estado, componentes y terminal xterm interactiva en la misma vista.
+- El paquete embebido se transfiere y verifica en segundo plano; los botones no dependen de escribir la extracción a ciegas en la terminal.
+- Instalación completa modular y administración individual de: Sistema base, WireGuard, Firewall/NAT, QoS CAKE, DNS, WGDashboard, CrowdSec, Netdata, Panel WISP y Backups.
+- Instalación completa orquestada por módulos con preguntas interactivas en la terminal integrada.
+- Desinstalación conservadora con backup: retira integración WISP sin purgar automáticamente paquetes ni datos de terceros.
+- Operaciones automáticas del paquete limitadas a Debian/Ubuntu.
+- Firewall persistente usa el puerto SSH real, valida nftables antes de reemplazar reglas y reserva un directorio de reglas administradas.
+- Corregida la clasificación QoS para que una prioridad alta no sea sobrescrita después por una clase inferior.
+
+- Conserva Firewall, Speed Test, scripts, tráfico real en Mbit/s y selector de localhost de versiones anteriores.
 
 ## v3.1.12
 

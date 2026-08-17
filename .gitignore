@@ -5,3 +5,6 @@ dist/
 
 # Datos personales del operador (IPs, huellas): NUNCA al repo
 conexiones.json
+
+# Recursos generados por el workflow
+*.syso

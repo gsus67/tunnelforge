@@ -714,6 +714,32 @@
   .info-components a{padding:4px 7px;border:1px solid rgba(77,134,184,.14);border-radius:6px;background:rgba(7,19,31,.5);color:var(--texto-2)}
   @media(max-width:900px){.info-overview{grid-template-columns:44px 1fr}.info-version-box{grid-column:1/-1;text-align:left}.info-stats{grid-template-columns:1fr}.info-sections{grid-template-columns:1fr}}
 
+
+  /* v3.1.14: administración SSH segura en dos fases */
+  .sshadmin-velo,.gw-velo{position:fixed;inset:0;display:none;flex-direction:column;z-index:52;background:rgba(2,8,13,.94);backdrop-filter:blur(6px)}
+  .sshadmin-velo.abierto,.gw-velo.abierto{display:flex}
+  .modal-tool-bar{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 12px;border-bottom:1px solid var(--linea);background:#07121d}
+  .modal-tool-bar .t{font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase}.modal-tool-bar .t b{color:var(--verde)}.modal-tool-bar .sep{flex:1}
+  .sshadmin-body{flex:1;min-height:0;overflow:auto;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+  .sshadmin-card{border:1px solid var(--borde-frio);background:rgba(7,19,31,.88);border-radius:8px;padding:14px;min-width:0}
+  .sshadmin-card h3{font-size:15px;margin:0 0 4px}.sshadmin-card>p{font-size:11.5px;line-height:1.45;color:var(--suave);margin:0 0 12px}
+  .ssh-field{display:grid;gap:4px;margin:8px 0}.ssh-field label{font-size:10px;color:var(--suave)}.ssh-field input{height:34px;padding:6px 8px!important}
+  .ssh-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.ssh-row input[type=text],.ssh-row input[type=password]{flex:1;min-width:180px}.ssh-row input[type=number]{width:110px}
+  .ssh-status{margin-top:10px;min-height:34px;padding:8px 9px;border:1px solid rgba(77,134,184,.15);background:#06111b;border-radius:6px;font-size:10.5px;line-height:1.4;color:var(--texto-2)}.ssh-status.ok{color:var(--verde);border-color:rgba(77,225,154,.25)}.ssh-status.err{color:var(--rojo);border-color:rgba(235,100,100,.25)}.ssh-status.warn{color:var(--ambar)}
+  .ssh-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}.ssh-step{padding:7px;border:1px solid rgba(77,134,184,.15);background:#06111b;border-radius:6px;font-size:9.5px;color:var(--suave);text-align:center}.ssh-step.ok{color:var(--verde);border-color:rgba(77,225,154,.28)}.ssh-step.active{color:var(--ambar);border-color:rgba(230,180,91,.3)}
+  .ssh-port-console{margin-top:8px;min-height:88px;max-height:132px;overflow:auto;padding:8px 9px;border:1px solid rgba(77,134,184,.14);border-radius:6px;background:#040b11;font:9.5px/1.5 'JetBrains Mono',Consolas,monospace;color:#9db5c6;white-space:pre-wrap}.ssh-port-console .ok{color:var(--verde)}.ssh-port-console .err{color:var(--rojo)}.ssh-port-console .warn{color:var(--ambar)}
+  .sshadmin-footer,.gw-footer{flex:none;min-height:38px;padding:8px 14px;border-top:1px solid var(--linea);background:#071019;color:var(--suave);font-size:10.5px;display:flex;align-items:center;gap:8px}
+  @media(max-width:900px){.sshadmin-body{grid-template-columns:1fr}}
+
+  /* v3.1.14: Gateway WISP modular con terminal dentro de la propia ventana */
+  .gw-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(310px,38%) minmax(0,1fr);gap:0}
+  .gw-left{min-height:0;overflow:auto;padding:14px;border-right:1px solid var(--linea)}
+  .gw-intro{padding:12px;border:1px solid rgba(77,134,184,.18);background:rgba(7,19,31,.72);border-radius:8px;margin-bottom:10px}.gw-intro h3{font-size:16px;margin:0 0 5px}.gw-intro p{font-size:11px;line-height:1.45;color:var(--texto-2);margin:0}
+  .gw-state{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:9px 0}.gw-chip{font-size:9.5px;padding:4px 7px;border:1px solid rgba(77,134,184,.2);border-radius:6px;color:var(--texto-2);background:#06111b}.gw-chip.ok{color:var(--verde);border-color:rgba(77,225,154,.25)}
+  .gw-main-actions{display:flex;gap:7px;flex-wrap:wrap;margin:9px 0 13px}.gw-main-actions button{font-size:11px;padding:7px 9px!important}
+  .gw-components{display:grid;gap:6px}.gw-component{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 10px;border:1px solid rgba(77,134,184,.14);background:rgba(6,17,27,.78);border-radius:7px}.gw-component h4{font-size:12px;margin:0 0 2px}.gw-component p{font-size:9.5px;color:var(--suave);margin:0;line-height:1.35}.gw-comp-actions{display:flex;align-items:center;gap:5px}.gw-dot{width:7px;height:7px;border-radius:50%;background:#536879}.gw-dot.ok{background:var(--verde);box-shadow:0 0 5px rgba(77,225,154,.45)}.gw-component button{font-size:9.5px!important;padding:5px 7px!important}
+  .gw-terminal-side{min-height:0;display:flex;flex-direction:column;background:#050c12}.gw-terminal-head{height:36px;flex:none;padding:0 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(77,134,184,.14);font-size:10.5px;color:var(--suave)}#gw-term{flex:1;min-height:0;padding:6px}.gw-terminal-note{font-size:9.5px;color:var(--suave)}
+  @media(max-width:980px){.gw-body{grid-template-columns:1fr}.gw-left{max-height:45vh;border-right:0;border-bottom:1px solid var(--linea)}}
 </style>
 </head>
 <body>
@@ -1092,19 +1118,93 @@
       </div>
       <div class="tool-card">
         <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l3 3"/></svg></div>
-        <div><h4>SSH Key</h4><p>Genera una ED25519 local, instala únicamente la pública usando la sesión activa, prueba una conexión nueva y actualiza el perfil.</p><button class="principal" id="tool-key">Crear e instalar key</button></div>
+        <div><h4>SSH Key</h4><p>Crea una ED25519 nueva o carga una key privada que ya tengas. La app prueba una conexión independiente antes de asignarla al perfil.</p><button class="principal" id="tool-key">Administrar SSH</button></div>
       </div>
       <div class="tool-card">
         <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/><path d="M4 4v16"/></svg></div>
-        <div><h4>Puerto SSH</h4><p>Cambia el puerto de forma segura: abre firewall, valida sshd, prueba una segunda conexión y hace rollback si falla.</p><div style="display:flex;gap:6px"><input id="tool-ssh-port" type="number" min="1" max="65535" value="2222" style="width:92px"><button class="principal" id="tool-ssh-port-btn">Cambiar</button></div><label style="font-size:11px;color:var(--suave)"><input type="checkbox" id="tool-ssh-close-old" checked> cerrar puerto anterior tras verificar</label></div>
+        <div><h4>Puerto SSH</h4><p>Asistente en dos fases: deja el puerto actual activo, prueba automáticamente una segunda conexión real por el nuevo puerto y solo después permite aplicar.</p><button class="principal" id="tool-ssh-port-btn">Cambiar de forma segura</button></div>
       </div>
       <div class="tool-card">
         <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16V8l-8-5-8 5v11z"/><path d="M8 19v-6h8v6"/></svg></div>
-        <div><h4>Gateway WISP</h4><p>Sube el paquete Gateway WISP incluido con esta versión y abre su instalador interactivo en la terminal.</p><button class="principal" id="tool-gw-install">Instalar / configurar</button></div>
+        <div><h4>Gateway WISP</h4><p>Paquete modular para instalar el gateway completo o administrar WireGuard, firewall, QoS, DNS, CrowdSec, Netdata y panel por separado.</p><button class="principal" id="tool-gw-install">Abrir Gateway WISP</button></div>
       </div>
     </div>
   </div>
   <div class="tools-footer"><div class="tool-note">Los scripts se ejecutan con los permisos del usuario SSH conectado. Esta ventana queda preparada para añadir más herramientas después.</div></div>
+</div>
+
+
+<!-- Administración SSH del servidor -->
+<div class="sshadmin-velo" id="sshadmin-velo">
+  <div class="modal-tool-bar">
+    <span class="t">SSH — <b id="sshadmin-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <button id="sshadmin-cerrar">Cerrar <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="sshadmin-body">
+    <section class="sshadmin-card">
+      <h3>Clave SSH</h3>
+      <p>Usa una key privada existente o crea una ED25519 nueva. Si eliges una key local, Gateway instala únicamente su parte pública en el servidor (si hace falta), abre una segunda conexión SSH independiente y solo entonces la guarda en el perfil. La privada nunca sale de este equipo.</p>
+      <div class="ssh-field"><label>Key privada para este perfil</label>
+        <div class="ssh-row"><input type="text" id="ssh-key-path" placeholder="C:\Users\usuario\.ssh\id_ed25519"><button id="ssh-key-buscar">Buscar…</button></div>
+      </div>
+      <div class="ssh-field"><label>Passphrase (si la key tiene)</label><input type="password" id="ssh-key-pass" placeholder="opcional"></div>
+      <label style="font-size:10px;color:var(--suave)"><input type="checkbox" id="ssh-key-recordar"> recordar passphrase cifrada en este equipo</label>
+      <div class="ssh-row" style="margin-top:10px"><button class="principal" id="ssh-key-usar">Instalar, probar y usar esta key</button><button id="ssh-key-crear">Crear e instalar nueva ED25519</button></div>
+      <div class="ssh-status" id="ssh-key-status">Selecciona una key o crea una nueva.</div>
+    </section>
+
+    <section class="sshadmin-card">
+      <h3>Cambiar puerto SSH</h3>
+      <p>El cambio se realiza en dos fases. Primero SSH escucha temporalmente en el puerto actual y el nuevo; la aplicación abre una segunda conexión real por el nuevo puerto. Solo después se habilita <b>Aplicar cambio</b>.</p>
+      <div class="ssh-row"><span class="gw-chip">Puerto actual: <b id="ssh-port-actual">—</b></span></div>
+      <div class="ssh-field"><label>Nuevo puerto</label><input type="number" id="ssh-port-nuevo" min="1" max="65535" value="2222"></div>
+      <div class="ssh-field"><label>Contraseña sudo (solo si tu usuario no es root y sudo la solicita)</label><input type="password" id="ssh-port-sudo" placeholder="no se guarda"></div>
+      <label style="font-size:10px;color:var(--suave)"><input type="checkbox" id="ssh-port-close-old" checked> cerrar el puerto anterior en el firewall después de verificar</label>
+      <div class="ssh-steps"><div class="ssh-step" id="ssh-step-config">1 · Preparar</div><div class="ssh-step" id="ssh-step-test">2 · Probar conexión</div><div class="ssh-step" id="ssh-step-apply">3 · Aplicar</div></div>
+      <div class="ssh-row"><button class="principal" id="ssh-port-probar">Probar nuevo puerto</button><button class="principal" id="ssh-port-aplicar" disabled>Aplicar cambio</button><button id="ssh-port-cancelar" disabled>Cancelar prueba</button></div>
+      <div class="ssh-status" id="ssh-port-status">Todavía no se ha cambiado nada.</div>
+      <div class="ssh-port-console" id="ssh-port-console">Esperando una prueba. La conexión actual no se cerrará.</div>
+    </section>
+  </div>
+  <div class="sshadmin-footer">La sesión SSH actual permanece abierta durante todo el proceso. Si la prueba falla, Gateway restaura la configuración anterior automáticamente.</div>
+</div>
+
+<!-- Gateway WISP modular -->
+<div class="gw-velo" id="gw-velo">
+  <div class="modal-tool-bar">
+    <span class="t">Gateway WISP — <b id="gw-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <button id="gw-refresh">Actualizar estado</button>
+    <button id="gw-cerrar">Cerrar <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="gw-body">
+    <div class="gw-left">
+      <div class="gw-intro">
+        <h3>Gateway WISP</h3>
+        <p>Convierte un VPS Debian/Ubuntu en gateway de salida WISP con WireGuard, nftables/NAT, QoS CAKE, DNS filtrado, CrowdSec, Netdata y panel local. Puedes instalar todo o manejar cada componente por separado. Las preguntas de configuración aparecen en la terminal de esta misma ventana.</p>
+        <div class="gw-state"><span class="gw-chip" id="gw-state-main">Consultando…</span><span class="gw-chip">Paquete <b id="gw-bundle-ver">—</b></span><span class="gw-chip" id="gw-package-state">Preparando paquete…</span><span class="gw-chip">Instalado <b id="gw-installed-ver">—</b></span></div>
+        <div class="gw-main-actions"><button class="principal" id="gw-install-all">Instalar / configurar todo</button><button class="peligro" id="gw-uninstall-all">Desinstalar Gateway WISP</button></div>
+      </div>
+      <div class="gw-components" id="gw-components">
+        <div class="gw-component" data-comp="system"><div><h4><span class="gw-dot"></span> Sistema base</h4><p>Forwarding, buffers, conntrack, GRO, parches de seguridad y utilidades. No hace full-upgrade automático.</p></div><div class="gw-comp-actions"><button data-a="install">Preparar</button><button data-a="uninstall">Quitar tuning</button></div></div>
+        <div class="gw-component" data-comp="wireguard"><div><h4><span class="gw-dot"></span> WireGuard</h4><p>Motor VPN y herramientas del túnel.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar integración</button></div></div>
+        <div class="gw-component" data-comp="firewall"><div><h4><span class="gw-dot"></span> Firewall / NAT</h4><p>nftables, NAT, aislamiento y reglas persistentes.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Restaurar</button></div></div>
+        <div class="gw-component" data-comp="qos"><div><h4><span class="gw-dot"></span> QoS CAKE</h4><p>Prioridad por DSCP y reparto justo.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar</button></div></div>
+        <div class="gw-component" data-comp="dns"><div><h4><span class="gw-dot"></span> DNS filtrado</h4><p>ControlD, AdGuard Home o Technitium.</p></div><div class="gw-comp-actions"><button data-a="install">Configurar</button><button data-a="uninstall">Quitar integración</button></div></div>
+        <div class="gw-component" data-comp="wgdashboard"><div><h4><span class="gw-dot"></span> WGDashboard</h4><p>Gestión web de peers WireGuard.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
+        <div class="gw-component" data-comp="crowdsec"><div><h4><span class="gw-dot"></span> CrowdSec</h4><p>Detección y baneo de atacantes.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
+        <div class="gw-component" data-comp="netdata"><div><h4><span class="gw-dot"></span> Netdata</h4><p>Monitoreo en tiempo real.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
+        <div class="gw-component" data-comp="panel"><div><h4><span class="gw-dot"></span> Panel WISP</h4><p>Panel local y API en localhost.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar</button></div></div>
+        <div class="gw-component" data-comp="maintenance"><div><h4><span class="gw-dot"></span> Backups</h4><p>Backup diario y rotación. El auto-update Git no se activa en el paquete embebido.</p></div><div class="gw-comp-actions"><button data-a="install">Activar</button><button data-a="uninstall">Desactivar</button></div></div>
+      </div>
+    </div>
+    <div class="gw-terminal-side">
+      <div class="gw-terminal-head"><span>Terminal interactiva del instalador</span><span class="gw-terminal-note">Responde aquí las preguntas del componente.</span></div>
+      <div id="gw-term"></div>
+    </div>
+  </div>
+  <div class="gw-footer">Paquete modular automático para Debian/Ubuntu. Desinstalar es conservador: crea backup y no purga paquetes o datos de terceros. El firewall usa el puerto SSH real y valida nftables antes de aplicar.</div>
 </div>
 
 <!-- Firewall del servidor -->
@@ -1927,6 +2027,8 @@
   // ── Atajos de teclado ──────────────────────────────────────────
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape'){
+      if (document.getElementById('gw-velo').classList.contains('abierto')){ cerrarGatewayWISP(); return; }
+      if (document.getElementById('sshadmin-velo').classList.contains('abierto')){ cerrarSSHAdmin(); return; }
       if (document.getElementById('m-firewall').classList.contains('abierto')){ cerrarFirewall(); return; }
       if (document.getElementById('fx-velo').classList.contains('abierto')){ cerrarArchivos(); return; }
       if (document.getElementById('tools-velo').classList.contains('abierto')){ cerrarHerramientas(); return; }
@@ -2048,21 +2150,136 @@
       pintarFirewall(r);
     }).catch(function(){ $('fw-reglas').textContent='No pude consultar el firewall.'; $('fw-nota').textContent='No pude consultar el firewall.'; $('fw-nota').className='fw-note err'; });
   }
-  $('tool-key').onclick=function(){
-    if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
-    var srv=toolsServidor; if(!confirm('Se generará una nueva key ED25519 y se instalará en '+srv+'.\n\nLa clave privada nunca se enviará al servidor. ¿Continuar?')) return;
-    api('/api/herramientas/crear-key',{servidor:srv}).then(function(r){ if(!r.ok) throw new Error(r.error||'No se pudo crear la key'); aviso('Key creada, instalada y verificada. Perfil actualizado.',true); }).catch(function(e){ aviso(e.message,false); });
+  // ── Administración SSH (key + puerto seguro) ───────────────
+  var sshAdminServidor=null, sshPortToken=null;
+  function perfilCache(nombre){ return servidoresCache.find(function(x){ return x.nombre===nombre; }) || null; }
+  function sshStatus(id,texto,tipo){ var e=$(id); e.textContent=texto; e.className='ssh-status'+(tipo?' '+tipo:''); }
+  function sshPortLog(text,tipo,reset){var n=$('ssh-port-console');if(!n)return;if(reset)vaciar(n);var l=document.createElement('div');if(tipo)l.className=tipo;l.textContent=text;n.appendChild(l);n.scrollTop=n.scrollHeight;}
+  function sshSteps(a,b,c){
+    $('ssh-step-config').className='ssh-step'+(a?' '+a:'');
+    $('ssh-step-test').className='ssh-step'+(b?' '+b:'');
+    $('ssh-step-apply').className='ssh-step'+(c?' '+c:'');
+  }
+  function abrirSSHAdmin(nombre){
+    sshAdminServidor=nombre; sshPortToken=null;
+    var p=perfilCache(nombre)||{};
+    $('sshadmin-srv').textContent=nombre;
+    $('ssh-key-path').value=p.key||''; $('ssh-key-pass').value=''; $('ssh-key-recordar').checked=false;
+    $('ssh-port-actual').textContent=p.puerto||22;
+    $('ssh-port-nuevo').value=(p.puerto||22)===2222?22022:2222;
+    $('ssh-port-sudo').value=''; $('ssh-port-aplicar').disabled=true; $('ssh-port-cancelar').disabled=true; $('ssh-port-probar').disabled=false;
+    sshSteps('','','');
+    sshStatus('ssh-key-status',p.key?'Key actual: '+p.key:'Este perfil no tiene una key asignada todavía.','');
+    sshStatus('ssh-port-status','Todavía no se ha cambiado nada.',''); sshPortLog('Esperando una prueba. La conexión actual no se cerrará.','',true);
+    cerrarHerramientas(); $('sshadmin-velo').classList.add('abierto');
+  }
+  function cancelarPruebaPuerto(cerrarDespues){
+    if(!sshPortToken){ if(cerrarDespues) $('sshadmin-velo').classList.remove('abierto'); return Promise.resolve(); }
+    var tok=sshPortToken, srv=sshAdminServidor;
+    return api('/api/herramientas/ssh-puerto/cancelar',{method:'POST',body:JSON.stringify({servidor:srv,token:tok,sudoPassword:$('ssh-port-sudo').value})}).then(function(r){
+      if(r.error){ sshStatus('ssh-port-status',r.error,'err'); throw new Error(r.error); }
+      sshPortToken=null; $('ssh-port-aplicar').disabled=true; $('ssh-port-cancelar').disabled=true; $('ssh-port-probar').disabled=false; sshSteps('','','');
+      sshStatus('ssh-port-status','Prueba cancelada. Se restauró el puerto anterior.','');sshPortLog('↩ Prueba cancelada: configuración anterior restaurada.','warn');
+      if(cerrarDespues) $('sshadmin-velo').classList.remove('abierto');
+    });
+  }
+  function cerrarSSHAdmin(){
+    if(sshPortToken){
+      if(!confirm('Hay una prueba de puerto pendiente. ¿Cancelar la prueba y restaurar el puerto anterior antes de cerrar?')) return;
+      cancelarPruebaPuerto(true).catch(function(e){ aviso(e.message||'No pude cancelar la prueba.',false); });
+      return;
+    }
+    $('sshadmin-velo').classList.remove('abierto');
+  }
+  $('sshadmin-cerrar').onclick=cerrarSSHAdmin;
+  $('tool-key').onclick=function(){ if(!toolsServidor){aviso('No hay servidor seleccionado.',false);return;} abrirSSHAdmin(toolsServidor); };
+  $('tool-ssh-port-btn').onclick=function(){ if(!toolsServidor){aviso('No hay servidor seleccionado.',false);return;} abrirSSHAdmin(toolsServidor); setTimeout(function(){$('ssh-port-nuevo').focus();},60); };
+  $('ssh-key-buscar').onclick=function(){
+    if(!sshAdminServidor) return;
+    selectorDestino='ssh-tool-key';
+    $('sshadmin-velo').classList.remove('abierto');
+    abrirArchivos(''); cargarLocal('');
+    aviso('Elige tu key privada en "Tu equipo" y pulsa Usar.',true);
   };
-  $('tool-ssh-port-btn').onclick=function(){
-    if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
-    var puerto=parseInt($('tool-ssh-port').value,10); if(!puerto||puerto<1||puerto>65535){ aviso('Puerto inválido.',false); return; }
-    var srv=toolsServidor; if(!confirm('Cambiar SSH de '+srv+' al puerto '+puerto+'? La sesión actual se mantendrá abierta hasta verificar el nuevo puerto.')) return;
-    api('/api/herramientas/cambiar-puerto-ssh',{servidor:srv,puerto:puerto,cerrarAnterior:$('tool-ssh-close-old').checked}).then(function(r){ if(!r.ok) throw new Error(r.error||'No se pudo cambiar el puerto'); aviso('SSH verificado en el puerto '+r.puerto+'. Perfil actualizado.',true); refrescar(); }).catch(function(e){ aviso(e.message,false); });
+  $('ssh-key-usar').onclick=function(){
+    if(!sshAdminServidor) return;
+    var key=$('ssh-key-path').value.trim(); if(!key){sshStatus('ssh-key-status','Selecciona primero una key privada.','warn');return;}
+    var b=this;b.disabled=true;b.textContent='Probando…';sshStatus('ssh-key-status','Abriendo una segunda conexión SSH con esta key…','');
+    api('/api/herramientas/usar-key',{method:'POST',body:JSON.stringify({servidor:sshAdminServidor,key:key,passphrase:$('ssh-key-pass').value,recordar:$('ssh-key-recordar').checked})}).then(function(r){
+      if(r.necesitaPassphrase){sshStatus('ssh-key-status','La key necesita passphrase. Escríbela arriba y vuelve a probar.','warn');return;}
+      if(r.error){sshStatus('ssh-key-status',r.error,'err');return;}
+      $('ssh-key-path').value=r.key||key; sshStatus('ssh-key-status','✓ Key instalada/comprobada y asignada al perfil · '+(r.tipo||'')+' · '+(r.huellaKey||'')+(r.publicaInstalada?' · pública añadida al servidor':' · pública ya estaba instalada'),'ok');
+      refrescarLista(); aviso('Key SSH comprobada y asignada al perfil.',true);
+    }).catch(function(){sshStatus('ssh-key-status','Error de comunicación al probar la key.','err');}).finally(function(){b.disabled=false;b.textContent='Instalar, probar y usar esta key';});
   };
-  $('tool-gw-install').onclick=function(){
-    if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; } var srv=toolsServidor;
-    api('/api/herramientas/gateway-wisp/preparar',{servidor:srv}).then(function(r){ if(!r.ok) throw new Error(r.error||'No se pudo preparar Gateway WISP'); cerrarHerramientas(); abrirTerminal(srv); setTimeout(function(){ enviarTerminal(r.comando+'\n'); },650); }).catch(function(e){ aviso(e.message,false); });
+  $('ssh-key-crear').onclick=function(){
+    if(!sshAdminServidor) return;
+    if(!confirm('Se generará una ED25519 nueva en este equipo y se instalará únicamente su clave pública en '+sshAdminServidor+'. ¿Continuar?')) return;
+    var b=this;b.disabled=true;b.textContent='Creando…';sshStatus('ssh-key-status','Generando, instalando la pública y abriendo una segunda conexión de prueba…','');
+    api('/api/herramientas/crear-key',{method:'POST',body:JSON.stringify({servidor:sshAdminServidor})}).then(function(r){
+      if(r.error){sshStatus('ssh-key-status',r.error,'err');return;}
+      $('ssh-key-path').value=r.key||''; $('ssh-key-pass').value=''; sshStatus('ssh-key-status','✓ ED25519 creada, instalada y comprobada. Key local: '+(r.key||''),'ok');
+      refrescarLista(); aviso('Nueva key SSH instalada y comprobada.',true);
+    }).catch(function(){sshStatus('ssh-key-status','Error de comunicación al crear la key.','err');}).finally(function(){b.disabled=false;b.textContent='Crear e instalar nueva ED25519';});
   };
+  $('ssh-port-probar').onclick=function(){
+    if(!sshAdminServidor) return;
+    var puerto=parseInt($('ssh-port-nuevo').value,10); if(!puerto||puerto<1||puerto>65535){sshStatus('ssh-port-status','Puerto inválido.','err');return;}
+    var b=this;b.disabled=true;sshSteps('active','','');sshStatus('ssh-port-status','Preparando ambos puertos y ejecutando sshd -t…','');sshPortLog('1/3  Manteniendo abierto el puerto actual y preparando '+puerto+'…','',true);sshPortLog('     Validando firewall y sshd_config…','');
+    api('/api/herramientas/ssh-puerto/probar',{method:'POST',body:JSON.stringify({servidor:sshAdminServidor,puerto:puerto,sudoPassword:$('ssh-port-sudo').value})}).then(function(r){
+      if(r.error){sshSteps('','','');sshStatus('ssh-port-status',r.error,'err');sshPortLog('ERROR  '+r.error,'err');return;}
+      sshPortToken=r.token; sshSteps('ok','ok',''); $('ssh-port-aplicar').disabled=false; $('ssh-port-cancelar').disabled=false; $('ssh-port-probar').disabled=true;sshPortLog('2/3  ✓ Segunda conexión SSH interna verificada por '+puerto+'.','ok');if(r.rollbackGuard)sshPortLog('     Protección activa: rollback automático en 5 min si el flujo queda abandonado.','warn');sshPortLog('     El perfil TODAVÍA usa el puerto anterior. Pulsa Aplicar para confirmar.','');
+      sshStatus('ssh-port-status','✓ '+(r.mensaje||('Conexión real verificada por '+puerto+'. Pulsa Aplicar para guardar el cambio.')),'ok');
+    }).catch(function(){sshSteps('','','');sshStatus('ssh-port-status','Error de comunicación durante la prueba.','err');sshPortLog('ERROR  No se pudo completar la prueba.','err');}).finally(function(){if(!sshPortToken)b.disabled=false;});
+  };
+  $('ssh-port-aplicar').onclick=function(){
+    if(!sshPortToken||!sshAdminServidor) return;
+    var b=this;b.disabled=true;sshSteps('ok','ok','active');sshStatus('ssh-port-status','Aplicando el puerto probado y haciendo una comprobación final…','');sshPortLog('3/3  Aplicando '+$('ssh-port-nuevo').value+' y ejecutando la comprobación final…','');
+    api('/api/herramientas/ssh-puerto/aplicar',{method:'POST',body:JSON.stringify({servidor:sshAdminServidor,token:sshPortToken,cerrarAnterior:$('ssh-port-close-old').checked,sudoPassword:$('ssh-port-sudo').value})}).then(function(r){
+      if(r.error){sshStatus('ssh-port-status',r.error,'err');sshPortLog('ERROR  '+r.error,'err');b.disabled=false;return;}
+      sshPortToken=null; sshSteps('ok','ok','ok'); $('ssh-port-aplicar').disabled=true; $('ssh-port-cancelar').disabled=true; $('ssh-port-probar').disabled=false; $('ssh-port-actual').textContent=r.puerto;
+      sshStatus('ssh-port-status','✓ '+(r.mensaje||('Puerto '+r.puerto+' aplicado y perfil actualizado.')),'ok');sshPortLog('✓ CAMBIO CONFIRMADO. Perfil actualizado a '+r.puerto+'.','ok');
+      refrescarLista(); aviso('Puerto SSH cambiado y verificado.',true);
+    }).catch(function(){sshStatus('ssh-port-status','Error de comunicación al aplicar. La sesión actual sigue abierta.','err');b.disabled=false;});
+  };
+  $('ssh-port-cancelar').onclick=function(){ cancelarPruebaPuerto(false).catch(function(e){aviso(e.message||'No pude cancelar la prueba.',false);}); };
+
+  // ── Gateway WISP modular con terminal integrada ──────────────
+  var gwServidor=null,gwTerm=null,gwFit=null,gwWs=null,gwPendingCmd=null,gwPackageReady=false,gwPreparing=false;
+  function abrirGWTerminal(nombre){
+    if(typeof Terminal!=='function'||typeof FitAddon==='undefined'||typeof FitAddon.FitAddon!=='function'){aviso('No se pudo cargar xterm.js.',false);return;}
+    cerrarGWTerminal();
+    var n=$('gw-term'); vaciar(n); gwTerm=new Terminal({cursorBlink:true,fontSize:12,fontFamily:"'JetBrains Mono', Consolas, monospace",theme:{background:'#050c12',foreground:'#d8e4ea',cursor:'#4de19a',selectionBackground:'#1f3b49'}}); gwFit=new FitAddon.FitAddon();gwTerm.loadAddon(gwFit);gwTerm.open(n);gwFit.fit();
+    var proto=location.protocol==='https:'?'wss://':'ws://';gwWs=new WebSocket(proto+location.host+'/ws/terminal?t='+TOKEN+'&nombre='+encodeURIComponent(nombre));gwWs.binaryType='arraybuffer';var enc=new TextEncoder();
+    gwWs.onopen=function(){if(gwTerm){gwWs.send(JSON.stringify({cols:gwTerm.cols,rows:gwTerm.rows}));gwTerm.focus();if(gwPendingCmd){var cmd=gwPendingCmd;gwPendingCmd=null;setTimeout(function(){enviarGW(cmd);},80);}}};
+    gwWs.onmessage=function(e){if(gwTerm)gwTerm.write(new Uint8Array(e.data));};gwWs.onerror=function(){if(gwTerm)gwTerm.write('\r\n\x1b[31m[error en terminal Gateway WISP]\x1b[0m\r\n');};gwWs.onclose=function(){if(gwTerm)gwTerm.write('\r\n\x1b[33m[sesión terminada]\x1b[0m\r\n');};
+    gwTerm.onData(function(d){if(gwWs&&gwWs.readyState===1)gwWs.send(enc.encode(d));});gwTerm.onResize(function(t){if(gwWs&&gwWs.readyState===1)gwWs.send(JSON.stringify({cols:t.cols,rows:t.rows}));});
+    setTimeout(function(){if(gwFit){gwFit.fit();gwTerm.focus();}},80);
+  }
+  function cerrarGWTerminal(){if(gwWs){gwWs.close();gwWs=null;}if(gwTerm){gwTerm.dispose();gwTerm=null;gwFit=null;}if($('gw-term'))vaciar($('gw-term'));}
+  function enviarGW(cmd){if(!gwWs||gwWs.readyState!==1){gwPendingCmd=cmd;if(gwTerm)gwTerm.write('\r\n\x1b[33m[esperando a que la terminal esté lista…]\x1b[0m\r\n');return;}gwTerm.clear();gwTerm.write('\x1b[2J\x1b[H');gwWs.send(new TextEncoder().encode(cmd+'\r'));gwTerm.focus();}
+  function gwBotones(disabled){$('gw-install-all').disabled=disabled;$('gw-uninstall-all').disabled=disabled;document.querySelectorAll('#gw-components button[data-a]').forEach(function(b){b.disabled=disabled;});}
+  function prepararGWPaquete(){if(!gwServidor||gwPreparing)return Promise.resolve(false);gwPreparing=true;gwPackageReady=false;gwBotones(true);$('gw-package-state').textContent='Preparando paquete…';$('gw-package-state').className='gw-chip';return api('/api/herramientas/gateway-wisp/preparar',{method:'POST',body:JSON.stringify({servidor:gwServidor})}).then(function(r){if(r.error){$('gw-package-state').textContent='Error de paquete';$('gw-package-state').className='gw-chip';if(gwTerm)gwTerm.write('\r\n\x1b[31m[No pude preparar el paquete: '+r.error+']\x1b[0m\r\n');return false;}gwPackageReady=true;$('gw-bundle-ver').textContent='v'+(r.versionPaquete||'?');$('gw-package-state').textContent='✓ Paquete listo';$('gw-package-state').className='gw-chip ok';gwBotones(false);if(gwTerm)gwTerm.write('\r\n\x1b[32m[Gateway WISP '+(r.versionPaquete||'')+' listo. Elige una acción a la izquierda.]\x1b[0m\r\n');return true;}).catch(function(){$('gw-package-state').textContent='Error de paquete';return false;}).finally(function(){gwPreparing=false;});}
+  function cargarGWEstado(){
+    if(!gwServidor)return;$('gw-state-main').textContent='Consultando…';
+    api('/api/herramientas/gateway-wisp/estado?servidor='+encodeURIComponent(gwServidor)).then(function(r){
+      if(r.error){$('gw-state-main').textContent='No disponible';return;}
+      $('gw-bundle-ver').textContent='v'+(r.versionPaquete||'?');$('gw-installed-ver').textContent=(r.version&&r.version!=='absent')?r.version:'—';$('gw-state-main').textContent=r.instalado?'● Gateway detectado':'○ No instalado';$('gw-state-main').className='gw-chip '+(r.instalado?'ok':'');
+      document.querySelectorAll('#gw-components .gw-component').forEach(function(row){var c=row.dataset.comp;var st=(r.componentes||{})[c];var dot=row.querySelector('.gw-dot');if(dot)dot.className='gw-dot '+(st==='installed'?'ok':'');});
+    }).catch(function(){$('gw-state-main').textContent='Error consultando';});
+  }
+  function abrirGatewayWISP(nombre){gwServidor=nombre;gwPackageReady=false;gwPendingCmd=null;$('gw-srv').textContent=nombre;cerrarHerramientas();$('gw-velo').classList.add('abierto');abrirGWTerminal(nombre);cargarGWEstado();prepararGWPaquete();setTimeout(function(){if(gwFit)gwFit.fit();},100);}
+  function cerrarGatewayWISP(){$('gw-velo').classList.remove('abierto');cerrarGWTerminal();gwServidor=null;gwPackageReady=false;gwPendingCmd=null;}
+  $('gw-cerrar').onclick=cerrarGatewayWISP;$('gw-refresh').onclick=cargarGWEstado;
+  $('tool-gw-install').onclick=function(){if(!toolsServidor){aviso('No hay servidor seleccionado.',false);return;}abrirGatewayWISP(toolsServidor);};
+  function gwAccion(accion,comp){
+    if(!gwServidor)return;
+    if((accion==='desinstalar-todo'||accion==='desinstalar-componente')&&!confirm(accion==='desinstalar-todo'?'Se creará un backup y se retirará la integración Gateway WISP sin purgar paquetes de terceros. ¿Continuar?':'¿Quitar de forma conservadora la integración de este componente?'))return;
+    var ejecutar=function(){gwBotones(true);return api('/api/herramientas/gateway-wisp/comando',{method:'POST',body:JSON.stringify({servidor:gwServidor,accion:accion,componente:comp||''})}).then(function(r){if(r.error){aviso(r.error,false);return;}enviarGW(r.comando);}).catch(function(){aviso('No pude preparar el paquete Gateway WISP.',false);}).finally(function(){gwBotones(false);});};if(!gwPackageReady){prepararGWPaquete().then(function(ok){if(ok)ejecutar();});}else ejecutar();
+  }
+  $('gw-install-all').onclick=function(){gwAccion('instalar-todo','');};$('gw-uninstall-all').onclick=function(){gwAccion('desinstalar-todo','');};
+  document.querySelectorAll('#gw-components .gw-component button[data-a]').forEach(function(b){b.onclick=function(){var row=b.closest('.gw-component'),comp=row.dataset.comp,act=b.dataset.a==='install'?'instalar-componente':'desinstalar-componente';gwAccion(act,comp);};});
+
   $('tool-firewall').onclick=function(){
     if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }
     firewallServidor=toolsServidor;
@@ -2139,8 +2356,10 @@
   }
 
   function cerrarArchivos(){
+    var destinoAnterior=selectorDestino;
     document.getElementById('fx-velo').classList.remove('abierto');
     selectorDestino = null;
+    if(destinoAnterior==='ssh-tool-key' && sshAdminServidor) document.getElementById('sshadmin-velo').classList.add('abierto');
   }
   document.getElementById('fx-cerrar').onclick = cerrarArchivos;
 
@@ -2245,6 +2464,11 @@
               document.getElementById('form').scrollIntoView({behavior:'smooth'});
             };
             it.appendChild(bU);
+          }
+          if (selectorDestino === 'ssh-tool-key'){
+            var bKU=document.createElement('button'); bKU.className='principal'; bKU.textContent='Usar';
+            bKU.onclick=function(ev){ev.stopPropagation(); document.getElementById('ssh-key-path').value=a.ruta; cerrarArchivos(); sshStatus('ssh-key-status','Key seleccionada. Pulsa Probar y usar esta key.','');};
+            it.appendChild(bKU);
           }
           if (selectorDestino === 'script'){
             var bE = document.createElement('button'); bE.className='principal'; bE.textContent = 'Ejecutar';

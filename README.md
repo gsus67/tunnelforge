@@ -31,9 +31,11 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 - **Buscador** de servidores por nombre, host o usuario
 - **Gestor de archivos (SFTP)**: navega el servidor y tu equipo lado a lado,
   sube y baja archivos, crea carpetas, renombra y borra
-- **Herramientas por servidor**: icono de herramientas junto a Terminal y Archivos. Incluye ejecución de scripts, test de velocidad y administración básica de firewall con detección de UFW/firewalld/nftables.
+- **Herramientas por servidor**: scripts, test de velocidad, firewall, administración SSH segura y Gateway WISP modular desde una ventana con terminal interactiva.
 - **Tráfico real**: RX/TX de la interfaz principal del servidor mostrado en Mbit/s.
 - **Firewall seguro**: protege el puerto SSH, crea backup antes de cambios y evita reescribir reglas nftables personalizadas.
+- **SSH administrado**: crea/instala keys, carga una key local existente y cambia el puerto SSH solo después de verificar una segunda conexión real.
+- **Gateway WISP modular**: instala el stack completo o componentes individuales en Debian/Ubuntu, con preguntas respondidas desde la terminal integrada de Herramientas.
 
 - **Copia de seguridad** cifrada: exporta e importa toda tu configuración
 - **Verifica la identidad del servidor**: si su huella cambia, se niega a conectar
@@ -72,7 +74,7 @@ En Windows se abre en su propia ventana; en Linux, en el navegador
 3. **Usar los paneles** — con la conexión activa aparecen los accesos directos;
    se abren en tu navegador por defecto.
 
-4. **Terminal** — el botón `>_` de cada servidor conectado
+4. **Terminal** — el botón con icono de terminal de cada servidor conectado
    abre una shell interactiva completa (colores, `htop`, `nano`,
    autocompletado, Ctrl+C), con un panel de **historial** al costado: los
    últimos comandos enviados a ese servidor, clicables para reenviar. Es
@@ -121,14 +123,11 @@ desde el Explorador, `~` y variables como `%USERPROFILE%`.
 
 ### Varias conexiones a la vez
 
-Puedes conectar a más de un servidor en paralelo. Cada perfil tiene ahora
-**sus propios túneles**, pero dos conexiones no pueden reservar el mismo puerto
-local al mismo tiempo. Si dos perfiles usan, por ejemplo, el puerto local 8888,
-el segundo no podrá abrir ese túnel mientras el primero lo tenga ocupado.
-
-Si quieres tener paneles de varios servidores abiertos simultáneamente,
-configura puertos locales distintos en cada perfil. La Terminal y SFTP siguen
-funcionando aunque un túnel concreto no pueda reservar su puerto.
+Puedes conectar a más de un servidor en paralelo. Cada perfil mantiene sus
+propios túneles. Si varios servidores usan el mismo puerto local (por ejemplo
+8888), el selector discreto de **localhost activo** decide cuál responde en
+`localhost:puerto`; cambiar la selección reasigna esos puertos sin tener que
+cerrar las conexiones SSH. Terminal y SFTP siguen siendo independientes.
 
 ### Túneles por servidor
 
