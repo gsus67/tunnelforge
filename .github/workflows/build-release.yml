@@ -2,7 +2,7 @@ name: build-release
 
 on:
   push:
-    branches: ['main']
+    branches: ['main', 'qa/**']
     tags: ['v*']
   workflow_dispatch:
 
@@ -243,8 +243,6 @@ jobs:
             done
           }
 
-          # Comprobar el Release mediante REST para distinguir un 404 real de un 5xx.
-          # curl --retry vuelve a intentar respuestas HTTP transitorias como 503.
           RELEASE_JSON="$(mktemp)"
           HTTP_CODE="$(curl -sS \
             --retry 7 --retry-delay 5 --retry-max-time 180 \
@@ -272,8 +270,6 @@ jobs:
           esac
           rm -f "$RELEASE_JSON"
 
-          # Subir uno a uno. Si GitHub falla a mitad de publicación, el rerun puede
-          # continuar de forma segura y --clobber reemplaza el asset parcial/existente.
           for asset in "${ASSETS[@]}"; do
             echo "Subiendo $asset..."
             retry_gh release upload "$TAG" "$asset" --clobber
