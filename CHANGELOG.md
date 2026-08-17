@@ -1,3 +1,16 @@
+## v3.4.3
+
+### WireGuard embebido — corrección de conexión en Windows
+
+- Corregido el arranque del túnel embebido: `tunnel.dll` ya no se carga dentro del proceso Go/Wails de Gateway WISP Access.
+- Nuevo `wg-service-host.exe` nativo, diminuto y privado, compilado durante GitHub Actions y embebido dentro del mismo `Conectar-Gateway.exe`.
+- El servicio `WireGuardTunnel$...` ejecuta el host nativo con `/service <config.conf>`, siguiendo el patrón documentado por `embeddable-dll-service`.
+- Restaurado el paso de argumentos de la elevación UAC al mecanismo usado en v3.4.1 para conservar correctamente rutas con espacios.
+- La conexión espera a que el servicio llegue realmente a `RUNNING`; ya no considera éxito un simple `sc start` si el proceso cae inmediatamente.
+- Si falla el arranque, la app conserva y muestra el diagnóstico de `sc queryex` y del host nativo (`LoadLibraryEx`, exportación `WireGuardTunnelService` o error devuelto por el servicio).
+- El usuario sigue recibiendo un único ejecutable y no necesita instalar WireGuard for Windows, `wireguard.exe` ni `wg.exe`.
+- Metadata de aplicación sincronizada con v3.4.3.
+
 ## v3.4.2
 
 ### WireGuard embebido en Windows

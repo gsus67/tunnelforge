@@ -12,12 +12,15 @@ import (
 	"path/filepath"
 )
 
-const wgEmbeddedEngineVersion = "WireGuard Windows v1.1 / WireGuardNT 1.1"
+const wgEmbeddedEngineVersion = "WireGuard Windows v1.1 / WireGuardNT 1.1 · host nativo integrado"
 
 // Estos binarios se preparan en GitHub Actions desde las fuentes/descargas
 // oficiales de WireGuard y se incrustan dentro de Conectar-Gateway.exe.
 // No se guardan en el repositorio.
 //
+//go:embed wireguard-assets/windows/amd64/wg-service-host.exe
+var wgEmbeddedServiceHost []byte
+
 //go:embed wireguard-assets/windows/amd64/tunnel.dll
 var wgEmbeddedTunnelDLL []byte
 
@@ -25,7 +28,7 @@ var wgEmbeddedTunnelDLL []byte
 var wgEmbeddedWireGuardDLL []byte
 
 func wgEmbeddedAvailable() bool {
-	return len(wgEmbeddedTunnelDLL) > 0 && len(wgEmbeddedWireGuardDLL) > 0
+	return len(wgEmbeddedServiceHost) > 0 && len(wgEmbeddedTunnelDLL) > 0 && len(wgEmbeddedWireGuardDLL) > 0
 }
 
 func wgEmbeddedDescription() string { return wgEmbeddedEngineVersion }
@@ -60,7 +63,10 @@ func wgEnsureEmbeddedEngine() (string, error) {
 	if !wgEmbeddedAvailable() {
 		return "", fmt.Errorf("esta compilación no contiene el motor WireGuard embebido")
 	}
-	dir := filepath.Join(wgRuntimeDir(), "engine", "wireguard-v1.1-amd64")
+	dir := filepath.Join(wgRuntimeDir(), "engine", "wireguard-v1.1-amd64-host-v2")
+	if err := wgWriteEmbeddedFile(filepath.Join(dir, "wg-service-host.exe"), wgEmbeddedServiceHost); err != nil {
+		return "", fmt.Errorf("no pude preparar wg-service-host.exe: %w", err)
+	}
 	if err := wgWriteEmbeddedFile(filepath.Join(dir, "tunnel.dll"), wgEmbeddedTunnelDLL); err != nil {
 		return "", fmt.Errorf("no pude preparar tunnel.dll: %w", err)
 	}

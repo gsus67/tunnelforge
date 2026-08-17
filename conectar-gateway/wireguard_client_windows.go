@@ -62,10 +62,9 @@ func psQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + 
 func wgRunElevated(exe string, args ...string) error {
 	quoted := make([]string, len(args))
 	for i, a := range args {
-		quoted[i] = wgWindowsCmdQuote(a)
+		quoted[i] = psQuote(a)
 	}
-	argLine := strings.Join(quoted, " ")
-	script := fmt.Sprintf("$p=Start-Process -FilePath %s -ArgumentList %s -Verb RunAs -Wait -PassThru; exit $p.ExitCode", psQuote(exe), psQuote(argLine))
+	script := fmt.Sprintf("$p=Start-Process -FilePath %s -ArgumentList @(%s) -Verb RunAs -Wait -PassThru; exit $p.ExitCode", psQuote(exe), strings.Join(quoted, ","))
 	cmd := wgWindowsCommand("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("WireGuard necesita permisos de administrador: %v %s", err, strings.TrimSpace(string(out)))
@@ -115,7 +114,7 @@ func wgAdminInstallService(name, configPath, engineDir, startMode string) error 
 	if exists, _ := wgWindowsServiceStatus(name); exists {
 		_ = wgSC("stop", service)
 		_ = wgSC("delete", service)
-		for i := 0; i < 20; i++ {
+		for i := 0; i < 40; i++ {
 			if exists, _ := wgWindowsServiceStatus(name); !exists {
 				break
 			}
@@ -123,15 +122,24 @@ func wgAdminInstallService(name, configPath, engineDir, startMode string) error 
 		}
 	}
 
-	exe, err := os.Executable()
-	if err != nil {
-		return err
+	hostPath := filepath.Join(engineDir, "wg-service-host.exe")
+	if st, err := os.Stat(hostPath); err != nil || st.IsDir() {
+		if err == nil {
+			err = fmt.Errorf("es un directorio")
+		}
+		return fmt.Errorf("host WireGuard embebido no disponible: %s: %w", hostPath, err)
 	}
+	if _, err := os.Stat(filepath.Join(engineDir, "tunnel.dll")); err != nil {
+		return fmt.Errorf("falta tunnel.dll: %w", err)
+	}
+	if _, err := os.Stat(filepath.Join(engineDir, "wireguard.dll")); err != nil {
+		return fmt.Errorf("falta wireguard.dll: %w", err)
+	}
+
 	binPath := strings.Join([]string{
-		wgWindowsCmdQuote(exe),
-		"--wg-service",
+		wgWindowsCmdQuote(hostPath),
+		"/service",
 		wgWindowsCmdQuote(configPath),
-		wgWindowsCmdQuote(engineDir),
 	}, " ")
 
 	if err := wgSC("create", service,
@@ -148,10 +156,47 @@ func wgAdminInstallService(name, configPath, engineDir, startMode string) error 
 		return err
 	}
 	if err := wgSC("start", service); err != nil {
+		detail := wgWindowsServiceFailureDetail(service, configPath)
 		_ = wgSC("delete", service)
+		if detail != "" {
+			return fmt.Errorf("%w · %s", err, detail)
+		}
 		return err
 	}
-	return nil
+
+	// sc start puede devolver éxito cuando el servicio aún está START_PENDING.
+	// Esperamos a RUNNING para no marcar como conectado un túnel que cayó al
+	// cargar tunnel.dll, wireguard.dll o la configuración.
+	for i := 0; i < 200; i++ {
+		if _, running := wgWindowsServiceStatus(name); running {
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	detail := wgWindowsServiceFailureDetail(service, configPath)
+	_ = wgSC("stop", service)
+	_ = wgSC("delete", service)
+	if detail == "" {
+		detail = "el servicio no llegó al estado RUNNING"
+	}
+	return fmt.Errorf("WireGuard no pudo iniciar: %s", detail)
+}
+
+func wgWindowsServiceFailureDetail(service, configPath string) string {
+	parts := []string{}
+	if out, err := wgWindowsCommand("sc.exe", "queryex", service).CombinedOutput(); err == nil {
+		text := strings.TrimSpace(strings.ReplaceAll(string(out), "\r", ""))
+		if text != "" {
+			parts = append(parts, text)
+		}
+	}
+	if b, err := os.ReadFile(configPath + ".service-host.log"); err == nil {
+		text := strings.TrimSpace(strings.ReplaceAll(string(b), "\r", ""))
+		if text != "" {
+			parts = append(parts, "host: "+text)
+		}
+	}
+	return strings.Join(parts, " · ")
 }
 
 func wgAdminRemoveService(name string) error {
@@ -166,73 +211,24 @@ func wgAdminRemoveService(name string) error {
 	return nil
 }
 
-func wgSetDLLDirectory(dir string) error {
-	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	proc := kernel32.NewProc("SetDllDirectoryW")
-	p, err := syscall.UTF16PtrFromString(dir)
-	if err != nil {
-		return err
-	}
-	r, _, callErr := proc.Call(uintptr(unsafe.Pointer(p)))
-	runtime.KeepAlive(p)
-	if r == 0 {
-		return fmt.Errorf("SetDllDirectoryW: %v", callErr)
-	}
-	return nil
-}
-
-func wgRunTunnelService(configPath, engineDir string) error {
-	if err := wgSetDLLDirectory(engineDir); err != nil {
-		return err
-	}
-	tunnelPath := filepath.Join(engineDir, "tunnel.dll")
-	if _, err := os.Stat(filepath.Join(engineDir, "wireguard.dll")); err != nil {
-		return fmt.Errorf("falta wireguard.dll: %w", err)
-	}
-	dll, err := syscall.LoadDLL(tunnelPath)
-	if err != nil {
-		return fmt.Errorf("no pude cargar tunnel.dll: %w", err)
-	}
-	defer dll.Release()
-	proc, err := dll.FindProc("WireGuardTunnelService")
-	if err != nil {
-		return fmt.Errorf("tunnel.dll no exporta WireGuardTunnelService: %w", err)
-	}
-	conf, err := syscall.UTF16PtrFromString(configPath)
-	if err != nil {
-		return err
-	}
-	r, _, callErr := proc.Call(uintptr(unsafe.Pointer(conf)))
-	runtime.KeepAlive(conf)
-	if r == 0 {
-		return fmt.Errorf("WireGuardTunnelService falló: %v", callErr)
-	}
-	return nil
-}
-
 func manejarModoWireGuardEspecial() (bool, int) {
 	args := os.Args[1:]
 	if len(args) == 0 {
 		return false, 0
 	}
 	switch args[0] {
-	case "--wg-service":
-		if len(args) != 3 {
-			return true, 2
-		}
-		if err := wgRunTunnelService(args[1], args[2]); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return true, 1
-		}
-		return true, 0
 	case "--wg-admin-connect":
 		if len(args) != 5 {
 			return true, 2
 		}
+		errorPath := filepath.Join(args[3], "admin-connect-error.txt")
+		_ = os.Remove(errorPath)
 		if err := wgAdminInstallService(args[1], args[2], args[3], args[4]); err != nil {
+			_ = os.WriteFile(errorPath, []byte(err.Error()), 0600)
 			fmt.Fprintln(os.Stderr, err)
 			return true, 1
 		}
+		_ = os.Remove(errorPath)
 		return true, 0
 	case "--wg-admin-disconnect":
 		if len(args) != 2 {
@@ -269,7 +265,16 @@ func wgConnectProfile(p WGProfile, configPath string) error {
 	if p.AutoConnect {
 		mode = "auto"
 	}
-	return wgRunElevated(exe, "--wg-admin-connect", name, configPath, engineDir, mode)
+	errorPath := filepath.Join(engineDir, "admin-connect-error.txt")
+	_ = os.Remove(errorPath)
+	if err := wgRunElevated(exe, "--wg-admin-connect", name, configPath, engineDir, mode); err != nil {
+		if b, readErr := os.ReadFile(errorPath); readErr == nil && strings.TrimSpace(string(b)) != "" {
+			return fmt.Errorf("WireGuard no pudo conectar: %s", strings.TrimSpace(string(b)))
+		}
+		return err
+	}
+	_ = os.Remove(errorPath)
+	return nil
 }
 
 func wgDisconnectProfile(p WGProfile) error {
@@ -294,7 +299,7 @@ func wgReadWireGuardNTConfig(name, engineDir string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	closeAdapter, err := dll.FindProc("WireGuardCloseAdapter")
+	freeAdapter, err := dll.FindProc("WireGuardFreeAdapter")
 	if err != nil {
 		return nil, err
 	}
@@ -302,16 +307,24 @@ func wgReadWireGuardNTConfig(name, engineDir string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	poolW, err := syscall.UTF16PtrFromString("WireGuard")
+	if err != nil {
+		return nil, err
+	}
 	nameW, err := syscall.UTF16PtrFromString(name)
 	if err != nil {
 		return nil, err
 	}
-	handle, _, openErr := openAdapter.Call(uintptr(unsafe.Pointer(nameW)))
+	handle, _, openErr := openAdapter.Call(
+		uintptr(unsafe.Pointer(poolW)),
+		uintptr(unsafe.Pointer(nameW)),
+	)
+	runtime.KeepAlive(poolW)
 	runtime.KeepAlive(nameW)
 	if handle == 0 {
 		return nil, fmt.Errorf("WireGuardOpenAdapter: %v", openErr)
 	}
-	defer closeAdapter.Call(handle)
+	defer freeAdapter.Call(handle)
 
 	size := uint32(64 * 1024)
 	for attempt := 0; attempt < 5; attempt++ {
