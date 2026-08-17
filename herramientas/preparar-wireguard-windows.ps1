@@ -83,15 +83,22 @@ $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
 if (-not (Test-Path $vcvars)) {
     throw "No encontré vcvars64.bat: $vcvars"
 }
-$headerCandidates = @(
-    (Join-Path $WorkDir ".deps\wireguard-nt\wireguard.h"),
-    (Join-Path $WorkDir ".deps\wireguard-nt\api\wireguard.h")
-)
-$wireguardHeader = $headerCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $wireguardHeader) {
-    throw "No encontré wireguard.h junto al WireGuardNT 1.1 usado por este build"
+
+# La distribución de WireGuardNT puede cambiar la carpeta interna del header.
+# No asumimos una ruta: usamos el wireguard.h que vino dentro de .deps/wireguard-nt
+# en este mismo build y fallamos si aparece más de uno de forma ambigua.
+$wireguardNtRoot = Join-Path $WorkDir ".deps\wireguard-nt"
+$headers = @(Get-ChildItem -Path $wireguardNtRoot -Filter "wireguard.h" -File -Recurse -ErrorAction SilentlyContinue)
+if ($headers.Count -eq 0) {
+    throw "No encontré wireguard.h dentro del WireGuardNT usado por este build"
 }
+if ($headers.Count -gt 1) {
+    Write-Host "Se encontraron varios wireguard.h; usando el primero y mostrando candidatos:"
+    $headers | ForEach-Object { Write-Host "  $($_.FullName)" }
+}
+$wireguardHeader = $headers[0].FullName
 $wireguardIncludeDir = Split-Path -Parent $wireguardHeader
+Write-Host "Header WireGuardNT: $wireguardHeader"
 
 $hostOut = Join-Path $dest "wg-service-host.exe"
 # Compilar contra el header exacto que acompaña al wireguard.dll de este mismo build.
