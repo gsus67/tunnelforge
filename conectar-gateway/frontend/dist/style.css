@@ -560,9 +560,9 @@
   #dashboard .cnx .ports-toggle{padding:4px 7px !important;font-size:9.5px !important;white-space:nowrap}
   #dashboard .cnx .ssh-seg{padding:4px 7px !important;font-size:9.5px !important}
   #dashboard .cnx .stats-mini{font-size:9.5px;color:var(--suave);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #dashboard .cnx .stats-mini.app-net{display:grid;grid-template-columns:auto auto;gap:10px;min-width:150px;overflow:visible;text-overflow:clip}
-  #dashboard .cnx .stats-mini.app-net .up{justify-self:start;color:#69b7ff}
-  #dashboard .cnx .stats-mini.app-net .down{justify-self:end;color:var(--verde)}
+  #dashboard .cnx .stats-mini.compact-net{display:inline-flex;align-items:center;gap:3px;overflow:visible;text-overflow:clip}
+  #dashboard .cnx .stats-mini.compact-net .up{color:#69b7ff}
+  #dashboard .cnx .stats-mini.compact-net .down{color:var(--verde)}
   #dashboard .cnx .ports-list{display:none;gap:4px;flex-wrap:wrap;margin-top:5px;padding-left:10px}
   #dashboard .cnx .ports-list.open{display:flex}
   #dashboard .cnx .ports-list a{padding:3px 6px;font-size:9.5px;background:rgba(10,25,38,.78);border:1px solid rgba(77,134,184,.12);border-radius:6px;color:var(--texto-2)}
@@ -784,10 +784,10 @@
   .mon-health-card{padding:10px 11px;border:1px solid rgba(111,159,195,.14);border-radius:9px;background:rgba(7,20,32,.78);display:grid;grid-template-columns:minmax(120px,1.2fr) repeat(3,minmax(62px,.55fr));gap:8px;align-items:center;min-width:0}
   .mon-health-name{min-width:0}.mon-health-name b{display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mon-health-name small{display:block;font-size:9.5px;color:var(--suave);margin-top:3px}.mon-live-dot{width:7px;height:7px;border-radius:50%;background:#627587;flex:none}.mon-live-dot.ok{background:var(--verde);box-shadow:0 0 7px rgba(77,225,154,.35)}
   .mon-health-metric span{display:block;font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--suave);margin-bottom:3px}.mon-health-metric b{font-size:11px;font-variant-numeric:tabular-nums}.mon-mini{height:3px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-top:4px}.mon-mini i{display:block;height:100%;background:linear-gradient(90deg,#4fe1a0,#5aa9ff);max-width:100%}
-  .mon-health-net{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:14px;border-top:1px solid rgba(111,159,195,.08);padding-top:6px;font-size:9.5px;color:var(--texto-2)}.mon-health-net b{font-variant-numeric:tabular-nums}.mon-health-net .tx{justify-self:start;color:#69b7ff}.mon-health-net .rx{justify-self:end;color:var(--verde)}
-  .mon-kpi b.mon-kpi-net{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;line-height:1.2}
-  .mon-kpi b.mon-kpi-net span{margin:0;font-size:12px;text-transform:none;letter-spacing:0;font-weight:700}
-  .mon-kpi b.mon-kpi-net .up{justify-self:start;color:#69b7ff}.mon-kpi b.mon-kpi-net .down{justify-self:end;color:var(--verde)}
+  .mon-health-net{grid-column:1/-1;display:flex;justify-content:flex-end;align-items:center;gap:10px;border-top:1px solid rgba(111,159,195,.08);padding-top:6px;font-size:9.5px;color:var(--texto-2)}.mon-health-net b{font-variant-numeric:tabular-nums}.mon-health-net .tx{color:#69b7ff}.mon-health-net .rx{color:var(--verde)}
+  .mon-kpi b.mon-kpi-net{display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.2;white-space:nowrap}
+  .mon-kpi b.mon-kpi-net span{display:inline;margin:0;font-size:12px;text-transform:none;letter-spacing:0;font-weight:700}
+  .mon-kpi b.mon-kpi-net .up{color:#69b7ff}.mon-kpi b.mon-kpi-net .down{color:var(--verde)}
   @media(min-width:1550px){.mon-health-list{grid-template-columns:repeat(3,minmax(280px,1fr))}.mon-kpis{grid-template-columns:repeat(4,minmax(160px,1fr))}}
   @media(max-width:1180px){.monitor-layout{grid-template-columns:310px minmax(0,1fr)!important}.mon-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))}.mon-health-list{grid-template-columns:1fr}.mon-health-card{grid-template-columns:minmax(110px,1fr) repeat(3,60px)}}
   @media(max-width:900px){.monitor-layout{grid-template-columns:1fr!important;height:auto!important}.monitor-control,.monitor-display{height:auto!important}.mon-summary-view{max-height:none}.mon-health-list{grid-template-columns:1fr}}

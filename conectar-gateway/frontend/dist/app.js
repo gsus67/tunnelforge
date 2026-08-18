@@ -278,13 +278,14 @@ function pintarConexiones(e) {
         bSSH.onclick = function () { alternarSeguridadSSH(c.servidor, bSSH); };
         meta.appendChild(bSSH);
         consultarSeguridadSSH(c.servidor, bSSH, false);
-        // Dashboard = tráfico que realmente pasa entre ESTA app y el servidor
-        // por los túneles SSH. El tráfico total de la interfaz del servidor vive
-        // exclusivamente en la pestaña Monitoreo.
-        var stats = nodo('span', 'stats-mini app-net');
-        stats.appendChild(nodo('span', 'up', '↑ ' + fmtBs(txS)));
-        stats.appendChild(nodo('span', 'down', '↓ ' + fmtBs(rxS)));
-        stats.title = 'Tráfico entre Gateway WISP Access y este servidor por los túneles SSH';
+        var traficoReal = !!c.traficoDisponible;
+        var down = traficoReal ? (c.traficoRxBps || 0) : rxS;
+        var up = traficoReal ? (c.traficoTxBps || 0) : txS;
+        var stats = nodo('span', 'stats-mini compact-net' + (traficoReal ? ' server-net' : ''));
+        stats.appendChild(nodo('span', 'up', '↑ ' + fmtBs(up)));
+        stats.appendChild(document.createTextNode(' · '));
+        stats.appendChild(nodo('span', 'down', '↓ ' + fmtBs(down)));
+        stats.title = traficoReal ? ('Tráfico real del servidor' + (c.traficoInterfaz ? ' · ' + c.traficoInterfaz : '')) : 'Tráfico observado en los túneles SSH';
         meta.appendChild(stats);
         div.appendChild(meta);
         div.appendChild(ports);

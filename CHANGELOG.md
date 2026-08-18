@@ -1,3 +1,14 @@
+## v3.4.10
+
+### Tráfico — formato compacto y Dashboard restaurado
+
+- El Dashboard vuelve a mostrar el **tráfico real del servidor** medido sobre su interfaz principal, como antes de v3.4.9. Si esa medición todavía no está disponible, conserva como fallback el tráfico observado por los túneles SSH.
+- Se reactiva el muestreo ligero de contadores RX/TX al conectar cada servidor para alimentar el Dashboard.
+- En Monitoreo se conserva el orden pedido, **Subida** a la izquierda y **Descarga** a la derecha en verde, pero ambos valores vuelven a quedar juntos en un formato compacto en lugar de ocupar los extremos de la tarjeta.
+- El KPI de tráfico total de Monitoreo también usa el formato compacto para que no se vea excesivamente separado.
+- WireGuard conserva la separación estricta introducida en v3.4.9: configuración solo al pulsar **⚙ Configuración** y vista normal dedicada al estado/estadísticas.
+- Metadata de aplicación sincronizada con v3.4.10.
+
 ## v3.4.9
 
 ### WireGuard — configuración y estadísticas separadas de verdad
