@@ -1,3 +1,21 @@
+## v3.4.9
+
+### WireGuard — configuración y estadísticas separadas de verdad
+
+- Corregido el atributo `hidden` del formulario: el CSS `display:flex` podía mantener visible la configuración aunque el HTML la marcara como oculta. Ahora los elementos con `hidden` no pueden reaparecer por reglas de layout.
+- La vista normal de WireGuard muestra únicamente el estado y las estadísticas de la conexión. Al abrir **⚙ Configuración** se ocultan métricas, estado y botones de conexión para dejar únicamente el formulario del perfil.
+- Eliminado **Peers del túnel** de la vista de estado porque repetía la información del perfil y añadía ruido visual. También se quitó la telemetría de los encabezados de peers dentro del formulario para no mezclar configuración con estadísticas.
+- **Nuevo perfil** ya no abre el formulario automáticamente: deja el perfil vacío seleccionado y la configuración solo aparece al pulsar **⚙ Configuración**.
+
+### Tráfico — Monitoreo y Dashboard con responsabilidades separadas
+
+- Monitoreo deja de sumar todas las interfaces de red. El agente exporta ahora RX/TX de la interfaz usada por la ruta por defecto del servidor, evitando doble conteo con WireGuard y otros túneles.
+- Se mantiene un fallback compatible con agentes anteriores, excluyendo interfaces virtuales habituales hasta volver a pulsar **Aplicar selección**, que actualiza el agente con la métrica precisa.
+- En Monitoreo, **Subida** aparece a la izquierda y **Descarga** a la derecha; la descarga se muestra en verde tanto por servidor como en el KPI de tráfico total.
+- El Dashboard ya no muestra el tráfico completo de la interfaz remota. Muestra exclusivamente el tráfico observado entre Gateway WISP Access y cada servidor a través de sus túneles SSH: subida a la izquierda y descarga a la derecha en verde.
+- Se deja de iniciar el muestreo SSH adicional de la interfaz completa del servidor al conectar, reduciendo trabajo periódico innecesario porque esa función corresponde ahora a Monitoreo.
+- Metadata de aplicación sincronizada con v3.4.9.
+
 ## v3.4.8
 
 ### WireGuard — corrección del estado del servicio en Windows

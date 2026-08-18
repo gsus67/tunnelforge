@@ -453,6 +453,21 @@ peer_name(){
   [ -n "$found" ] && printf '%s' "$found" || printf '%s' "$fallback"
 }
 {
+ echo '# HELP gateway_wisp_main_interface_receive_bytes_total Bytes recibidos por la interfaz de ruta por defecto.'
+ echo '# TYPE gateway_wisp_main_interface_receive_bytes_total counter'
+ echo '# HELP gateway_wisp_main_interface_transmit_bytes_total Bytes transmitidos por la interfaz de ruta por defecto.'
+ echo '# TYPE gateway_wisp_main_interface_transmit_bytes_total counter'
+ main_if=$(ip route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev" && (i+1)<=NF){print $(i+1); exit}}' || true)
+ if [ -z "$main_if" ] && [ -r /proc/net/route ]; then
+   main_if=$(awk '$2=="00000000" {print $1; exit}' /proc/net/route 2>/dev/null || true)
+ fi
+ if [ -n "$main_if" ] && [ -r "/sys/class/net/$main_if/statistics/rx_bytes" ] && [ -r "/sys/class/net/$main_if/statistics/tx_bytes" ]; then
+   main_rx=$(cat "/sys/class/net/$main_if/statistics/rx_bytes" 2>/dev/null || echo 0)
+   main_tx=$(cat "/sys/class/net/$main_if/statistics/tx_bytes" 2>/dev/null || echo 0)
+   emain=$(esc "$main_if")
+   printf 'gateway_wisp_main_interface_receive_bytes_total{interface="%s"} %s\n' "$emain" "$main_rx"
+   printf 'gateway_wisp_main_interface_transmit_bytes_total{interface="%s"} %s\n' "$emain" "$main_tx"
+ fi
  echo '# HELP gateway_wisp_wireguard_peer_receive_bytes_total Bytes recibidos por peer WireGuard.'
  echo '# TYPE gateway_wisp_wireguard_peer_receive_bytes_total counter'
  echo '# HELP gateway_wisp_wireguard_peer_transmit_bytes_total Bytes transmitidos por peer WireGuard.'
@@ -947,8 +962,6 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 		"cpu":    `100 - (avg by (server) (rate(node_cpu_seconds_total{job="gateway-wisp",mode="idle"}[2m])) * 100)`,
 		"ram":    `100 * (1 - (node_memory_MemAvailable_bytes{job="gateway-wisp"} / node_memory_MemTotal_bytes{job="gateway-wisp"}))`,
 		"disk":   `100 * (1 - (node_filesystem_avail_bytes{job="gateway-wisp",mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{job="gateway-wisp",mountpoint="/",fstype!~"tmpfs|overlay"}))`,
-		"rx":     `sum by (server) (rate(node_network_receive_bytes_total{job="gateway-wisp",device!~"lo|docker.*|veth.*|br-.*"}[1m])) * 8 / 1000000`,
-		"tx":     `sum by (server) (rate(node_network_transmit_bytes_total{job="gateway-wisp",device!~"lo|docker.*|veth.*|br-.*"}[1m])) * 8 / 1000000`,
 		"uptime": `time() - node_boot_time_seconds{job="gateway-wisp"}`,
 	}
 	vals := map[string]map[string]float64{}
@@ -961,6 +974,43 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		vals[key] = m
+	}
+
+	// Tráfico del servidor: el agente v3.4.9 exporta contadores SOLO de la
+	// interfaz usada por la ruta por defecto. Antes se sumaban todas las
+	// interfaces (incluyendo WireGuard), lo que podía contar el mismo tráfico
+	// más de una vez y hacer que TX pareciera RX+TX.
+	vals["rx"] = map[string]float64{}
+	vals["tx"] = map[string]float64{}
+	for key, q := range map[string]string{
+		"rx": `irate(gateway_wisp_main_interface_receive_bytes_total{job="gateway-wisp"}[30s]) * 8 / 1000000`,
+		"tx": `irate(gateway_wisp_main_interface_transmit_bytes_total{job="gateway-wisp"}[30s]) * 8 / 1000000`,
+	} {
+		rows, _ := monitoringPromQuery(cfg, q)
+		for _, v := range rows {
+			if n := v.Metric["server"]; n != "" {
+				vals[key][n] = v.Value
+			}
+		}
+	}
+	// Compatibilidad mientras un target todavía conserve el agente anterior.
+	// Excluimos túneles y bridges y solo rellenamos servidores que aún no
+	// publican la métrica precisa de interfaz principal. Al pulsar "Aplicar
+	// selección" el agente se actualiza y deja de usar este fallback.
+	for key, q := range map[string]string{
+		"rx": `sum by (server) (irate(node_network_receive_bytes_total{job="gateway-wisp",device!~"lo|docker.*|veth.*|br-.*|virbr.*|wg.*|tun.*|tap.*|tailscale.*"}[30s])) * 8 / 1000000`,
+		"tx": `sum by (server) (irate(node_network_transmit_bytes_total{job="gateway-wisp",device!~"lo|docker.*|veth.*|br-.*|virbr.*|wg.*|tun.*|tap.*|tailscale.*"}[30s])) * 8 / 1000000`,
+	} {
+		rows, _ := monitoringPromQuery(cfg, q)
+		for _, v := range rows {
+			n := v.Metric["server"]
+			if n == "" {
+				continue
+			}
+			if _, precise := vals[key][n]; !precise {
+				vals[key][n] = v.Value
+			}
+		}
 	}
 	servers := make([]map[string]any, 0, len(cfg.Targets))
 	online := 0

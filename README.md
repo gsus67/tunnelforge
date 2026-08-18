@@ -25,7 +25,7 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 ## WireGuard
 
-> **v3.4.8** corrige la lectura del estado del servicio WireGuard en Windows (se consulta el SCM en vez de interpretar el texto de `sc.exe`) y reorganiza la vista: el túnel se muestra en estado y estadísticas, y la configuración del perfil vive detrás del botón **⚙ Configuración**. Mantiene WireGuard completamente integrado en el ejecutable de Windows y conserva la corrección del host nativo de v3.4.3. No pide instalar WireGuard for Windows ni depende de `wireguard.exe`/`wg.exe`. Al conectar o desconectar Windows seguirá solicitando elevación UAC porque crear/controlar el servicio VPN requiere permisos de administrador.
+> **v3.4.9** separa estrictamente la configuración de WireGuard de sus estadísticas, elimina la lista duplicada de peers y corrige la medición de tráfico del monitoreo para usar la interfaz principal del servidor en vez de sumar túneles. El Dashboard muestra ahora únicamente el tráfico entre la app y cada servidor por SSH, con subida a la izquierda y descarga a la derecha. WireGuard sigue completamente integrado en el ejecutable de Windows y no requiere instalar WireGuard for Windows ni depender de `wireguard.exe`/`wg.exe`.
 
 Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. A partir de **v3.4.3**, el build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `Conectar-Gateway.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
 
