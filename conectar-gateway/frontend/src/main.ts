@@ -753,7 +753,7 @@ var TOKEN = '';
     if(!arr.length){list.appendChild(nodo('div','mon-peer-empty','Selecciona servidores y aplica el monitoreo para ver métricas.'));return;}
     arr.forEach(function(x){var card=nodo('div','mon-health-card');var name=nodo('div','mon-health-name');var title=nodo('b','');var dot=nodo('i','mon-live-dot'+(x.online?' ok':''));title.appendChild(dot);title.appendChild(document.createTextNode(x.nombre||'Servidor'));name.appendChild(title);name.appendChild(nodo('small','',x.online?('Uptime '+fmtUptime(x.uptime)):'Sin métricas'));card.appendChild(name);
       [['CPU',x.cpu],['RAM',x.ram],['Disco',x.disco]].forEach(function(m){var d=nodo('div','mon-health-metric');d.appendChild(nodo('span','',m[0]));d.appendChild(nodo('b','',fmtPct(m[1])));var bar=nodo('div','mon-mini');var i=document.createElement('i');i.style.width=Math.max(0,Math.min(100,Number(m[1])||0))+'%';bar.appendChild(i);d.appendChild(bar);card.appendChild(d);});
-      var net=nodo('div','mon-health-net');var tx=nodo('span','tx','↑ Subida '+fmtPeerRate(x.txMbit));var rx=nodo('span','rx','↓ Descarga '+fmtPeerRate(x.rxMbit));net.appendChild(tx);net.appendChild(rx);card.appendChild(net);list.appendChild(card);});
+      var net=nodo('div','mon-health-net');var tx=nodo('span','tx','↑ '+fmtPeerRate(x.txMbit));var rx=nodo('span','rx','↓ '+fmtPeerRate(x.rxMbit));net.appendChild(tx);net.appendChild(rx);card.appendChild(net);list.appendChild(card);});
   }
   function cargarResumen(){if(monDashboard!=='overview')return;api('/api/monitoring/resumen').then(function(r){if(r.error){var l=$('mon-health-list');vaciar(l);l.appendChild(nodo('div','mon-peer-empty',r.error));return;}renderResumen(r);});}
   function fmtPeerRate(v){v=Number(v)||0;return (v<10?v.toFixed(2):v.toFixed(1))+' Mbit/s';}

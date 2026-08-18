@@ -1,7 +1,7 @@
 {
   "name": "gateway-wisp-access-frontend",
   "private": true,
-  "version": "3.4.10",
+  "version": "3.4.11",
   "scripts": {
     "build": "node build.mjs && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"

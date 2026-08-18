@@ -1001,8 +1001,8 @@ function renderResumen(r) {
         card.appendChild(name);
         [['CPU', x.cpu], ['RAM', x.ram], ['Disco', x.disco]].forEach(function (m) { var d = nodo('div', 'mon-health-metric'); d.appendChild(nodo('span', '', m[0])); d.appendChild(nodo('b', '', fmtPct(m[1]))); var bar = nodo('div', 'mon-mini'); var i = document.createElement('i'); i.style.width = Math.max(0, Math.min(100, Number(m[1]) || 0)) + '%'; bar.appendChild(i); d.appendChild(bar); card.appendChild(d); });
         var net = nodo('div', 'mon-health-net');
-        var tx = nodo('span', 'tx', '↑ Subida ' + fmtPeerRate(x.txMbit));
-        var rx = nodo('span', 'rx', '↓ Descarga ' + fmtPeerRate(x.rxMbit));
+        var tx = nodo('span', 'tx', '↑ ' + fmtPeerRate(x.txMbit));
+        var rx = nodo('span', 'rx', '↓ ' + fmtPeerRate(x.rxMbit));
         net.appendChild(tx);
         net.appendChild(rx);
         card.appendChild(net);

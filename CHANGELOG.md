@@ -1,3 +1,6 @@
+## v3.4.11
+- Monitoreo y Dashboard muestran el tráfico con flechas (`↑`/`↓`) sin las palabras “Subida” y “Descarga”, manteniendo el formato compacto.
+
 ## v3.4.10
 
 ### Tráfico — formato compacto y Dashboard restaurado
