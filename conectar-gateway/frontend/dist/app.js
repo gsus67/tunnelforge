@@ -751,6 +751,100 @@ pintarTunelesForm(tunelesDefecto);
 // ── Terminal SSH integrado (+ historial) ─────────────────────
 var term = null, fit = null, wsTerm = null, servidorTerminal = null;
 var bufferLinea = '';
+function copiarTextoPortapapeles(texto) {
+    texto = String(texto || '');
+    if (!texto)
+        return Promise.reject(new Error('No hay texto seleccionado.'));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(texto).catch(function () {
+            return copiarTextoPortapapelesFallback(texto);
+        });
+    }
+    return copiarTextoPortapapelesFallback(texto);
+}
+function copiarTextoPortapapelesFallback(texto) {
+    return new Promise(function (resolve, reject) {
+        var ta = document.createElement('textarea');
+        ta.value = texto;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            if (!document.execCommand('copy'))
+                throw new Error('El WebView no permitió copiar.');
+            resolve(true);
+        }
+        catch (e) {
+            reject(e);
+        }
+        finally {
+            ta.remove();
+        }
+    });
+}
+function copiarSeleccionTerminal(t) {
+    if (!t || typeof t.getSelection !== 'function')
+        return;
+    var seleccionado = t.getSelection();
+    if (!seleccionado) {
+        aviso('Selecciona texto en la terminal antes de copiar.', false);
+        t.focus();
+        return;
+    }
+    copiarTextoPortapapeles(seleccionado).then(function () {
+        aviso('Texto copiado al portapapeles.', true);
+        t.focus();
+    }).catch(function (e) {
+        aviso((e && e.message) || 'No pude copiar al portapapeles.', false);
+        t.focus();
+    });
+}
+function pegarEnTerminal(t) {
+    if (!t)
+        return;
+    var aplicar = function (texto) {
+        if (!texto) {
+            t.focus();
+            return;
+        }
+        if (typeof t.paste === 'function')
+            t.paste(texto);
+        else if (typeof t.input === 'function')
+            t.input(texto);
+        t.focus();
+    };
+    if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(aplicar).catch(function () {
+            var manual = window.prompt('El navegador no permitió leer el portapapeles. Pega el texto aquí y pulsa Aceptar:', '');
+            if (manual !== null)
+                aplicar(manual);
+        });
+        return;
+    }
+    var manual = window.prompt('Pega el texto aquí y pulsa Aceptar:', '');
+    if (manual !== null)
+        aplicar(manual);
+}
+function activarAtajosPortapapeles(t) {
+    if (!t || typeof t.attachCustomKeyEventHandler !== 'function')
+        return;
+    t.attachCustomKeyEventHandler(function (e) {
+        if (e.type !== 'keydown' || !e.ctrlKey || !e.shiftKey)
+            return true;
+        if (e.code === 'KeyC') {
+            copiarSeleccionTerminal(t);
+            return false;
+        }
+        if (e.code === 'KeyV') {
+            pegarEnTerminal(t);
+            return false;
+        }
+        return true;
+    });
+}
 function abrirTerminal(nombre, comandoInicial, comandoSilencioso) {
     if (typeof Terminal !== 'function' || typeof FitAddon === 'undefined' || typeof FitAddon.FitAddon !== 'function') {
         aviso('No se pudieron cargar los componentes de la terminal. Reinicia la aplicación o reinstala esta versión.', false);
@@ -773,6 +867,7 @@ function abrirTerminal(nombre, comandoInicial, comandoSilencioso) {
     term.loadAddon(fit);
     term.open(termNodo);
     fit.fit();
+    activarAtajosPortapapeles(term);
     // La ventana Wails puede devolver el foco al botón que abrió la terminal.
     // Reforzamos el foco tras el layout y al hacer click dentro de xterm.
     setTimeout(function () { if (term) {
@@ -863,6 +958,8 @@ function cerrarTerminalUI() {
     servidorTerminal = null;
 }
 document.getElementById('term-cerrar').onclick = cerrarTerminalUI;
+document.getElementById('term-copiar').onclick = function () { copiarSeleccionTerminal(term); };
+document.getElementById('term-pegar').onclick = function () { pegarEnTerminal(term); };
 document.getElementById('term').addEventListener('mousedown', function () {
     setTimeout(function () { if (term)
         term.focus(); }, 0);
@@ -2115,6 +2212,7 @@ function abrirGWTerminal(nombre) {
     gwTerm.loadAddon(gwFit);
     gwTerm.open(n);
     gwFit.fit();
+    activarAtajosPortapapeles(gwTerm);
     gwWs = new WebSocket(wsTerminalURL(nombre));
     gwWs.binaryType = 'arraybuffer';
     var enc = new TextEncoder();
@@ -2189,6 +2287,8 @@ function abrirGatewayWISP(nombre) { gwServidor = nombre; gwPackageReady = false;
 function cerrarGatewayWISP() { $('gw-velo').classList.remove('abierto'); cerrarGWTerminal(); gwServidor = null; gwPackageReady = false; gwPendingCmd = null; }
 $('gw-cerrar').onclick = cerrarGatewayWISP;
 $('gw-refresh').onclick = cargarGWEstado;
+$('gw-term-copiar').onclick = function () { copiarSeleccionTerminal(gwTerm); };
+$('gw-term-pegar').onclick = function () { pegarEnTerminal(gwTerm); };
 $('tool-gw-install').onclick = function () { if (!toolsServidor) {
     aviso('No hay servidor seleccionado.', false);
     return;

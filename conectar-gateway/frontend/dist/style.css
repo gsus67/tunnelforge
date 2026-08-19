@@ -286,6 +286,8 @@
   .term-barra .t,.fx-barra-superior .t{font-size:18px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em;text-transform:uppercase}
   .term-barra .t b,.fx-barra-superior .t b{color:var(--verde)}
   .term-barra .sep,.fx-barra-superior .sep{flex:1}
+  .term-shortcuts{font-size:10px;color:var(--suave);white-space:nowrap}
+  .term-barra #term-copiar,.term-barra #term-pegar{padding:7px 10px!important;font-size:11px!important}
   .term-cuerpo,.fx-cuerpo{flex:1;display:flex;min-height:0;padding:14px}
   #term{flex:1;min-height:0;background:rgba(8,17,27,.96);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:8px}
   .term-hist{width:250px;flex:none;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:12px 12px;margin-left:14px;overflow-y:auto;background:rgba(8,17,27,.96)}
@@ -732,7 +734,7 @@
   .gw-state{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:9px 0}.gw-chip{font-size:9.5px;padding:4px 7px;border:1px solid rgba(77,134,184,.2);border-radius:6px;color:var(--texto-2);background:#06111b}.gw-chip.ok{color:var(--verde);border-color:rgba(77,225,154,.25)}
   .gw-main-actions{display:flex;gap:7px;flex-wrap:wrap;margin:9px 0 13px}.gw-main-actions button{font-size:11px;padding:7px 9px!important}
   .gw-components{display:grid;gap:6px}.gw-component{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 10px;border:1px solid rgba(77,134,184,.14);background:rgba(6,17,27,.78);border-radius:7px}.gw-component h4{font-size:12px;margin:0 0 2px}.gw-component p{font-size:9.5px;color:var(--suave);margin:0;line-height:1.35}.gw-comp-actions{display:flex;align-items:center;gap:5px}.gw-dot{width:7px;height:7px;border-radius:50%;background:#536879}.gw-dot.ok{background:var(--verde);box-shadow:0 0 5px rgba(77,225,154,.45)}.gw-component button{font-size:9.5px!important;padding:5px 7px!important}
-  .gw-terminal-side{min-height:0;display:flex;flex-direction:column;background:#050c12}.gw-terminal-head{height:36px;flex:none;padding:0 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(77,134,184,.14);font-size:10.5px;color:var(--suave)}#gw-term{flex:1;min-height:0;padding:6px}.gw-terminal-note{font-size:9.5px;color:var(--suave)}
+  .gw-terminal-side{min-height:0;display:flex;flex-direction:column;background:#050c12}.gw-terminal-head{height:36px;flex:none;padding:0 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(77,134,184,.14);font-size:10.5px;color:var(--suave)}#gw-term{flex:1;min-height:0;padding:6px}.gw-terminal-note{font-size:9.5px;color:var(--suave);margin-left:auto}.gw-terminal-actions{display:flex;gap:5px}.gw-terminal-actions button{font-size:9px!important;padding:4px 7px!important}
   @media(max-width:980px){.gw-body{grid-template-columns:1fr}.gw-left{max-height:45vh;border-right:0;border-bottom:1px solid var(--linea)}}
 
   /* Monitoreo */
@@ -898,3 +900,6 @@
   .webaccess-port-row{justify-content:space-between}.webaccess-port-row input{width:140px}
   .web-login-card{padding:20px}
 }
+
+/* v3.5.1 — portapapeles de terminal */
+@media(max-width:720px){.term-shortcuts,.gw-terminal-note{display:none}.term-barra{gap:6px!important}.term-barra #term-copiar,.term-barra #term-pegar{padding:6px 8px!important}.gw-terminal-head{height:auto;min-height:36px;flex-wrap:wrap;padding:5px 8px}}

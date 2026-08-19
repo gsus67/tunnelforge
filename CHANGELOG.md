@@ -1,3 +1,13 @@
+## v3.5.1
+
+### Terminal — copiar y pegar
+
+- Añadidos botones **Copiar** y **Pegar** a la terminal SSH integrada.
+- Añadidos atajos **Ctrl+Shift+C** para copiar la selección y **Ctrl+Shift+V** para pegar sin interferir con `Ctrl+C` (SIGINT).
+- El terminal del instalador Gateway WISP recibe las mismas funciones de portapapeles.
+- El pegado usa el portapapeles del navegador/WebView cuando está permitido y ofrece una entrada manual segura como fallback cuando el navegador bloquea la lectura del portapapeles.
+- Los controles se adaptan a pantallas pequeñas para seguir siendo utilizables desde el acceso web local.
+
 ## v3.5.0
 
 ### Acceso web local

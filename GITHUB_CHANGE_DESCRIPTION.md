@@ -1,20 +1,5 @@
-# v3.5.0 — Acceso web local
+# v3.5.1 — Copiar y pegar en terminal
 
-Añade una vista **Web local** para iniciar, desde Gateway WISP Access, un servidor LAN opcional y abrir la misma interfaz desde un teléfono, tablet u otra PC de la red.
+La terminal SSH integrada ahora permite copiar la selección y pegar desde el portapapeles con botones visibles y con los atajos estándar `Ctrl+Shift+C` / `Ctrl+Shift+V`. Se mantiene intacto `Ctrl+C` para interrumpir procesos remotos. La terminal del instalador Gateway WISP recibe el mismo comportamiento.
 
-## Seguridad
-
-- Apagado por defecto y detenido automáticamente al cerrar la app.
-- Código aleatorio de 6 dígitos con bloqueo temporal tras intentos fallidos.
-- Sesión mediante cookie HttpOnly ligada a la IP del cliente.
-- El navegador remoto nunca recibe el token maestro de la API.
-- Rechazo de clientes con IP pública; no se configura UPnP ni port-forwarding.
-- Los controles para iniciar/detener/cambiar el código solo están disponibles desde la app de escritorio.
-
-## Interfaz
-
-- La misma compilación TypeScript funciona en Wails y en navegador.
-- Nuevo layout responsive para pantallas pequeñas.
-- Puerto LAN configurable, por defecto `8788`, con direcciones locales mostradas en la propia app.
-
-Los paneles que existen únicamente detrás de túneles `localhost` no se publican en la LAN; desde el navegador remoto se abren en la PC que ejecuta Gateway.
+El acceso al portapapeles usa la API del navegador/WebView cuando está disponible; si la lectura está bloqueada, el botón Pegar ofrece un cuadro manual para introducir el contenido sin romper la sesión.

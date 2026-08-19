@@ -611,6 +611,90 @@ var TOKEN = '';
   var term = null, fit = null, wsTerm = null, servidorTerminal = null;
   var bufferLinea = '';
 
+  function copiarTextoPortapapeles(texto){
+    texto = String(texto || '');
+    if (!texto) return Promise.reject(new Error('No hay texto seleccionado.'));
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(texto).catch(function(){
+        return copiarTextoPortapapelesFallback(texto);
+      });
+    }
+    return copiarTextoPortapapelesFallback(texto);
+  }
+
+  function copiarTextoPortapapelesFallback(texto){
+    return new Promise(function(resolve, reject){
+      var ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        if (!document.execCommand('copy')) throw new Error('El WebView no permitió copiar.');
+        resolve(true);
+      } catch (e) {
+        reject(e);
+      } finally {
+        ta.remove();
+      }
+    });
+  }
+
+  function copiarSeleccionTerminal(t){
+    if (!t || typeof t.getSelection !== 'function') return;
+    var seleccionado = t.getSelection();
+    if (!seleccionado){
+      aviso('Selecciona texto en la terminal antes de copiar.', false);
+      t.focus();
+      return;
+    }
+    copiarTextoPortapapeles(seleccionado).then(function(){
+      aviso('Texto copiado al portapapeles.', true);
+      t.focus();
+    }).catch(function(e){
+      aviso((e && e.message) || 'No pude copiar al portapapeles.', false);
+      t.focus();
+    });
+  }
+
+  function pegarEnTerminal(t){
+    if (!t) return;
+    var aplicar = function(texto){
+      if (!texto) { t.focus(); return; }
+      if (typeof t.paste === 'function') t.paste(texto);
+      else if (typeof t.input === 'function') t.input(texto);
+      t.focus();
+    };
+    if (navigator.clipboard && navigator.clipboard.readText){
+      navigator.clipboard.readText().then(aplicar).catch(function(){
+        var manual = window.prompt('El navegador no permitió leer el portapapeles. Pega el texto aquí y pulsa Aceptar:', '');
+        if (manual !== null) aplicar(manual);
+      });
+      return;
+    }
+    var manual = window.prompt('Pega el texto aquí y pulsa Aceptar:', '');
+    if (manual !== null) aplicar(manual);
+  }
+
+  function activarAtajosPortapapeles(t){
+    if (!t || typeof t.attachCustomKeyEventHandler !== 'function') return;
+    t.attachCustomKeyEventHandler(function(e){
+      if (e.type !== 'keydown' || !e.ctrlKey || !e.shiftKey) return true;
+      if (e.code === 'KeyC'){
+        copiarSeleccionTerminal(t);
+        return false;
+      }
+      if (e.code === 'KeyV'){
+        pegarEnTerminal(t);
+        return false;
+      }
+      return true;
+    });
+  }
+
   function abrirTerminal(nombre: any, comandoInicial?: any, comandoSilencioso?: any){
     if (typeof Terminal !== 'function' || typeof FitAddon === 'undefined' || typeof FitAddon.FitAddon !== 'function'){
       aviso('No se pudieron cargar los componentes de la terminal. Reinicia la aplicación o reinstala esta versión.', false);
@@ -632,6 +716,7 @@ var TOKEN = '';
     term.loadAddon(fit);
     term.open(termNodo);
     fit.fit();
+    activarAtajosPortapapeles(term);
 
     // La ventana Wails puede devolver el foco al botón que abrió la terminal.
     // Reforzamos el foco tras el layout y al hacer click dentro de xterm.
@@ -701,6 +786,8 @@ var TOKEN = '';
     servidorTerminal = null;
   }
   document.getElementById('term-cerrar').onclick = cerrarTerminalUI;
+  document.getElementById('term-copiar').onclick = function(){ copiarSeleccionTerminal(term); };
+  document.getElementById('term-pegar').onclick = function(){ pegarEnTerminal(term); };
   document.getElementById('term').addEventListener('mousedown', function(){
     setTimeout(function(){ if (term) term.focus(); }, 0);
   });
@@ -1329,7 +1416,7 @@ var TOKEN = '';
   function abrirGWTerminal(nombre){
     if(typeof Terminal!=='function'||typeof FitAddon==='undefined'||typeof FitAddon.FitAddon!=='function'){aviso('No se pudo cargar xterm.js.',false);return;}
     cerrarGWTerminal();
-    var n=$('gw-term'); vaciar(n); gwTerm=new Terminal({cursorBlink:true,fontSize:12,fontFamily:"'JetBrains Mono', Consolas, monospace",theme:{background:'#050c12',foreground:'#d8e4ea',cursor:'#4de19a',selectionBackground:'#1f3b49'}}); gwFit=new FitAddon.FitAddon();gwTerm.loadAddon(gwFit);gwTerm.open(n);gwFit.fit();
+    var n=$('gw-term'); vaciar(n); gwTerm=new Terminal({cursorBlink:true,fontSize:12,fontFamily:"'JetBrains Mono', Consolas, monospace",theme:{background:'#050c12',foreground:'#d8e4ea',cursor:'#4de19a',selectionBackground:'#1f3b49'}}); gwFit=new FitAddon.FitAddon();gwTerm.loadAddon(gwFit);gwTerm.open(n);gwFit.fit();activarAtajosPortapapeles(gwTerm);
     gwWs=new WebSocket(wsTerminalURL(nombre));gwWs.binaryType='arraybuffer';var enc=new TextEncoder();
     gwWs.onopen=function(){if(gwTerm){gwWs.send(JSON.stringify({cols:gwTerm.cols,rows:gwTerm.rows}));gwTerm.focus();if(gwPendingCmd){var cmd=gwPendingCmd;gwPendingCmd=null;setTimeout(function(){enviarGW(cmd);},80);}}};
     gwWs.onmessage=function(e){if(gwTerm)gwTerm.write(new Uint8Array(e.data));};gwWs.onerror=function(){if(gwTerm)gwTerm.write('\r\n\x1b[31m[error en terminal Gateway WISP]\x1b[0m\r\n');};gwWs.onclose=function(){if(gwTerm)gwTerm.write('\r\n\x1b[33m[sesión terminada]\x1b[0m\r\n');};
@@ -1351,6 +1438,7 @@ var TOKEN = '';
   function abrirGatewayWISP(nombre){gwServidor=nombre;gwPackageReady=false;gwPendingCmd=null;$('gw-srv').textContent=nombre;cerrarHerramientas();$('gw-velo').classList.add('abierto');abrirGWTerminal(nombre);cargarGWEstado();prepararGWPaquete();setTimeout(function(){if(gwFit)gwFit.fit();},100);}
   function cerrarGatewayWISP(){$('gw-velo').classList.remove('abierto');cerrarGWTerminal();gwServidor=null;gwPackageReady=false;gwPendingCmd=null;}
   $('gw-cerrar').onclick=cerrarGatewayWISP;$('gw-refresh').onclick=cargarGWEstado;
+  $('gw-term-copiar').onclick=function(){copiarSeleccionTerminal(gwTerm);};$('gw-term-pegar').onclick=function(){pegarEnTerminal(gwTerm);};
   $('tool-gw-install').onclick=function(){if(!toolsServidor){aviso('No hay servidor seleccionado.',false);return;}abrirGatewayWISP(toolsServidor);};
   function gwAccion(accion,comp){
     if(!gwServidor)return;
