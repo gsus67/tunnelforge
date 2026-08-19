@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "3.4.11"
+const version = "3.5.0"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -742,6 +742,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	webLocal := newWebLocalManager(token, mux)
 	proteger := func(h http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Get("t") != token && r.Header.Get("X-Token") != token {
@@ -923,6 +924,10 @@ func main() {
 	mux.HandleFunc("/api/wireguard/conectar", proteger(manejarWGConnect))
 	mux.HandleFunc("/api/wireguard/desconectar", proteger(manejarWGDisconnect))
 	mux.HandleFunc("/api/wireguard/estado", proteger(manejarWGStatus))
+	mux.HandleFunc("/api/web-local/estado", proteger(webLocal.manejarEstado))
+	mux.HandleFunc("/api/web-local/iniciar", proteger(webLocal.manejarIniciar))
+	mux.HandleFunc("/api/web-local/detener", proteger(webLocal.manejarDetener))
+	mux.HandleFunc("/api/web-local/regenerar", proteger(webLocal.manejarRegenerar))
 
 	// Reordenar servidores (arrastrar en la interfaz): recibe la lista de
 	// nombres en el nuevo orden y reescribe el archivo respetando ese orden.
@@ -1154,6 +1159,7 @@ func main() {
 	mu.Lock()
 	cerrarTodas()
 	mu.Unlock()
+	_ = webLocal.Stop()
 	_ = escucha.Close()
 	os.Exit(0)
 }

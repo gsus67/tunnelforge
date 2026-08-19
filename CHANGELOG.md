@@ -1,3 +1,16 @@
+## v3.5.0
+
+### Acceso web local
+
+- Nueva vista **Web local** para publicar la misma interfaz de Gateway WISP Access en la LAN y usarla desde un teléfono, tablet u otra PC.
+- El servidor web queda **apagado por defecto**, usa el puerto 8788 salvo que se cambie y se detiene automáticamente al cerrar la aplicación.
+- Acceso mediante código aleatorio de 6 dígitos; las sesiones usan cookie HttpOnly ligada a la IP del cliente y caducan automáticamente.
+- Cinco códigos incorrectos bloquean temporalmente nuevos intentos desde ese dispositivo.
+- El navegador remoto nunca recibe el token maestro de la API; el servidor LAN valida la sesión y lo inyecta internamente al reenviar API y WebSocket.
+- El listener rechaza clientes con IP pública y no configura UPnP ni port-forwarding. El modo está pensado exclusivamente para una **LAN de confianza**.
+- La misma compilación TypeScript funciona en Wails y en navegador: Wails obtiene su runtime por `AppBridge`; el navegador lo obtiene por una sesión web autenticada.
+- Mejorado el layout responsive para pantallas pequeñas, con navegación horizontal compacta y paneles adaptados a móvil.
+
 ## v3.4.11
 - Monitoreo y Dashboard muestran el tráfico con flechas (`↑`/`↓`) sin las palabras “Subida” y “Descarga”, manteniendo el formato compacto.
 

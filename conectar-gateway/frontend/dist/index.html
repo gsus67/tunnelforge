@@ -24,6 +24,7 @@
       <a class="nav-item" href="#monitoring-panel" data-nav="monitoring"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19V3"/></svg></span><span>Monitoreo</span></a>
       <a class="nav-item" href="#wireguard-panel" data-nav="wireguard"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12c2.2-4.8 5-7.2 8-7.2s5.8 2.4 8 7.2c-2.2 4.8-5 7.2-8 7.2S6.2 16.8 4 12z"/><path d="M8 12h8M12 8v8"/></svg></span><span>WireGuard</span></a>
       <a class="nav-item" href="#upd-panel" data-nav="updates"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M20 11a8 8 0 1 0 2 5.3'/><path d='M20 4v7h-7'/></svg></span><span>Updates</span><span class="upd-punto amarillo" id="upd-punto" title="Estado de actualizaciones" style="margin-left:auto"></span></a>
+      <a class="nav-item" id="webaccess-nav" href="#webaccess-panel" data-nav="webaccess"><span class="ni" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 10h.01M10 10h7"/></svg></span><span>Web local</span></a>
       <a class="nav-item" href="#pie-final" data-nav="info"><span class="ni" aria-hidden="true"><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M12 10v6'/><path d='M12 7h.01'/></svg></span><span>Info</span></a>
     </nav>
     <div class="side-spacer"></div>
@@ -346,6 +347,56 @@
           </div>
         </section>
 
+        <section class="panel app-view webaccess-panel" id="webaccess-panel" data-view="webaccess">
+          <div class="panel-header webaccess-head">
+            <div class="panel-title">
+              <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 10h.01M10 10h7"/></svg></div>
+              <div><h3>Acceso web local</h3><p>Usa Gateway WISP Access desde tu teléfono, tablet u otra PC en la misma red.</p></div>
+            </div>
+            <span class="webaccess-badge off" id="webaccess-badge">Apagado</span>
+          </div>
+          <div class="webaccess-grid">
+            <div class="webaccess-card">
+              <span class="webaccess-label">Servidor LAN</span>
+              <b id="webaccess-status">Desactivado</b>
+              <p>El servidor solo acepta clientes con IP privada/local. No abre puertos en el router ni activa UPnP.</p>
+              <div class="webaccess-port-row">
+                <label for="webaccess-port">Puerto</label>
+                <input type="number" id="webaccess-port" min="1024" max="65535" value="8788">
+              </div>
+              <div class="webaccess-actions">
+                <button class="principal" id="webaccess-start">Iniciar servidor</button>
+                <button id="webaccess-stop" hidden>Detener</button>
+              </div>
+            </div>
+            <div class="webaccess-card">
+              <span class="webaccess-label">Direcciones</span>
+              <div class="webaccess-addresses" id="webaccess-addresses"><span>Inicia el servidor para ver las direcciones de esta PC.</span></div>
+              <p>En el teléfono abre una de estas direcciones mientras ambos equipos estén en la misma LAN.</p>
+            </div>
+            <div class="webaccess-card webaccess-code-card">
+              <span class="webaccess-label">Código de acceso</span>
+              <div class="webaccess-code" id="webaccess-code">—— ——</div>
+              <p>El código se genera al iniciar. Cinco intentos fallidos bloquean temporalmente ese dispositivo.</p>
+              <div class="webaccess-actions">
+                <button id="webaccess-copy" disabled>Copiar dirección</button>
+                <button id="webaccess-regenerate" disabled>Cambiar código y cerrar sesiones</button>
+              </div>
+            </div>
+            <div class="webaccess-card webaccess-security">
+              <span class="webaccess-label">Seguridad</span>
+              <ul>
+                <li>Desactivado por defecto y se apaga al cerrar Gateway.</li>
+                <li>Sesión protegida con cookie HttpOnly ligada a la IP del cliente.</li>
+                <li>Sin token maestro en la URL ni en el navegador remoto.</li>
+                <li>HTTP local: úsalo únicamente en una red LAN de confianza.</li>
+                <li>Los paneles que viven en <code>localhost</code> no se publican en la LAN; desde el móvil se abren en la PC por seguridad.</li>
+              </ul>
+              <small id="webaccess-sessions">0 sesiones web activas</small>
+            </div>
+          </div>
+        </section>
+
         <div class="panel app-view info-panel" id="pie-final" data-view="info">
           <div class="info-overview">
             <div class="info-app-mark" aria-hidden="true">
@@ -379,6 +430,7 @@
                 <li>Monitoreo centralizado con preparación por fases, verificación de servicios y resumen nativo responsive de CPU, RAM, disco y tráfico.</li>
                 <li>Peers WireGuard en lista compacta con nombres de WGDashboard/configuración WireGuard, RX/TX en Mbit/s y último handshake en tiempo real.</li>
                 <li>WireGuard integrado con perfiles, importación/exportación .conf, múltiples peers, autoconexión, generación de keys/PSK y tráfico en tiempo real. En Windows el motor viene embebido en la app; Linux utiliza wireguard-tools del sistema.</li>
+                <li>Acceso web local opcional para operar la misma interfaz desde teléfono, tablet u otra PC de la LAN.</li>
               </ul>
             </section>
             <section class="info-block">
@@ -389,6 +441,7 @@
                 <li>Contraseñas guardadas cifradas localmente.</li>
                 <li>PrivateKey y PresharedKey de WireGuard cifradas en almacenamiento local y en backups portables; hooks importados desactivados hasta autorización explícita.</li>
                 <li>Updates privados verificados con firma Ed25519 y SHA-256.</li>
+                <li>Servidor web LAN apagado por defecto, autenticado por código y sin exponer el token maestro al navegador remoto.</li>
               </ul>
             </section>
             <section class="info-block">
@@ -679,6 +732,18 @@
       <button class="principal" id="seg-si">Sí, asegurar SSH</button>
     </div>
   </div>
+</div>
+
+<div class="web-login-overlay" id="web-login-overlay" hidden>
+  <form class="web-login-card" id="web-login-form">
+    <div class="web-login-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z"/><rect x="8.4" y="11.2" width="7.2" height="5.5" rx="1.2"/><path d="M9.25 11.25V9.9a2.75 2.75 0 0 1 5.5 0v1.35"/></svg></div>
+    <h2>Gateway WISP Access</h2>
+    <p>Escribe el código de 6 dígitos que muestra la aplicación en la PC.</p>
+    <input id="web-login-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000">
+    <button class="principal" id="web-login-submit" type="submit">Entrar</button>
+    <div class="web-login-error" id="web-login-error"></div>
+    <small>Acceso permitido únicamente desde la red local.</small>
+  </form>
 </div>
 
 <div id="aviso"></div>

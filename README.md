@@ -23,6 +23,14 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 ---
 
 
+## Acceso web local
+
+Desde **v3.5.0** puedes iniciar desde la propia aplicación un servidor web para la LAN y abrir **la misma interfaz** desde un teléfono, tablet u otra PC usando la IP privada del equipo. El modo está apagado por defecto, usa un código aleatorio de 6 dígitos, no configura UPnP ni port-forwarding y el navegador remoto nunca recibe el token maestro de la API.
+
+El acceso web está pensado para una **red local de confianza**. La sesión se guarda en una cookie HttpOnly ligada a la IP del cliente y el servidor se detiene automáticamente al cerrar Gateway WISP Access. Los accesos a paneles que solo escuchan en `localhost` (por ejemplo, túneles web SSH) **no se republican en la LAN**; al pulsarlos desde el navegador remoto, Gateway los abre en la PC que ejecuta la aplicación.
+
+---
+
 ## WireGuard
 
 > **v3.4.11** mantiene WireGuard con configuración y estadísticas estrictamente separadas, conserva la medición corregida de Monitoreo sobre la interfaz principal del servidor y muestra el tráfico en Dashboard y Monitoreo en un formato compacto con flechas (`↑`/`↓`) en lugar de las palabras “Subida” y “Descarga”. WireGuard sigue completamente integrado en el ejecutable de Windows y no requiere instalar WireGuard for Windows ni depender de `wireguard.exe`/`wg.exe`.
@@ -72,7 +80,7 @@ Desde **v3.3.0** la interfaz de producción está migrada a **Go + Wails + TypeS
 
 La API existente se reutiliza dentro del `AssetServer` de Wails para reducir regresiones; únicamente la Terminal mantiene un WebSocket loopback en `127.0.0.1`, protegido por token y con el origen interno de Wails autorizado explícitamente.
 
-La API loopback protegida sigue existiendo únicamente como canal interno para el WebSocket de Terminal y compatibilidad de los módulos ya estabilizados; la UI ya no se sirve desde `127.0.0.1` ni se abre en un navegador.
+La API loopback protegida sigue existiendo como canal interno para el WebSocket de Terminal y compatibilidad de los módulos ya estabilizados. Desde v3.5.0, la UI también puede publicarse **de forma opcional** en la LAN mediante el módulo Web local autenticado; ese servidor es independiente del listener loopback y permanece apagado hasta que el usuario lo inicia.
 
 ## Qué hace
 
@@ -88,6 +96,7 @@ La API loopback protegida sigue existiendo únicamente como canal interno para e
   sube y baja archivos, crea carpetas, renombra y borra
 - **Herramientas por servidor**: scripts, test de velocidad, firewall, administración SSH segura y Gateway WISP modular desde una ventana con terminal interactiva.
 - **Tráfico real**: RX/TX de la interfaz principal del servidor mostrado en Mbit/s.
+- **Web local opcional**: publica la misma interfaz en la LAN para usar Gateway desde teléfono, tablet u otra PC con código de acceso.
 - **Firewall seguro**: protege el puerto SSH, crea backup antes de cambios y evita reescribir reglas nftables personalizadas.
 - **SSH administrado**: crea/instala keys, carga una key local existente y cambia el puerto SSH solo después de verificar una segunda conexión real.
 - **Gateway WISP modular**: instala el stack completo o componentes individuales en Debian/Ubuntu, con preguntas respondidas desde la terminal integrada de Herramientas.

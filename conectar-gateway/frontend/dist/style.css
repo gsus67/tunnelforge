@@ -837,3 +837,64 @@
 .wgclient-live-row.up{border-color:rgba(77,225,154,.28)}
 .wgclient-live-row.off .wgclient-live-nums b{color:#7f93a5}
 @media(max-width:900px){.wgclient-live-row{grid-template-columns:minmax(0,1fr)}.wgclient-live-nums{justify-content:flex-start;text-align:left}}
+
+/* v3.5.0 — acceso web local */
+.webaccess-panel{padding:16px!important}
+.webaccess-head{margin-bottom:16px}
+.webaccess-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid rgba(77,225,154,.28);background:rgba(77,225,154,.08);color:var(--verde);font-size:12px;font-weight:700;border-radius:999px}
+.webaccess-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px rgba(77,225,154,.55)}
+.webaccess-badge.off{color:var(--suave);border-color:var(--linea);background:rgba(255,255,255,.025)}
+.webaccess-badge.off::before{background:var(--suave);box-shadow:none}
+.webaccess-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.webaccess-card{border:1px solid var(--borde-frio);background:linear-gradient(180deg,rgba(7,20,33,.9),rgba(6,17,29,.86));padding:16px;border-radius:8px;min-width:0}
+.webaccess-card p{color:var(--texto-2);font-size:12.5px;line-height:1.6;margin-top:8px}
+.webaccess-label{display:block;color:var(--suave);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.webaccess-card>b{display:block;font-size:19px}
+.webaccess-port-row{display:flex;align-items:center;gap:10px;margin-top:16px}
+.webaccess-port-row label{color:var(--texto-2);font-size:12px;margin:0}
+.webaccess-port-row input{width:120px}
+.webaccess-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.webaccess-addresses{display:grid;gap:8px;min-height:42px}
+.webaccess-addresses>span{color:var(--suave);font-size:12.5px}
+.webaccess-address{display:flex;align-items:center;gap:8px;border:1px solid var(--linea);background:rgba(255,255,255,.025);padding:8px 9px;border-radius:8px}
+.webaccess-address code{min-width:0;flex:1;word-break:break-all;color:#b8d6ff;font-family:'JetBrains Mono',monospace;font-size:12px}
+.webaccess-address button{padding:7px 9px;font-size:11px}
+.webaccess-code{font-family:'JetBrains Mono',monospace;font-size:34px;font-weight:700;letter-spacing:.12em;color:var(--verde);line-height:1.2;margin:4px 0 2px}
+.webaccess-security ul{margin:8px 0 12px 18px;color:var(--texto-2);font-size:12.5px;line-height:1.65}
+.webaccess-security small{color:var(--verde)}
+
+.web-login-overlay{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:18px;background:radial-gradient(circle at top,rgba(26,61,90,.88),rgba(4,12,20,.98));backdrop-filter:blur(10px)}
+.web-login-card{width:min(420px,100%);display:flex;flex-direction:column;gap:12px;padding:24px;border:1px solid rgba(77,134,184,.34);background:linear-gradient(180deg,rgba(8,22,36,.99),rgba(5,15,26,.99));box-shadow:0 24px 70px rgba(0,0,0,.55);border-radius:14px}
+.web-login-mark{width:52px;height:52px;display:grid;place-items:center;border-radius:12px;border:1px solid rgba(77,225,154,.28);background:rgba(77,225,154,.07);color:var(--verde)}
+.web-login-mark svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.web-login-card h2{font-size:23px}
+.web-login-card p{font-size:13px;line-height:1.55;color:var(--texto-2)}
+.web-login-card input{font-family:'JetBrains Mono',monospace;font-size:27px;letter-spacing:.18em;text-align:center;padding:13px}
+.web-login-card button{width:100%;padding:12px}
+.web-login-error{min-height:18px;color:var(--rojo);font-size:12px}
+.web-login-card small{color:var(--suave);font-size:11px;text-align:center}
+
+@media(max-width:820px){
+  body{padding:0;overflow:auto}
+  .app-shell{height:auto!important;min-height:100vh!important;border-radius:0!important;border-left:0!important;border-right:0!important}
+  .sidebar{min-height:0!important;padding:10px!important;gap:9px!important;position:sticky;top:0;z-index:50;background:#07131f!important}
+  .brand-card{padding:9px 10px!important}
+  .brand-logo{width:34px!important;height:34px!important;background-size:22px 22px!important}
+  .brand-text{font-size:13px!important}.brand-text small{display:none}
+  .side-nav{display:flex!important;overflow-x:auto;gap:6px!important;padding-bottom:2px;scrollbar-width:none}
+  .side-nav::-webkit-scrollbar{display:none}
+  .nav-item{flex:0 0 auto!important;padding:8px 10px!important;font-size:12px!important;white-space:nowrap}
+  .side-spacer,.side-status,.side-footer{display:none!important}
+  .content-shell{padding:12px!important;min-height:calc(100vh - 102px)!important}
+  .topbar{gap:10px!important}.hero-title h1{font-size:24px!important}.hero-title p{font-size:12px!important}
+  .top-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important}.top-actions button{width:100%;min-width:0!important}
+  .webaccess-grid{grid-template-columns:1fr}
+  .webaccess-code{font-size:28px}
+}
+@media(max-width:520px){
+  .top-actions{grid-template-columns:1fr}
+  .panel{padding:12px!important}
+  .webaccess-actions{flex-direction:column}.webaccess-actions button{width:100%}
+  .webaccess-port-row{justify-content:space-between}.webaccess-port-row input{width:140px}
+  .web-login-card{padding:20px}
+}

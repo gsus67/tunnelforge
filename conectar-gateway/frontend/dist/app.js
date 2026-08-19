@@ -1,23 +1,124 @@
 var TOKEN = '';
 var WS_BASE = '';
-var RUNTIME_READY = (async function () {
-    try {
-        var cfg = await window.go.main.AppBridge.GetRuntimeConfig();
+var WEB_RUNTIME = false;
+function webLoginVisible(visible, mensaje) {
+    var overlay = document.getElementById('web-login-overlay');
+    var err = document.getElementById('web-login-error');
+    if (overlay)
+        overlay.hidden = !visible;
+    if (err)
+        err.textContent = mensaje || '';
+    if (visible) {
+        var input = document.getElementById('web-login-code');
+        if (input)
+            setTimeout(function () { input.focus(); }, 20);
+    }
+}
+async function obtenerRuntimeWeb() {
+    var r = await fetch('/api/web/runtime', { credentials: 'same-origin', cache: 'no-store' });
+    if (r.status === 401)
+        throw new Error('AUTH_REQUIRED');
+    if (!r.ok)
+        throw new Error('No se pudo abrir la sesión web (' + r.status + ').');
+    return r.json();
+}
+function esperarLoginWeb() {
+    webLoginVisible(true, '');
+    return new Promise(function (resolve, reject) {
+        var form = document.getElementById('web-login-form');
+        var input = document.getElementById('web-login-code');
+        var btn = document.getElementById('web-login-submit');
+        if (!form || !input || !btn) {
+            reject(new Error('No se pudo abrir el formulario de acceso web.'));
+            return;
+        }
+        form.onsubmit = async function (ev) {
+            ev.preventDefault();
+            var code = String(input.value || '').replace(/\D/g, '').slice(0, 6);
+            input.value = code;
+            if (code.length !== 6) {
+                webLoginVisible(true, 'Escribe los 6 dígitos.');
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'Comprobando…';
+            try {
+                var r = await fetch('/api/web/login', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code }) });
+                var data = await r.json().catch(function () { return {}; });
+                if (!r.ok || data.error) {
+                    webLoginVisible(true, data.error || 'No autorizado.');
+                    return;
+                }
+                webLoginVisible(false, '');
+                resolve();
+            }
+            catch (err) {
+                webLoginVisible(true, 'No pude conectar con Gateway en la PC.');
+            }
+            finally {
+                btn.disabled = false;
+                btn.textContent = 'Entrar';
+            }
+        };
+        input.oninput = function () { input.value = String(input.value || '').replace(/\D/g, '').slice(0, 6); };
+    });
+}
+async function inicializarRuntime() {
+    var bridge = window.go && window.go.main && window.go.main.AppBridge;
+    if (bridge && bridge.GetRuntimeConfig) {
+        var cfg = await bridge.GetRuntimeConfig();
         TOKEN = cfg.token || '';
         WS_BASE = (cfg.wsBase || '').replace(/\/$/, '');
+        WEB_RUNTIME = false;
         return cfg;
     }
-    catch (err) {
-        console.error('No se pudo inicializar el puente Wails', err);
-        throw err;
+    WEB_RUNTIME = true;
+    var cfgWeb;
+    try {
+        cfgWeb = await obtenerRuntimeWeb();
     }
-})();
+    catch (err) {
+        if (err && err.message === 'AUTH_REQUIRED') {
+            await esperarLoginWeb();
+            cfgWeb = await obtenerRuntimeWeb();
+        }
+        else {
+            throw err;
+        }
+    }
+    TOKEN = '';
+    WS_BASE = (cfgWeb.wsBase || '').replace(/\/$/, '');
+    var nav = document.getElementById('webaccess-nav');
+    if (nav)
+        nav.hidden = true;
+    return cfgWeb;
+}
+var RUNTIME_READY = inicializarRuntime().catch(function (err) {
+    console.error('No se pudo inicializar Gateway WISP Access', err);
+    webLoginVisible(true, err && err.message ? err.message : 'No se pudo iniciar la interfaz.');
+    throw err;
+});
 function api(ruta, opciones) {
     opciones = opciones || {};
     return RUNTIME_READY.then(function () {
-        opciones.headers = Object.assign({ 'X-Token': TOKEN, 'Content-Type': 'application/json' }, opciones.headers || {});
-        return fetch(ruta, opciones).then(function (r) { return r.json(); });
+        var headers = { 'Content-Type': 'application/json' };
+        if (TOKEN)
+            headers['X-Token'] = TOKEN;
+        opciones.headers = Object.assign(headers, opciones.headers || {});
+        opciones.credentials = 'same-origin';
+        return fetch(ruta, opciones).then(function (r) {
+            if (r.status === 401 && WEB_RUNTIME) {
+                webLoginVisible(true, 'La sesión web expiró. Recarga la página para volver a entrar.');
+            }
+            return r.json();
+        });
     });
+}
+function wsTerminalURL(nombre) {
+    var url = WS_BASE + '/ws/terminal?nombre=' + encodeURIComponent(nombre);
+    if (TOKEN)
+        url += '&t=' + encodeURIComponent(TOKEN);
+    return url;
 }
 function aviso(texto, ok) {
     var a = document.getElementById('aviso');
@@ -682,7 +783,7 @@ function abrirTerminal(nombre, comandoInicial, comandoSilencioso) {
         term.focus(); }, 80);
     cargarHistorialTerminal(nombre);
     bufferLinea = '';
-    wsTerm = new WebSocket(WS_BASE + '/ws/terminal?t=' + TOKEN + '&nombre=' + encodeURIComponent(nombre));
+    wsTerm = new WebSocket(wsTerminalURL(nombre));
     wsTerm.binaryType = 'arraybuffer';
     var codificador = new TextEncoder();
     wsTerm.onopen = function () {
@@ -1469,6 +1570,19 @@ $('upd-instalar').onclick = function () {
 };
 // ── Abrir enlaces en el navegador del sistema ─────────────────
 function abrirFuera(url) {
+    if (WEB_RUNTIME) {
+        if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(url)) {
+            api('/api/abrir', { method: 'POST', body: JSON.stringify({ url: url }) }).then(function (r) {
+                if (r && r.error)
+                    aviso(r.error, false);
+                else
+                    aviso('El panel local se abrió en la PC que ejecuta Gateway.', true);
+            });
+            return;
+        }
+        window.open(url, '_blank', 'noopener');
+        return;
+    }
     api('/api/abrir', { method: 'POST', body: JSON.stringify({ url: url }) })
         .then(function (r) { if (r && r.error)
         window.open(url, '_blank'); })
@@ -1562,6 +1676,120 @@ function irA(el) {
         return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+var webLocalLastState = null;
+function webLocalCodeFmt(code) {
+    var c = String(code || '').replace(/\D/g, '').slice(0, 6);
+    return c.length === 6 ? c.slice(0, 3) + ' ' + c.slice(3) : '—— ——';
+}
+function pintarWebLocal(st) {
+    webLocalLastState = st || {};
+    var active = !!st.active;
+    var badge = $('webaccess-badge');
+    if (badge) {
+        badge.textContent = active ? 'Activo' : 'Apagado';
+        badge.classList.toggle('off', !active);
+    }
+    $('webaccess-status').textContent = active ? 'Servidor activo' : 'Desactivado';
+    $('webaccess-port').value = st.port || 8788;
+    $('webaccess-port').disabled = active;
+    $('webaccess-start').hidden = active;
+    $('webaccess-stop').hidden = !active;
+    $('webaccess-code').textContent = active ? webLocalCodeFmt(st.code) : '—— ——';
+    $('webaccess-regenerate').disabled = !active;
+    $('webaccess-copy').disabled = !active || !(st.addresses || []).length;
+    $('webaccess-sessions').textContent = String(st.sessions || 0) + ' sesión' + ((st.sessions || 0) === 1 ? '' : 'es') + ' web activa' + ((st.sessions || 0) === 1 ? '' : 's');
+    var cont = $('webaccess-addresses');
+    vaciar(cont);
+    if (!active) {
+        cont.appendChild(nodo('span', '', 'Inicia el servidor para ver las direcciones de esta PC.'));
+        return;
+    }
+    var direcciones = st.addresses || [];
+    if (!direcciones.length) {
+        cont.appendChild(nodo('span', '', 'Servidor activo, pero no encontré una IPv4 privada para mostrar.'));
+        return;
+    }
+    direcciones.forEach(function (addr) {
+        var row = nodo('div', 'webaccess-address');
+        row.appendChild(nodo('code', '', addr));
+        var b = nodo('button', '', 'Copiar');
+        b.onclick = function () { copiarTexto(addr).then(function () { aviso('Dirección copiada.', true); }); };
+        row.appendChild(b);
+        cont.appendChild(row);
+    });
+}
+function copiarTexto(texto) {
+    if (navigator.clipboard && navigator.clipboard.writeText)
+        return navigator.clipboard.writeText(String(texto));
+    return new Promise(function (resolve, reject) {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = String(texto);
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            resolve(null);
+        }
+        catch (e) {
+            reject(e);
+        }
+    });
+}
+function cargarWebLocal() {
+    if (WEB_RUNTIME)
+        return;
+    api('/api/web-local/estado').then(function (st) { if (!st.error)
+        pintarWebLocal(st); }).catch(function () { aviso('No pude consultar el servidor web local.', false); });
+}
+$('webaccess-start').onclick = function () {
+    var port = parseInt($('webaccess-port').value || '8788', 10);
+    if (!Number.isFinite(port) || port < 1024 || port > 65535) {
+        aviso('El puerto debe estar entre 1024 y 65535.', false);
+        return;
+    }
+    this.disabled = true;
+    api('/api/web-local/iniciar', { method: 'POST', body: JSON.stringify({ port: port }) }).then(function (st) {
+        if (st.error) {
+            aviso(st.error, false);
+            return;
+        }
+        pintarWebLocal(st);
+        aviso('Servidor web local iniciado.', true);
+    }).catch(function () { aviso('No pude iniciar el servidor web local.', false); }).finally(() => { this.disabled = false; });
+};
+$('webaccess-stop').onclick = function () {
+    this.disabled = true;
+    api('/api/web-local/detener', { method: 'POST', body: '{}' }).then(function (st) {
+        if (st.error) {
+            aviso(st.error, false);
+            return;
+        }
+        pintarWebLocal(st);
+        aviso('Servidor web local detenido.', true);
+    }).catch(function () { aviso('No pude detener el servidor web local.', false); }).finally(() => { this.disabled = false; });
+};
+$('webaccess-regenerate').onclick = function () {
+    if (!confirm('Esto cambiará el código y cerrará todas las sesiones web actuales. ¿Continuar?'))
+        return;
+    this.disabled = true;
+    api('/api/web-local/regenerar', { method: 'POST', body: '{}' }).then(function (st) {
+        if (st.error) {
+            aviso(st.error, false);
+            return;
+        }
+        pintarWebLocal(st);
+        aviso('Código renovado y sesiones web cerradas.', true);
+    }).catch(function () { aviso('No pude cambiar el código.', false); }).finally(() => { this.disabled = false; });
+};
+$('webaccess-copy').onclick = function () {
+    var addr = webLocalLastState && webLocalLastState.addresses && webLocalLastState.addresses[0];
+    if (!addr)
+        return;
+    copiarTexto(addr).then(function () { aviso('Dirección copiada.', true); });
+};
 var vistaActual = 'dashboard';
 var titulosVista = {
     dashboard: ['Dashboard', 'Servidores guardados y conexiones activas en una sola vista.'],
@@ -1570,6 +1798,7 @@ var titulosVista = {
     monitoring: ['Monitoreo', 'Prometheus, métricas nativas y peers WireGuard en tiempo real por túneles SSH persistentes.'],
     wireguard: ['WireGuard', 'Perfiles VPN locales. En Windows, WireGuard viene integrado en la aplicación; Linux usa wireguard-tools del sistema.'],
     updates: ['Actualizaciones', 'Comprueba e instala versiones firmadas desde el repositorio privado.'],
+    webaccess: ['Web local', 'Publica esta misma interfaz en tu LAN para usarla desde el teléfono, tablet u otra PC.'],
     info: ['Gateway WISP Access', 'Información de seguridad, componentes y versión instalada.']
 };
 function mostrarVista(nombre) {
@@ -1593,6 +1822,8 @@ function mostrarVista(nombre) {
         cargarMonitoring();
     if (nombre === 'wireguard')
         cargarWireGuard();
+    if (nombre === 'webaccess')
+        cargarWebLocal();
     var df = $('dashboard-footer');
     if (df)
         df.classList.toggle('hidden', nombre !== 'dashboard');
@@ -1600,6 +1831,8 @@ function mostrarVista(nombre) {
 document.querySelectorAll('.nav-item[data-nav]').forEach(function (a) {
     a.addEventListener('click', function (ev) { ev.preventDefault(); mostrarVista(a.dataset.nav); });
 });
+setInterval(function () { if (vistaActual === 'webaccess' && !WEB_RUNTIME)
+    cargarWebLocal(); }, 3000);
 // ── Herramientas por servidor ────────────────────────────────
 var toolsServidor = null;
 function abrirHerramientas(nombre) {
@@ -1882,7 +2115,7 @@ function abrirGWTerminal(nombre) {
     gwTerm.loadAddon(gwFit);
     gwTerm.open(n);
     gwFit.fit();
-    gwWs = new WebSocket(WS_BASE + '/ws/terminal?t=' + TOKEN + '&nombre=' + encodeURIComponent(nombre));
+    gwWs = new WebSocket(wsTerminalURL(nombre));
     gwWs.binaryType = 'arraybuffer';
     var enc = new TextEncoder();
     gwWs.onopen = function () { if (gwTerm) {
