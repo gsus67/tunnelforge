@@ -682,7 +682,8 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 // API HTTP local
 // ---------------------------------------------------------------------------
 func decodificar(r *http.Request, destino any) error {
-	dec := json.NewDecoder(io.LimitReader(r.Body, 16<<20))
+	limitado := &io.LimitedReader{R: r.Body, N: (16 << 20) + 1}
+	dec := json.NewDecoder(limitado)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(destino); err != nil {
 		return fmt.Errorf("solicitud JSON inválida: %v", err)
@@ -690,6 +691,9 @@ func decodificar(r *http.Request, destino any) error {
 	var extra any
 	if err := dec.Decode(&extra); err != io.EOF {
 		return fmt.Errorf("la solicitud contiene datos adicionales")
+	}
+	if limitado.N == 0 {
+		return fmt.Errorf("la solicitud supera el límite de 16 MB")
 	}
 	return nil
 }

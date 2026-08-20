@@ -335,6 +335,7 @@ type cambioPuertoSSH struct {
 	FirewallAbierto bool
 	Creado          time.Time
 	RollbackUnit    string
+	EnCurso         bool
 }
 
 var cambiosPuertoSSH = struct {
@@ -691,6 +692,10 @@ esac
 }
 
 func manejarToolPuertoSSHAplicar(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		responderError(w, fmt.Errorf("método no permitido"))
+		return
+	}
 	var p struct {
 		Servidor       string `json:"servidor"`
 		Token          string `json:"token"`
@@ -703,13 +708,21 @@ func manejarToolPuertoSSHAplicar(w http.ResponseWriter, r *http.Request) {
 	}
 	cambiosPuertoSSH.Lock()
 	st := cambiosPuertoSSH.m[p.Servidor]
-	if st == nil || st.Token != p.Token {
+	if st == nil || st.Token != p.Token || st.EnCurso {
 		cambiosPuertoSSH.Unlock()
 		responderError(w, fmt.Errorf("no hay una prueba de puerto válida pendiente"))
 		return
 	}
+	st.EnCurso = true
 	copia := *st
 	cambiosPuertoSSH.Unlock()
+	defer func() {
+		cambiosPuertoSSH.Lock()
+		if actual := cambiosPuertoSSH.m[p.Servidor]; actual != nil && actual.Token == p.Token {
+			actual.EnCurso = false
+		}
+		cambiosPuertoSSH.Unlock()
+	}()
 
 	s, err := perfilServidor(p.Servidor)
 	if err != nil {
@@ -842,6 +855,10 @@ esac`, copia.Anterior, shellQuote(copia.Firewall))
 }
 
 func manejarToolPuertoSSHCancelar(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		responderError(w, fmt.Errorf("método no permitido"))
+		return
+	}
 	var p struct {
 		Servidor     string `json:"servidor"`
 		Token        string `json:"token"`
@@ -858,8 +875,21 @@ func manejarToolPuertoSSHCancelar(w http.ResponseWriter, r *http.Request) {
 		responder(w, map[string]any{"ok": true, "cancelado": true})
 		return
 	}
+	if st.EnCurso {
+		cambiosPuertoSSH.Unlock()
+		responderError(w, fmt.Errorf("el cambio de puerto ya se está procesando"))
+		return
+	}
+	st.EnCurso = true
 	copia := *st
 	cambiosPuertoSSH.Unlock()
+	defer func() {
+		cambiosPuertoSSH.Lock()
+		if actual := cambiosPuertoSSH.m[p.Servidor]; actual != nil && actual.Token == p.Token {
+			actual.EnCurso = false
+		}
+		cambiosPuertoSSH.Unlock()
+	}()
 	cli, err := clienteConexionActiva(p.Servidor)
 	if err != nil {
 		responderError(w, err)
