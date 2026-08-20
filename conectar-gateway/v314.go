@@ -448,6 +448,10 @@ systemctl reset-failed %s.service >/dev/null 2>&1 || true`, shellQuote(unit), sh
 }
 
 func manejarToolPuertoSSHProbar(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		responderError(w, fmt.Errorf("método no permitido"))
+		return
+	}
 	var p struct {
 		Servidor     string `json:"servidor"`
 		Puerto       int    `json:"puerto"`
@@ -484,16 +488,30 @@ func manejarToolPuertoSSHProbar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Si quedó una prueba anterior sin aplicar, no apilamos cambios.
+	// Reservamos el servidor antes del I/O remoto. Antes se comprobaba el mapa
+	// y se insertaba al final, permitiendo que dos peticiones simultáneas
+	// modificaran sshd en paralelo.
+	token := tokenCorto()
 	cambiosPuertoSSH.Lock()
 	if st := cambiosPuertoSSH.m[p.Servidor]; st != nil {
 		cambiosPuertoSSH.Unlock()
 		responderError(w, fmt.Errorf("ya hay una prueba de puerto pendiente (%d → %d); aplícala o cancélala primero", st.Anterior, st.Nuevo))
 		return
 	}
+	cambiosPuertoSSH.m[p.Servidor] = &cambioPuertoSSH{Servidor: p.Servidor, Token: token, Anterior: old, Nuevo: p.Puerto, Creado: time.Now()}
 	cambiosPuertoSSH.Unlock()
+	reservado := true
+	defer func() {
+		if !reservado {
+			return
+		}
+		cambiosPuertoSSH.Lock()
+		if actual := cambiosPuertoSSH.m[p.Servidor]; actual != nil && actual.Token == token {
+			delete(cambiosPuertoSSH.m, p.Servidor)
+		}
+		cambiosPuertoSSH.Unlock()
+	}()
 
-	token := tokenCorto()
 	comentario := "gateway-wisp-port-test-" + token
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -620,6 +638,7 @@ printf '__GW_FW__%%s\n' "$FW"
 	cambiosPuertoSSH.Lock()
 	cambiosPuertoSSH.m[p.Servidor] = stage
 	cambiosPuertoSSH.Unlock()
+	reservado = false
 
 	responder(w, map[string]any{
 		"ok": true, "probado": true, "token": token, "anterior": old, "nuevo": p.Puerto,

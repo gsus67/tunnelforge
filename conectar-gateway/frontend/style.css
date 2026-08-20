@@ -304,6 +304,10 @@
   .fx .it:hover{background:rgba(255,255,255,.04)}
   .fx .it .ic{width:18px;text-align:center;flex:none}.fx .it .nm{flex:1;font-family:'JetBrains Mono',monospace;font-size:12.5px;word-break:break-all}.fx .it .meta{font-size:11px;color:var(--suave);flex:none}
   .fx .vacio-fx{padding:16px;text-align:center;color:var(--suave);font-size:12.5px}
+  .fx-editor-velo{z-index:58}
+  .fx-editor-modal{width:min(920px,calc(100vw - 32px));max-width:920px!important;height:min(760px,calc(100vh - 32px));display:flex;flex-direction:column;gap:9px}
+  .fx-editor-ruta{font:11px/1.4 'JetBrains Mono',monospace;color:var(--suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #fx-editor-texto{flex:1;min-height:260px;resize:none;background:#04101a;color:var(--texto);border:1px solid var(--linea);border-radius:8px;padding:11px;font:12.5px/1.5 'JetBrains Mono',Consolas,monospace;tab-size:2}
   .content-shell::-webkit-scrollbar{width:10px}
   .content-shell::-webkit-scrollbar-track{background:#07111a}
   .content-shell::-webkit-scrollbar-thumb{background:rgba(140,170,192,.24);border-radius:999px;border:2px solid #07111a}

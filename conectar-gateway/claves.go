@@ -464,6 +464,10 @@ fi
 // por completo porque hacerlo bloquearía perfiles que administran el gateway
 // directamente como root.
 func manejarAsegurarSSH(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		responderError(w, fmt.Errorf("método no permitido"))
+		return
+	}
 	var pet struct {
 		Nombre   string `json:"nombre"`
 		Password string `json:"password"`
@@ -647,16 +651,30 @@ func clienteConexionActiva(nombre string) (*ssh.Client, error) {
 // Gateway. No modifica nada y se usa para rotular el boton discreto de cada
 // servidor conectado.
 func manejarEstadoSeguridadSSH(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		responderError(w, fmt.Errorf("método no permitido"))
+		return
+	}
 	nombre := strings.TrimSpace(r.URL.Query().Get("nombre"))
 	if nombre == "" {
 		responderError(w, fmt.Errorf("falta el nombre del servidor"))
 		return
 	}
-	cli, err := clienteConexionActiva(nombre)
+	servidor, err := perfilServidor(nombre)
 	if err != nil {
 		responderError(w, err)
 		return
 	}
+	// La conexión persistente pertenece a túneles, terminal y SFTP, y puede
+	// cerrarse/reemplazarse mientras llega esta consulta. Igual que los dos
+	// handlers que modifican sshd, inspeccionamos mediante una conexión corta,
+	// autenticada solo con la key y la huella guardadas.
+	cli, err := conectarPerfilSoloKey(servidor)
+	if err != nil {
+		responderError(w, fmt.Errorf("no pude comprobar la seguridad SSH con la key del perfil: %v", err))
+		return
+	}
+	defer cli.Close()
 	modo, err := estadoSeguridadSSH(cli)
 	if err != nil {
 		responderError(w, err)
@@ -703,6 +721,10 @@ func scriptNormalizarSSHGlobal() string {
 // cuentas normales, pero mantiene root exclusivamente por key. El cambio se
 // hace con backup, sshd -t, comprobacion efectiva y rollback si falla.
 func manejarPermitirPasswordSSH(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		responderError(w, fmt.Errorf("método no permitido"))
+		return
+	}
 	var pet struct {
 		Nombre   string `json:"nombre"`
 		Password string `json:"password"`

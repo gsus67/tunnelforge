@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 )
+
+var cambiosFirewall sync.Mutex
 
 type estadoFirewall struct {
 	Backend     string `json:"backend"`
@@ -40,22 +43,32 @@ func comandoRemotoExiste(cli *ssh.Client, nombre string) bool {
 	return err == nil
 }
 
-func tienePrivilegiosFirewall(cli *ssh.Client) bool {
+func tienePrivilegiosFirewall(cli *ssh.Client, password string) bool {
 	uid, err := ejecutarSesion(cli, "id -u", "")
 	if err == nil && strings.TrimSpace(uid) == "0" {
 		return true
 	}
 	_, err = ejecutarSesion(cli, "sudo -n true", "")
-	return err == nil
+	if err == nil {
+		return true
+	}
+	if password != "" {
+		_, err = ejecutarComoRoot(cli, password, "true")
+		return err == nil
+	}
+	return false
 }
 
-func ejecutarFirewallPriv(cli *ssh.Client, comando string) (string, error) {
+func ejecutarFirewallPriv(cli *ssh.Client, password, comando string) (string, error) {
 	uid, err := ejecutarSesion(cli, "id -u", "")
 	if err == nil && strings.TrimSpace(uid) == "0" {
 		return ejecutarSesion(cli, "sh -c "+shellQuote(comando), "")
 	}
 	if _, err := ejecutarSesion(cli, "sudo -n true", ""); err != nil {
-		return "", fmt.Errorf("se necesitan permisos root o sudo sin contraseña para modificar el firewall")
+		if password == "" {
+			return "", fmt.Errorf("se necesitan permisos root o la contraseña de sudo para modificar el firewall")
+		}
+		return ejecutarComoRoot(cli, password, comando)
 	}
 	return ejecutarSesion(cli, "sudo -n sh -c "+shellQuote(comando), "")
 }
@@ -82,8 +95,8 @@ func zonaFirewallSegura(s string) bool {
 	return true
 }
 
-func zonaFirewalld(cli *ssh.Client) string {
-	out, err := ejecutarFirewallPriv(cli, `IF=$(ip route show default 2>/dev/null | awk '{print $5; exit}'); Z=""; if [ -n "$IF" ]; then Z=$(firewall-cmd --get-zone-of-interface="$IF" 2>/dev/null || true); fi; if [ -z "$Z" ] || [ "$Z" = "no zone" ]; then Z=$(firewall-cmd --get-default-zone 2>/dev/null || true); fi; printf '%s\n' "$Z"`)
+func zonaFirewalld(cli *ssh.Client, password string) string {
+	out, err := ejecutarFirewallPriv(cli, password, `IF=$(ip route show default 2>/dev/null | awk '{print $5; exit}'); Z=""; if [ -n "$IF" ]; then Z=$(firewall-cmd --get-zone-of-interface="$IF" 2>/dev/null || true); fi; if [ -z "$Z" ] || [ "$Z" = "no zone" ]; then Z=$(firewall-cmd --get-default-zone 2>/dev/null || true); fi; printf '%s\n' "$Z"`)
 	if err != nil {
 		return ""
 	}
@@ -94,7 +107,7 @@ func zonaFirewalld(cli *ssh.Client) string {
 	return z
 }
 
-func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
+func obtenerEstadoFirewall(nombre, password string) (estadoFirewall, error) {
 	cli, err := clienteConexionActiva(nombre)
 	if err != nil {
 		return estadoFirewall{}, err
@@ -107,7 +120,7 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 	if sshPort <= 0 {
 		sshPort = 22
 	}
-	priv := tienePrivilegiosFirewall(cli)
+	priv := tienePrivilegiosFirewall(cli, password)
 
 	ufwExiste := comandoRemotoExiste(cli, "ufw")
 	firewalldExiste := comandoRemotoExiste(cli, "firewall-cmd")
@@ -116,7 +129,7 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 	// Primero se prefieren gestores activos: son los que realmente gobiernan
 	// el filtrado del servidor. LC_ALL=C evita depender del idioma del sistema.
 	if ufwExiste && priv {
-		out, e := ejecutarFirewallPriv(cli, "LC_ALL=C ufw status numbered 2>/dev/null")
+		out, e := ejecutarFirewallPriv(cli, password, "LC_ALL=C ufw status numbered 2>/dev/null")
 		if e == nil && strings.Contains(out, "Status: active") {
 			return estadoFirewall{Backend: "ufw", Nombre: "UFW", Estado: "activo", Editable: true, Reglas: limitarSalidaFirewall(out), PuertoSSH: sshPort, Privilegios: true}, nil
 		}
@@ -125,7 +138,7 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 		var out string
 		var e error
 		if priv {
-			out, e = ejecutarFirewallPriv(cli, "LC_ALL=C firewall-cmd --state 2>/dev/null")
+			out, e = ejecutarFirewallPriv(cli, password, "LC_ALL=C firewall-cmd --state 2>/dev/null")
 		} else {
 			out, e = ejecutarSesion(cli, "LC_ALL=C firewall-cmd --state 2>/dev/null", "")
 		}
@@ -133,10 +146,10 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 			z := ""
 			reglas := "firewalld está activo."
 			if priv {
-				z = zonaFirewalld(cli)
+				z = zonaFirewalld(cli, password)
 				if z != "" {
-					puertos, _ := ejecutarFirewallPriv(cli, "LC_ALL=C firewall-cmd --zone="+shellQuote(z)+" --list-ports 2>/dev/null")
-					servicios, _ := ejecutarFirewallPriv(cli, "LC_ALL=C firewall-cmd --zone="+shellQuote(z)+" --list-services 2>/dev/null")
+					puertos, _ := ejecutarFirewallPriv(cli, password, "LC_ALL=C firewall-cmd --zone="+shellQuote(z)+" --list-ports 2>/dev/null")
+					servicios, _ := ejecutarFirewallPriv(cli, password, "LC_ALL=C firewall-cmd --zone="+shellQuote(z)+" --list-services 2>/dev/null")
 					reglas = fmt.Sprintf("Zona: %s\nPuertos: %s\nServicios: %s", z, strings.TrimSpace(puertos), strings.TrimSpace(servicios))
 				}
 			}
@@ -144,7 +157,7 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 			if !priv {
 				nota = "Estado visible, pero para modificar reglas necesitas root o sudo sin contraseña."
 			}
-			return estadoFirewall{Backend: "firewalld", Nombre: "firewalld", Estado: "activo", Editable: priv && z != "", Reglas: limitarSalidaFirewall(reglas), Zona: z, PuertoSSH: sshPort, Nota: nota, Privilegios: priv}, nil
+			return estadoFirewall{Backend: "firewalld", Nombre: "firewalld", Estado: "activo", Editable: true, Reglas: limitarSalidaFirewall(reglas), Zona: z, PuertoSSH: sshPort, Nota: nota, Privilegios: priv}, nil
 		}
 	}
 
@@ -153,10 +166,10 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 		edita := false
 		nota := "Gateway solo modifica reglas nftables creadas por Gateway; no toca reglas personalizadas existentes. Los cambios directos de nftables son runtime."
 		if priv {
-			if out, e := ejecutarFirewallPriv(cli, "LC_ALL=C nft -a list ruleset 2>/dev/null | sed -n '1,160p'"); e == nil {
+			if out, e := ejecutarFirewallPriv(cli, password, "LC_ALL=C nft -a list ruleset 2>/dev/null | sed -n '1,160p'"); e == nil {
 				reglas = out
 			}
-			if _, e := ejecutarFirewallPriv(cli, "nft list chain inet filter input >/dev/null 2>&1"); e == nil {
+			if _, e := ejecutarFirewallPriv(cli, password, "nft list chain inet filter input >/dev/null 2>&1"); e == nil {
 				edita = true
 			} else {
 				nota = "nftables está disponible, pero no existe la cadena 'inet filter input'. Por seguridad Gateway no crea una estructura de firewall nueva automáticamente."
@@ -164,7 +177,7 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 		} else {
 			nota = "nftables detectado; para consultar/modificar el ruleset necesitas root o sudo sin contraseña."
 		}
-		return estadoFirewall{Backend: "nftables", Nombre: "nftables", Estado: "detectado", Editable: edita, Reglas: limitarSalidaFirewall(reglas), PuertoSSH: sshPort, Nota: nota, Privilegios: priv}, nil
+		return estadoFirewall{Backend: "nftables", Nombre: "nftables", Estado: "detectado", Editable: edita || !priv, Reglas: limitarSalidaFirewall(reglas), PuertoSSH: sshPort, Nota: nota, Privilegios: priv}, nil
 	}
 
 	// Si no hay un gestor activo, todavía informamos si alguno está instalado.
@@ -172,11 +185,11 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 		nota := "UFW está instalado pero no aparece activo. Gateway no activa un firewall automáticamente para evitar bloquear el acceso SSH."
 		reglas := "UFW instalado · inactivo o sin privilegios para consultar el estado."
 		if priv {
-			if out, e := ejecutarFirewallPriv(cli, "LC_ALL=C ufw status numbered 2>/dev/null"); e == nil {
+			if out, e := ejecutarFirewallPriv(cli, password, "LC_ALL=C ufw status numbered 2>/dev/null"); e == nil {
 				reglas = out
 			}
 		}
-		return estadoFirewall{Backend: "ufw", Nombre: "UFW", Estado: "inactivo", Editable: false, Reglas: limitarSalidaFirewall(reglas), PuertoSSH: sshPort, Nota: nota, Privilegios: priv}, nil
+		return estadoFirewall{Backend: "ufw", Nombre: "UFW", Estado: "inactivo", Editable: !priv, Reglas: limitarSalidaFirewall(reglas), PuertoSSH: sshPort, Nota: nota, Privilegios: priv}, nil
 	}
 	if firewalldExiste {
 		return estadoFirewall{Backend: "firewalld", Nombre: "firewalld", Estado: "inactivo", Editable: false, Reglas: "firewalld está instalado pero no está ejecutándose.", PuertoSSH: sshPort, Nota: "Gateway no inicia el firewall automáticamente.", Privilegios: priv}, nil
@@ -185,8 +198,8 @@ func obtenerEstadoFirewall(nombre string) (estadoFirewall, error) {
 	return estadoFirewall{Backend: "none", Nombre: "Sin firewall compatible", Estado: "no detectado", Editable: false, Reglas: "No se detectó UFW, firewalld ni nftables.", PuertoSSH: sshPort, Nota: "La herramienta no instala paquetes ni habilita servicios automáticamente.", Privilegios: priv}, nil
 }
 
-func crearBackupFirewall(cli *ssh.Client, backend string) (string, error) {
-	dir := "/tmp/gateway-wisp-access/firewall-backups/" + time.Now().UTC().Format("20060102-150405")
+func crearBackupFirewall(cli *ssh.Client, password, backend string) (string, error) {
+	dir := "/tmp/gateway-wisp-access/firewall-backups/" + time.Now().UTC().Format("20060102-150405.000000000")
 	var cmd string
 	switch backend {
 	case "ufw":
@@ -198,13 +211,13 @@ func crearBackupFirewall(cli *ssh.Client, backend string) (string, error) {
 	default:
 		return "", fmt.Errorf("backend de firewall no compatible")
 	}
-	if _, err := ejecutarFirewallPriv(cli, cmd); err != nil {
+	if _, err := ejecutarFirewallPriv(cli, password, cmd); err != nil {
 		return "", fmt.Errorf("no pude crear la copia de seguridad del firewall: %v", err)
 	}
 	return dir, nil
 }
 
-func restaurarBackupFirewall(cli *ssh.Client, backend, dir string) error {
+func restaurarBackupFirewall(cli *ssh.Client, password, backend, dir string) error {
 	var cmd string
 	switch backend {
 	case "ufw":
@@ -216,7 +229,7 @@ func restaurarBackupFirewall(cli *ssh.Client, backend, dir string) error {
 	default:
 		return fmt.Errorf("backend no restaurable")
 	}
-	_, err := ejecutarFirewallPriv(cli, cmd)
+	_, err := ejecutarFirewallPriv(cli, password, cmd)
 	return err
 }
 
@@ -237,7 +250,9 @@ func comprobarPuertoSSHDesdeLocal(nombre string) error {
 	return nil
 }
 
-func aplicarFirewall(nombre, accion string, puerto int, protocolo string) (estadoFirewall, string, error) {
+func aplicarFirewall(nombre, accion string, puerto int, protocolo, password string) (estadoFirewall, string, error) {
+	cambiosFirewall.Lock()
+	defer cambiosFirewall.Unlock()
 	if puerto < 1 || puerto > 65535 {
 		return estadoFirewall{}, "", fmt.Errorf("puerto inválido")
 	}
@@ -249,7 +264,7 @@ func aplicarFirewall(nombre, accion string, puerto int, protocolo string) (estad
 		return estadoFirewall{}, "", fmt.Errorf("acción inválida")
 	}
 
-	estado, err := obtenerEstadoFirewall(nombre)
+	estado, err := obtenerEstadoFirewall(nombre, password)
 	if err != nil {
 		return estadoFirewall{}, "", err
 	}
@@ -264,14 +279,14 @@ func aplicarFirewall(nombre, accion string, puerto int, protocolo string) (estad
 	if err != nil {
 		return estadoFirewall{}, "", err
 	}
-	backup, err := crearBackupFirewall(cli, estado.Backend)
+	backup, err := crearBackupFirewall(cli, password, estado.Backend)
 	if err != nil {
 		return estadoFirewall{}, "", err
 	}
 
 	puertoSpec := strconv.Itoa(puerto) + "/" + protocolo
 	rollback := func(causa error) (estadoFirewall, string, error) {
-		if rerr := restaurarBackupFirewall(cli, estado.Backend, backup); rerr != nil {
+		if rerr := restaurarBackupFirewall(cli, password, estado.Backend, backup); rerr != nil {
 			return estadoFirewall{}, backup, fmt.Errorf("%v; además falló el rollback automático: %v. Backup: %s", causa, rerr, backup)
 		}
 		return estadoFirewall{}, backup, fmt.Errorf("%v; Gateway restauró el firewall desde %s", causa, backup)
@@ -283,7 +298,7 @@ func aplicarFirewall(nombre, accion string, puerto int, protocolo string) (estad
 		if accion == "cerrar" {
 			cmd = "LC_ALL=C ufw --force delete allow " + puertoSpec
 		}
-		if _, err := ejecutarFirewallPriv(cli, cmd); err != nil {
+		if _, err := ejecutarFirewallPriv(cli, password, cmd); err != nil {
 			return rollback(err)
 		}
 		if err := comprobarPuertoSSHDesdeLocal(nombre); err != nil {
@@ -304,15 +319,15 @@ func aplicarFirewall(nombre, accion string, puerto int, protocolo string) (estad
 			inverso = "--add-port=" + puertoSpec
 		}
 		base := "LC_ALL=C firewall-cmd --zone=" + shellQuote(z) + " "
-		if _, err := ejecutarFirewallPriv(cli, base+opRuntime); err != nil {
+		if _, err := ejecutarFirewallPriv(cli, password, base+opRuntime); err != nil {
 			return estadoFirewall{}, backup, err
 		}
 		if err := comprobarPuertoSSHDesdeLocal(nombre); err != nil {
-			_, _ = ejecutarFirewallPriv(cli, base+inverso)
+			_, _ = ejecutarFirewallPriv(cli, password, base+inverso)
 			return rollback(fmt.Errorf("el puerto SSH dejó de responder después del cambio: %v", err))
 		}
-		if _, err := ejecutarFirewallPriv(cli, base+"--permanent "+opPermanente); err != nil {
-			_, _ = ejecutarFirewallPriv(cli, base+inverso)
+		if _, err := ejecutarFirewallPriv(cli, password, base+"--permanent "+opPermanente); err != nil {
+			_, _ = ejecutarFirewallPriv(cli, password, base+inverso)
 			return rollback(fmt.Errorf("el cambio runtime funcionó, pero no pude guardarlo como permanente: %v", err))
 		}
 
@@ -320,15 +335,15 @@ func aplicarFirewall(nombre, accion string, puerto int, protocolo string) (estad
 		tag := "gateway-wisp-access:" + puertoSpec
 		if accion == "abrir" {
 			cmd := "nft -a list chain inet filter input | grep -F -- " + shellQuote(tag) + " >/dev/null 2>&1 || nft add rule inet filter input " + protocolo + " dport " + strconv.Itoa(puerto) + " accept comment " + shellQuote(tag)
-			if _, err := ejecutarFirewallPriv(cli, cmd); err != nil {
+			if _, err := ejecutarFirewallPriv(cli, password, cmd); err != nil {
 				return rollback(err)
 			}
 		} else {
-			if _, err := ejecutarFirewallPriv(cli, "nft -a list chain inet filter input | grep -F -- "+shellQuote(tag)+" >/dev/null 2>&1"); err != nil {
+			if _, err := ejecutarFirewallPriv(cli, password, "nft -a list chain inet filter input | grep -F -- "+shellQuote(tag)+" >/dev/null 2>&1"); err != nil {
 				return estadoFirewall{}, backup, fmt.Errorf("ese puerto no tiene una regla nftables creada por Gateway; por seguridad no se eliminan reglas ajenas")
 			}
 			cmd := "for h in $(nft -a list chain inet filter input | grep -F -- " + shellQuote(tag) + " | sed -n 's/.* handle \\([0-9][0-9]*\\).*/\\1/p'); do nft delete rule inet filter input handle \"$h\"; done"
-			if _, err := ejecutarFirewallPriv(cli, cmd); err != nil {
+			if _, err := ejecutarFirewallPriv(cli, password, cmd); err != nil {
 				return rollback(err)
 			}
 		}
@@ -339,7 +354,7 @@ func aplicarFirewall(nombre, accion string, puerto int, protocolo string) (estad
 		return estadoFirewall{}, backup, fmt.Errorf("backend de firewall no compatible")
 	}
 
-	nuevo, err := obtenerEstadoFirewall(nombre)
+	nuevo, err := obtenerEstadoFirewall(nombre, password)
 	if err != nil {
 		return estadoFirewall{}, backup, err
 	}
@@ -354,7 +369,7 @@ func manejarFirewall(w http.ResponseWriter, r *http.Request) {
 			responderError(w, fmt.Errorf("servidor obligatorio"))
 			return
 		}
-		estado, err := obtenerEstadoFirewall(nombre)
+		estado, err := obtenerEstadoFirewall(nombre, "")
 		if err != nil {
 			responderError(w, err)
 			return
@@ -366,12 +381,13 @@ func manejarFirewall(w http.ResponseWriter, r *http.Request) {
 			Accion    string `json:"accion"`
 			Puerto    int    `json:"puerto"`
 			Protocolo string `json:"protocolo"`
+			Password  string `json:"sudoPassword"`
 		}
 		if err := decodificar(r, &pet); err != nil {
 			responderError(w, err)
 			return
 		}
-		nuevo, backup, err := aplicarFirewall(strings.TrimSpace(pet.Servidor), strings.TrimSpace(pet.Accion), pet.Puerto, pet.Protocolo)
+		nuevo, backup, err := aplicarFirewall(strings.TrimSpace(pet.Servidor), strings.TrimSpace(pet.Accion), pet.Puerto, pet.Protocolo, pet.Password)
 		if err != nil {
 			responderError(w, err)
 			return

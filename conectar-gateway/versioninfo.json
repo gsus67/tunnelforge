@@ -2,13 +2,13 @@
   "FixedFileInfo": {
     "FileVersion": {
       "Major": 3,
-      "Minor": 5,
+      "Minor": 6,
       "Patch": 0,
       "Build": 0
     },
     "ProductVersion": {
       "Major": 3,
-      "Minor": 5,
+      "Minor": 6,
       "Patch": 0,
       "Build": 0
     }
@@ -18,8 +18,8 @@
     "FileDescription": "SSH, administración WISP y monitoreo para Windows y Linux",
     "LegalCopyright": "Copyright (c) 2026 Gsus - Licencia MIT",
     "CompanyName": "Gsus",
-    "FileVersion": "3.5.1",
-    "ProductVersion": "3.5.1",
+    "FileVersion": "3.6.0",
+    "ProductVersion": "3.6.0",
     "InternalName": "conectar-gateway",
     "OriginalFilename": "Conectar-Gateway.exe"
   },

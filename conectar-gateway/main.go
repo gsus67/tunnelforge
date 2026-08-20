@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "3.5.1"
+const version = "3.6.0"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -616,9 +616,14 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 	go func() { // keepalive
 		t := time.NewTicker(30 * time.Second)
 		defer t.Stop()
-		for range t.C {
-			if _, _, err := cliente.SendRequest("keepalive@openssh.com", true, nil); err != nil {
+		for {
+			select {
+			case <-con.done:
 				return
+			case <-t.C:
+				if _, _, err := cliente.SendRequest("keepalive@openssh.com", true, nil); err != nil {
+					return
+				}
 			}
 		}
 	}()
@@ -677,7 +682,16 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 // API HTTP local
 // ---------------------------------------------------------------------------
 func decodificar(r *http.Request, destino any) error {
-	return json.NewDecoder(r.Body).Decode(destino)
+	dec := json.NewDecoder(io.LimitReader(r.Body, 16<<20))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(destino); err != nil {
+		return fmt.Errorf("solicitud JSON inválida: %v", err)
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		return fmt.Errorf("la solicitud contiene datos adicionales")
+	}
+	return nil
 }
 
 func responder(w http.ResponseWriter, datos any) {

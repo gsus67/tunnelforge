@@ -28,11 +28,15 @@ version = read_version_from_go()
 wails = json.loads((APP / "wails.json").read_text(encoding="utf-8"))
 package = json.loads((APP / "frontend" / "package.json").read_text(encoding="utf-8"))
 manifest = (APP / "build" / "windows" / "wails.exe.manifest").read_text(encoding="utf-8")
+app_manifest = (APP / "app.manifest").read_text(encoding="utf-8")
+version_info = json.loads((APP / "versioninfo.json").read_text(encoding="utf-8"))
 changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
 checks = {
     "wails.json productVersion": str(wails.get("info", {}).get("productVersion", "")),
     "frontend/package.json version": str(package.get("version", "")),
+    "versioninfo FileVersion": str(version_info.get("StringFileInfo", {}).get("FileVersion", "")),
+    "versioninfo ProductVersion": str(version_info.get("StringFileInfo", {}).get("ProductVersion", "")),
 }
 for label, found in checks.items():
     if found != version:
@@ -41,6 +45,17 @@ for label, found in checks.items():
 m = re.search(r'<assemblyIdentity\s+version="([0-9]+\.[0-9]+\.[0-9]+)\.0"', manifest)
 if not m or m.group(1) != version:
     fail("wails.exe.manifest no coincide con la versión de main.go")
+
+m = re.search(r'<assemblyIdentity\s+version="([0-9]+\.[0-9]+\.[0-9]+)\.0"', app_manifest)
+if not m or m.group(1) != version:
+    fail("app.manifest no coincide con la versión de main.go")
+
+parts = [int(part) for part in version.split(".")]
+for label in ("FileVersion", "ProductVersion"):
+    numeric = version_info.get("FixedFileInfo", {}).get(label, {})
+    found = [numeric.get("Major"), numeric.get("Minor"), numeric.get("Patch")]
+    if found != parts:
+        fail(f"versioninfo {label} numérica={found!r}, pero main.go={version!r}")
 
 m = re.search(r'^##\s+v([^\s]+)', changelog, re.M)
 if not m or m.group(1) != version:

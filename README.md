@@ -93,7 +93,7 @@ La API loopback protegida sigue existiendo como canal interno para el WebSocket 
 - **Favoritos y orden manual**: marca con ★ o arrastra para reordenar la lista
 - **Buscador** de servidores por nombre, host o usuario
 - **Gestor de archivos (SFTP)**: navega el servidor y tu equipo lado a lado,
-  sube y baja archivos, crea carpetas, renombra y borra
+  sube y baja archivos, crea carpetas, renombra, borra y edita texto UTF-8
 - **Herramientas por servidor**: scripts, test de velocidad, firewall, administración SSH segura y Gateway WISP modular desde una ventana con terminal interactiva.
 - **Tráfico real**: RX/TX de la interfaz principal del servidor mostrado en Mbit/s.
 - **Web local opcional**: publica la misma interfaz en la LAN para usar Gateway desde teléfono, tablet u otra PC con código de acceso.
@@ -168,6 +168,10 @@ sobre la conexión SSH que ya tienes (no abre una segunda sesión): el servidor 
 tu equipo a la derecha. Botón **⬆ Subir** en un archivo local para enviarlo a
 la carpeta remota abierta, **⬇ Bajar** en uno remoto para traerlo. También
 crea carpetas, renombra y borra en el servidor.
+
+Los documentos remotos de texto UTF-8 de hasta 2 MB se pueden abrir con
+**Editar**. El guardado reemplaza el archivo de forma atómica, conserva sus
+permisos y avisa si cambió en el servidor desde que se abrió.
 
 Requiere que el servidor tenga el subsistema SFTP activo, que viene por
 defecto en Debian y la mayoría de distribuciones.

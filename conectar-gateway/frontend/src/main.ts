@@ -1463,9 +1463,11 @@ var TOKEN = '';
     var puerto=parseInt($('fw-puerto').value,10);
     if(!puerto||puerto<1||puerto>65535){ aviso('Escribe un puerto entre 1 y 65535.',false); return; }
     var proto=$('fw-proto').value;
+    var sudoPass=prompt('Contraseña de sudo (déjala vacía si eres root o tienes sudo sin contraseña):','');
+    if(sudoPass===null) return;
     var original=boton.textContent; boton.disabled=true; boton.textContent=accion==='abrir'?'Abriendo…':'Cerrando…';
     $('fw-nota').textContent='Creando backup y aplicando el cambio…'; $('fw-nota').className='fw-note';
-    api('/api/herramientas/firewall',{method:'POST',body:JSON.stringify({servidor:firewallServidor,accion:accion,puerto:puerto,protocolo:proto})}).then(function(r){
+    api('/api/herramientas/firewall',{method:'POST',body:JSON.stringify({servidor:firewallServidor,accion:accion,puerto:puerto,protocolo:proto,sudoPassword:sudoPass})}).then(function(r){
       if(r.error){ $('fw-nota').textContent=r.error; $('fw-nota').className='fw-note err'; aviso(r.error,false); return; }
       pintarFirewall(r.estado);
       $('fw-nota').textContent=(accion==='abrir'?'Puerto abierto. ':'Puerto cerrado. ')+(r.backup?'Backup: '+r.backup:'');
@@ -1509,7 +1511,31 @@ var TOKEN = '';
   });
 
   // ── Gestor de archivos ───────────────────────────────────────
-  var fxServidor = null, fxRutaRem = '', fxRutaLoc = '';
+  var fxServidor = null, fxRutaRem = '', fxRutaLoc = '', fxEditorRuta = '', fxEditorModificado = 0, fxEditorRevision = '';
+
+  function abrirEditorRemoto(ruta){
+    if(!fxServidor) return;
+    var area=document.getElementById('fx-editor-texto');
+    fxEditorRuta=''; fxEditorModificado=0; fxEditorRevision=''; area.value=''; area.disabled=true;
+    document.getElementById('fx-editor-ruta').textContent=ruta;
+    document.getElementById('fx-editor-guardar').disabled=true;
+    document.getElementById('fx-editor-velo').classList.add('abierto');
+    api('/api/archivos',{method:'POST',body:JSON.stringify({servidor:fxServidor,accion:'leer-texto',ruta:ruta})}).then(function(r){
+      if(r.error){ aviso(r.error,false); document.getElementById('fx-editor-velo').classList.remove('abierto'); return; }
+      fxEditorRuta=r.ruta; fxEditorModificado=r.modificado; fxEditorRevision=r.revision||''; area.value=r.contenido||''; area.disabled=false;
+      document.getElementById('fx-editor-guardar').disabled=false; area.focus();
+    }).catch(function(){ aviso('No pude abrir el documento remoto.',false); document.getElementById('fx-editor-velo').classList.remove('abierto'); });
+  }
+  function cerrarEditorRemoto(){ document.getElementById('fx-editor-velo').classList.remove('abierto'); fxEditorRuta=''; fxEditorModificado=0; fxEditorRevision=''; }
+  document.getElementById('fx-editor-cancelar').onclick=cerrarEditorRemoto;
+  document.getElementById('fx-editor-guardar').onclick=function(){
+    if(!fxServidor||!fxEditorRuta) return;
+    var b=this; b.disabled=true; b.textContent='Guardando…';
+    api('/api/archivos',{method:'POST',body:JSON.stringify({servidor:fxServidor,accion:'guardar-texto',ruta:fxEditorRuta,contenido:document.getElementById('fx-editor-texto').value,modificado:fxEditorModificado,revision:fxEditorRevision})}).then(function(r){
+      if(r.error){ aviso(r.error,false); return; }
+      fxEditorModificado=r.modificado; fxEditorRevision=r.revision||''; aviso('Documento guardado en el servidor.',true); cerrarEditorRemoto(); cargarRemoto(fxRutaRem);
+    }).catch(function(){ aviso('No pude guardar el documento remoto.',false); }).finally(function(){ b.disabled=false; b.textContent='Guardar'; });
+  };
 
   function abrirArchivos(nombre){
     refrescarSelectorServidores();
@@ -1565,6 +1591,9 @@ var TOKEN = '';
           if (a.carpeta){
             it.onclick = function(ev){ if (ev.target.tagName !== 'BUTTON') cargarRemoto(a.ruta); };
           } else {
+            var bEdi = document.createElement('button'); bEdi.textContent = 'Editar'; bEdi.title='Editar texto UTF-8 (máximo 2 MB)';
+            bEdi.onclick=function(ev){ev.stopPropagation();abrirEditorRemoto(a.ruta);};
+            it.appendChild(bEdi);
             var bD = document.createElement('button'); bD.textContent = '⬇ Bajar';
             bD.onclick = function(ev){
               ev.stopPropagation();

@@ -1,3 +1,10 @@
+## v3.6.0
+
+- Añade editor de documentos de texto UTF-8 en el gestor SFTP, con guardado atómico, conservación de permisos y detección de cambios concurrentes.
+- Corrige el estado y los cambios de seguridad SSH usando conexiones key-only independientes de los túneles persistentes.
+- Permite administrar UFW, firewalld y nftables con contraseña de sudo y corrige la exclusión mutua del cambio seguro de puerto SSH.
+- Endurece la validación JSON y detiene inmediatamente keepalives al cerrar conexiones.
+
 ## v3.5.1
 
 ### Terminal — copiar y pegar

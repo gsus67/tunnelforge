@@ -8,7 +8,7 @@
   "info": {
     "companyName": "Gsus",
     "productName": "Gateway WISP Access",
-    "productVersion": "3.5.1",
+    "productVersion": "3.6.0",
     "copyright": "Copyright © 2026 Gsus",
     "comments": "Administrador SSH, WISP y monitoreo para Windows y Linux"
   },

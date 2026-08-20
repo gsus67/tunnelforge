@@ -54,3 +54,7 @@ Los hooks `PreUp`, `PostUp`, `PreDown` y `PostDown` de un `.conf` pueden ejecuta
 ## Interfaz de escritorio
 
 Desde v3.3.0 Gateway WISP Access usa **Wails v2.13.0** en producción. Se eligió la rama estable de Wails para evitar depender de Wails v3 mientras siga publicado como prerelease. Wails conserva su licencia MIT y utiliza WebView2 en Windows y WebKitGTK en Linux como componentes del sistema.
+
+`conectar-gateway/winhdr/EventToken.h` no contiene una copia de código de un tercero: es un adaptador de una línea que incluye el encabezado `eventtoken.h` provisto por el SDK/toolchain de Windows con la capitalización esperada por la compilación. No incorpora por sí mismo una licencia adicional al proyecto.
+
+La revisión de las dependencias declaradas en `go.mod` y `frontend/package.json` no encontró librerías enlazadas bajo GPL, AGPL o LGPL. Las dependencias de runtime son MIT, BSD, ISC o Apache-2.0; los componentes GPL mencionados arriba se instalan o ejecutan por separado y no se enlazan con el binario MIT.
