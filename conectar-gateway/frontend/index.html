@@ -330,8 +330,7 @@
           </div>
           <div class="updapp plegable abierto" id="upd-caja">
             <div class="txt">Versión instalada: <b id="app-ver">—</b><br>
-            Repo privado: usa un token <b>fine-grained</b> con acceso únicamente a este repositorio y permiso <b>Contents: read</b>.
-            En Windows el token se protege con DPAPI y queda ligado a tu usuario de Windows. Las actualizaciones además deben pasar firma Ed25519 + SHA-256.</div>
+            El repositorio de Releases es público: no hace falta ningún token para buscar o instalar actualizaciones. Un token <b>fine-grained</b> (permiso <b>Contents: read</b>) es opcional, solo sirve para subir el límite de consultas anónimas de la API de GitHub. En Windows se protege con DPAPI y queda ligado a tu usuario de Windows. Las actualizaciones además deben pasar firma Ed25519 + SHA-256.</div>
             <div class="acciones">
               <div class="token"><input type="password" id="upd-token" autocomplete="off" placeholder="github_pat_… (solo se usa contra api.github.com)">
               <button class="principal" id="upd-guardar">Guardar token</button></div>
@@ -342,7 +341,7 @@
               <button class="principal" id="upd-instalar" style="display:none">Actualizar ahora</button>
             </div>
             <div class="check" style="width:100%;margin-top:12px"><input type="checkbox" id="upd-inicio"><label for="upd-inicio" style="margin:0">Buscar actualizaciones al iniciar</label></div>
-            <div class="estado" id="upd-estado">Configura el token una sola vez para habilitar las actualizaciones privadas.</div>
+            <div class="estado" id="upd-estado">Repositorio público: no hace falta token para buscar actualizaciones.</div>
             <div class="notas" id="upd-notas"></div>
           </div>
         </section>
@@ -440,7 +439,7 @@
                 <li>Hardening SSH reversible con validación antes de aplicar cambios.</li>
                 <li>Contraseñas guardadas cifradas localmente.</li>
                 <li>PrivateKey y PresharedKey de WireGuard cifradas en almacenamiento local y en backups portables; hooks importados desactivados hasta autorización explícita.</li>
-                <li>Updates privados verificados con firma Ed25519 y SHA-256.</li>
+                <li>Updates verificados con firma Ed25519 y SHA-256.</li>
                 <li>Servidor web LAN apagado por defecto, autenticado por código y sin exponer el token maestro al navegador remoto.</li>
               </ul>
             </section>

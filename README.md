@@ -240,11 +240,13 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
 
 El panel aparece plegado y muestra un semáforo de estado: verde (al día), amarillo (pendiente/no comprobado) y rojo (actualización disponible). de la app
 
-Gateway puede actualizarse desde las **Releases privadas** del repositorio sin
-incluir credenciales personales dentro del ejecutable. La primera vez configura
-un **fine-grained personal access token** de GitHub con acceso solamente a
-`gsus67/gateway-wisp-access` y permiso de repositorio **Contents: read**. En
-Windows el token se guarda protegido con **DPAPI**, ligado a tu cuenta de Windows.
+El repositorio de Releases es **público**, así que buscar e instalar
+actualizaciones no requiere ninguna credencial. Opcionalmente se puede
+configurar un **fine-grained personal access token** de GitHub (acceso
+solamente a `gsus67/gateway-wisp-access`, permiso **Contents: read**) para
+subir el límite de consultas anónimas de la API de GitHub (60/hora por IP). En
+Windows el token se guarda protegido con **DPAPI**, ligado a tu cuenta de
+Windows.
 
 El actualizador no confía únicamente en GitHub ni en un SHA-256 publicado al lado
 del binario. Cada Release lleva un `update-manifest.json` firmado con **Ed25519**;

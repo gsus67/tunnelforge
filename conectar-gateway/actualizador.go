@@ -129,7 +129,9 @@ func githubRequest(token, method, url, accept string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header.Set("Accept", accept)
-	req.Header.Set("Authorization", "Bearer "+token)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	req.Header.Set("User-Agent", "Gateway-WISP-Access/"+version)
 	cli := &http.Client{Timeout: 30 * time.Second}
@@ -141,11 +143,29 @@ func githubRequest(token, method, url, accept string) (*http.Response, error) {
 		defer resp.Body.Close()
 		cuerpo, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		if resp.StatusCode == http.StatusNotFound {
-			return nil, fmt.Errorf("GitHub respondió 404: revisa que el token tenga acceso al repositorio privado")
+			if token == "" {
+				return nil, fmt.Errorf("GitHub respondió 404: no encontré la release (repositorio público, sin token)")
+			}
+			return nil, fmt.Errorf("GitHub respondió 404: revisa que el token tenga acceso al repositorio")
+		}
+		if resp.StatusCode == http.StatusForbidden && token == "" {
+			return nil, fmt.Errorf("GitHub respondió 403 (probablemente límite de consultas anónimas): configura un token para subir el límite")
 		}
 		return nil, fmt.Errorf("GitHub respondió %s: %s", resp.Status, strings.TrimSpace(string(cuerpo)))
 	}
 	return resp, nil
+}
+
+// tokenActualizacionesOpcional devuelve el token guardado o "" si no hay
+// ninguno configurado. El repositorio de Releases es público desde 2026-08-25:
+// un token ya no es obligatorio, solo sirve para subir el límite de consultas
+// anónimas de la API de GitHub (60/hora por IP).
+func tokenActualizacionesOpcional() string {
+	t, err := tokenActualizaciones()
+	if err != nil {
+		return ""
+	}
+	return t
 }
 
 func ultimaRelease(token string) (githubRelease, error) {
@@ -255,10 +275,7 @@ func compararVersiones(a, b string) int {
 
 func buscarActualizacion() (updateInfo, githubRelease, updateManifest, error) {
 	info := updateInfo{Actual: version}
-	token, err := tokenActualizaciones()
-	if err != nil {
-		return info, githubRelease{}, updateManifest{}, err
-	}
+	token := tokenActualizacionesOpcional()
 	rel, err := ultimaRelease(token)
 	if err != nil {
 		return info, rel, updateManifest{}, err
@@ -289,10 +306,7 @@ func prepararEInstalarActualizacion() (string, error) {
 	if runtime.GOOS != "windows" {
 		return "", errors.New("la actualización automática está habilitada por ahora solo en Windows")
 	}
-	token, err := tokenActualizaciones()
-	if err != nil {
-		return "", err
-	}
+	token := tokenActualizacionesOpcional()
 	info, rel, manifest, err := buscarActualizacion()
 	if err != nil {
 		return "", err

@@ -1032,7 +1032,7 @@ var TOKEN = '';
   $('wgc-delete').onclick=function(){if(!wgcSelected)return;var p=wgcProfileById(wgcSelected);if(!confirm('¿Eliminar el perfil WireGuard "'+(p?p.name:'')+'"?'))return;api('/api/wireguard/eliminar',{method:'POST',body:JSON.stringify({id:wgcSelected})}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcSelected=null;cargarWireGuard();wgcNote('Perfil eliminado.','ok');});};
   $('wgc-engine-install').onclick=function(){var b=this;b.disabled=true;b.textContent='Preparando…';api('/api/wireguard/motor/instalar',{method:'POST',body:'{}'}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcNote(r.message||'Motor preparado. Vuelve a comprobar después de instalar.','warn');setTimeout(wgcPoll,1500);}).finally(function(){b.disabled=false;b.textContent='Instalar herramientas WireGuard (Linux)';});};
 
-  // ── Actualizaciones privadas y firmadas ───────────────────────
+  // ── Actualizaciones firmadas (repo público, token opcional) ───
   var updUltima = null;
   function updSemaforo(estado, resumen){
     var p=$('upd-punto');
@@ -1042,13 +1042,13 @@ var TOKEN = '';
     var p2=$('upd-punto-dash'); if (p2){ p2.className='upd-punto '+estado; p2.title=resumen; }
     var s2=$('upd-dash-status'); if (s2) s2.textContent = resumen || 'sin comprobar';
     var is=$('info-update-status'); if(is) is.textContent = resumen || 'Actualizaciones firmadas';
-    var next=$('dash-next-check'); if(next){ next.textContent = estado==='rojo' ? 'Hay una nueva versión disponible.' : (estado==='verde' ? 'Tu instalación está verificada y al día.' : 'Pendiente de comprobar o falta token.'); }
+    var next=$('dash-next-check'); if(next){ next.textContent = estado==='rojo' ? 'Hay una nueva versión disponible.' : (estado==='verde' ? 'Tu instalación está verificada y al día.' : 'Pendiente de comprobar.'); }
   }
   function updEstado(texto, tipo){
     var e=$('upd-estado'); e.textContent=texto; e.className='estado'+(tipo?' '+tipo:'');
   }
   function updBuscar(silencioso){
-    if(!silencioso) updEstado('Buscando la última Release privada…',''); updSemaforo('amarillo','comprobando…');
+    if(!silencioso) updEstado('Buscando la última Release…',''); updSemaforo('amarillo','comprobando…');
     return api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'buscar'})}).then(function(r){
       if(r.error){ if(!silencioso) updEstado(r.error,'err'); updSemaforo('amarillo','no se pudo comprobar'); return; }
       updUltima=r;
@@ -1066,9 +1066,9 @@ var TOKEN = '';
   }).catch(function(){});
   api('/api/actualizaciones').then(function(c){
     $('upd-inicio').checked=!!c.buscarAlInicio;
-    updEstado(c.tokenConfigurado?'Token configurado de forma segura.':'Configura el token una sola vez para habilitar las actualizaciones privadas.',c.tokenConfigurado?'ok':'');
-    updSemaforo('amarillo', c.tokenConfigurado?'pendiente de comprobar':'token no configurado');
-    if(c.tokenConfigurado && c.buscarAlInicio) updBuscar(true);
+    updEstado(c.tokenConfigurado?'Token configurado de forma segura.':'Repositorio público: no hace falta token para buscar actualizaciones. Configura uno solo si querés subir el límite de consultas a GitHub.',c.tokenConfigurado?'ok':'');
+    updSemaforo('amarillo', 'pendiente de comprobar');
+    if(c.buscarAlInicio) updBuscar(true);
   }).catch(function(){});
   $('upd-guardar').onclick=function(){
     var token=$('upd-token').value.trim(); if(!token){updEstado('Pega primero el token de GitHub.','err');return;}
