@@ -596,10 +596,6 @@
         <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/><path d="M4 4v16"/></svg></div>
         <div><h4>Puerto SSH</h4><p>Asistente en dos fases: deja el puerto actual activo, prueba automáticamente una segunda conexión real por el nuevo puerto y solo después permite aplicar.</p><button class="principal" id="tool-ssh-port-btn">Cambiar de forma segura</button></div>
       </div>
-      <div class="tool-card">
-        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16V8l-8-5-8 5v11z"/><path d="M8 19v-6h8v6"/></svg></div>
-        <div><h4>Gateway WISP</h4><p>Paquete modular para instalar el gateway completo o administrar WireGuard, firewall, QoS, DNS, CrowdSec, Netdata y panel por separado.</p><button class="principal" id="tool-gw-install">Abrir Gateway WISP</button></div>
-      </div>
     </div>
   </div>
   <div class="tools-footer"><div class="tool-note">Los scripts se ejecutan con los permisos del usuario SSH conectado. Esta ventana queda preparada para añadir más herramientas después.</div></div>
@@ -642,42 +638,6 @@
   <div class="sshadmin-footer">La sesión SSH actual permanece abierta durante todo el proceso. Si la prueba falla, Gateway restaura la configuración anterior automáticamente.</div>
 </div>
 
-<!-- Gateway WISP modular -->
-<div class="gw-velo" id="gw-velo">
-  <div class="modal-tool-bar">
-    <span class="t">Gateway WISP — <b id="gw-srv">sin servidor</b></span>
-    <span class="sep"></span>
-    <button id="gw-refresh">Actualizar estado</button>
-    <button id="gw-cerrar">Cerrar <span style="opacity:.6">(Esc)</span></button>
-  </div>
-  <div class="gw-body">
-    <div class="gw-left">
-      <div class="gw-intro">
-        <h3>Gateway WISP</h3>
-        <p>Convierte un VPS Debian/Ubuntu en gateway de salida WISP con WireGuard, nftables/NAT, QoS CAKE, DNS filtrado, CrowdSec, Netdata y panel local. Puedes instalar todo o manejar cada componente por separado. Las preguntas de configuración aparecen en la terminal de esta misma ventana.</p>
-        <div class="gw-state"><span class="gw-chip" id="gw-state-main">Consultando…</span><span class="gw-chip">Paquete <b id="gw-bundle-ver">—</b></span><span class="gw-chip" id="gw-package-state">Preparando paquete…</span><span class="gw-chip">Instalado <b id="gw-installed-ver">—</b></span></div>
-        <div class="gw-main-actions"><button class="principal" id="gw-install-all">Instalar / configurar todo</button><button class="peligro" id="gw-uninstall-all">Desinstalar Gateway WISP</button></div>
-      </div>
-      <div class="gw-components" id="gw-components">
-        <div class="gw-component" data-comp="system"><div><h4><span class="gw-dot"></span> Sistema base</h4><p>Forwarding, buffers, conntrack, GRO, parches de seguridad y utilidades. No hace full-upgrade automático.</p></div><div class="gw-comp-actions"><button data-a="install">Preparar</button><button data-a="uninstall">Quitar tuning</button></div></div>
-        <div class="gw-component" data-comp="wireguard"><div><h4><span class="gw-dot"></span> WireGuard</h4><p>Motor VPN y herramientas del túnel.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar integración</button></div></div>
-        <div class="gw-component" data-comp="firewall"><div><h4><span class="gw-dot"></span> Firewall / NAT</h4><p>nftables, NAT, aislamiento y reglas persistentes.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Restaurar</button></div></div>
-        <div class="gw-component" data-comp="qos"><div><h4><span class="gw-dot"></span> QoS CAKE</h4><p>Prioridad por DSCP y reparto justo.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar</button></div></div>
-        <div class="gw-component" data-comp="dns"><div><h4><span class="gw-dot"></span> DNS filtrado</h4><p>ControlD, AdGuard Home o Technitium.</p></div><div class="gw-comp-actions"><button data-a="install">Configurar</button><button data-a="uninstall">Quitar integración</button></div></div>
-        <div class="gw-component" data-comp="wgdashboard"><div><h4><span class="gw-dot"></span> WGDashboard</h4><p>Gestión web de peers WireGuard.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
-        <div class="gw-component" data-comp="crowdsec"><div><h4><span class="gw-dot"></span> CrowdSec</h4><p>Detección y baneo de atacantes.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
-        <div class="gw-component" data-comp="netdata"><div><h4><span class="gw-dot"></span> Netdata</h4><p>Monitoreo en tiempo real.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Detener</button></div></div>
-        <div class="gw-component" data-comp="panel"><div><h4><span class="gw-dot"></span> Panel WISP</h4><p>Panel local y API en localhost.</p></div><div class="gw-comp-actions"><button data-a="install">Instalar</button><button data-a="uninstall">Quitar</button></div></div>
-        <div class="gw-component" data-comp="maintenance"><div><h4><span class="gw-dot"></span> Backups</h4><p>Backup diario y rotación. El auto-update Git no se activa en el paquete embebido.</p></div><div class="gw-comp-actions"><button data-a="install">Activar</button><button data-a="uninstall">Desactivar</button></div></div>
-      </div>
-    </div>
-    <div class="gw-terminal-side">
-      <div class="gw-terminal-head"><span>Terminal interactiva del instalador</span><span class="gw-terminal-actions"><button id="gw-term-copiar" title="Copiar selección (Ctrl+Shift+C)">Copiar</button><button id="gw-term-pegar" title="Pegar (Ctrl+Shift+V)">Pegar</button></span><span class="gw-terminal-note">Ctrl+Shift+C / Ctrl+Shift+V</span></div>
-      <div id="gw-term"></div>
-    </div>
-  </div>
-  <div class="gw-footer">Paquete modular automático para Debian/Ubuntu. Desinstalar es conservador: crea backup y no purga paquetes o datos de terceros. El firewall usa el puerto SSH real y valida nftables antes de aplicar.</div>
-</div>
 
 <!-- Firewall del servidor -->
 <div class="velo" id="m-firewall">

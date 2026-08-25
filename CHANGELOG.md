@@ -1,3 +1,9 @@
+## Sin publicar
+
+- Eliminada la integración **Gateway WISP modular** (instalar/desinstalar el stack completo o por componentes desde Herramientas): endpoints `/api/herramientas/gateway-wisp/*`, el paquete embebido `assets/gateway-wisp.tar.gz` y la ventana dedicada con terminal integrada. El repositorio [`gateway-wisp-wireguard`](https://github.com/gsus67/gateway-wisp-wireguard) sigue existiendo por separado para quien administre el stack a mano.
+- Repositorio pasado a **público** para poder firmar los binarios de Windows con SignPath.io (requiere proyecto open source real).
+- Limpieza de restos muertos del repo: `conectar-gateway/ui.html`/`ui.html.tmp`, `conectar-gateway/static/` y `frontend-next/` (la UI de producción real es `conectar-gateway/frontend/` desde v3.3.0; el CHANGELOG de esa versión ya daba estos archivos por eliminados, pero seguían en el árbol). `frontend/dist/*` deja de versionarse (ya estaba en `.gitignore`, pero quedaron copias antiguas trackeadas desde antes de esa regla).
+
 ## v3.6.0
 
 - Añade editor de documentos de texto UTF-8 en el gestor SFTP, con guardado atómico, conservación de permisos y detección de cambios concurrentes.

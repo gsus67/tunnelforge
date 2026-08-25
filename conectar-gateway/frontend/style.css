@@ -716,8 +716,8 @@
 
 
   /* v3.1.14: administración SSH segura en dos fases */
-  .sshadmin-velo,.gw-velo{position:fixed;inset:0;display:none;flex-direction:column;z-index:52;background:rgba(2,8,13,.94);backdrop-filter:blur(6px)}
-  .sshadmin-velo.abierto,.gw-velo.abierto{display:flex}
+  .sshadmin-velo{position:fixed;inset:0;display:none;flex-direction:column;z-index:52;background:rgba(2,8,13,.94);backdrop-filter:blur(6px)}
+  .sshadmin-velo.abierto{display:flex}
   .modal-tool-bar{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 12px;border-bottom:1px solid var(--linea);background:#07121d}
   .modal-tool-bar .t{font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase}.modal-tool-bar .t b{color:var(--verde)}.modal-tool-bar .sep{flex:1}
   .sshadmin-body{flex:1;min-height:0;overflow:auto;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
@@ -725,21 +725,14 @@
   .sshadmin-card h3{font-size:15px;margin:0 0 4px}.sshadmin-card>p{font-size:11.5px;line-height:1.45;color:var(--suave);margin:0 0 12px}
   .ssh-field{display:grid;gap:4px;margin:8px 0}.ssh-field label{font-size:10px;color:var(--suave)}.ssh-field input{height:34px;padding:6px 8px!important}
   .ssh-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.ssh-row input[type=text],.ssh-row input[type=password]{flex:1;min-width:180px}.ssh-row input[type=number]{width:110px}
+  .gw-chip{font-size:9.5px;padding:4px 7px;border:1px solid rgba(77,134,184,.2);border-radius:6px;color:var(--texto-2);background:#06111b}.gw-chip.ok{color:var(--verde);border-color:rgba(77,225,154,.25)}
   .ssh-status{margin-top:10px;min-height:34px;padding:8px 9px;border:1px solid rgba(77,134,184,.15);background:#06111b;border-radius:6px;font-size:10.5px;line-height:1.4;color:var(--texto-2)}.ssh-status.ok{color:var(--verde);border-color:rgba(77,225,154,.25)}.ssh-status.err{color:var(--rojo);border-color:rgba(235,100,100,.25)}.ssh-status.warn{color:var(--ambar)}
   .ssh-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}.ssh-step{padding:7px;border:1px solid rgba(77,134,184,.15);background:#06111b;border-radius:6px;font-size:9.5px;color:var(--suave);text-align:center}.ssh-step.ok{color:var(--verde);border-color:rgba(77,225,154,.28)}.ssh-step.active{color:var(--ambar);border-color:rgba(230,180,91,.3)}
   .ssh-port-console{margin-top:8px;min-height:88px;max-height:132px;overflow:auto;padding:8px 9px;border:1px solid rgba(77,134,184,.14);border-radius:6px;background:#040b11;font:9.5px/1.5 'JetBrains Mono',Consolas,monospace;color:#9db5c6;white-space:pre-wrap}.ssh-port-console .ok{color:var(--verde)}.ssh-port-console .err{color:var(--rojo)}.ssh-port-console .warn{color:var(--ambar)}
-  .sshadmin-footer,.gw-footer{flex:none;min-height:38px;padding:8px 14px;border-top:1px solid var(--linea);background:#071019;color:var(--suave);font-size:10.5px;display:flex;align-items:center;gap:8px}
+  .sshadmin-footer{flex:none;min-height:38px;padding:8px 14px;border-top:1px solid var(--linea);background:#071019;color:var(--suave);font-size:10.5px;display:flex;align-items:center;gap:8px}
   @media(max-width:900px){.sshadmin-body{grid-template-columns:1fr}}
 
   /* v3.1.14: Gateway WISP modular con terminal dentro de la propia ventana */
-  .gw-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(310px,38%) minmax(0,1fr);gap:0}
-  .gw-left{min-height:0;overflow:auto;padding:14px;border-right:1px solid var(--linea)}
-  .gw-intro{padding:12px;border:1px solid rgba(77,134,184,.18);background:rgba(7,19,31,.72);border-radius:8px;margin-bottom:10px}.gw-intro h3{font-size:16px;margin:0 0 5px}.gw-intro p{font-size:11px;line-height:1.45;color:var(--texto-2);margin:0}
-  .gw-state{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:9px 0}.gw-chip{font-size:9.5px;padding:4px 7px;border:1px solid rgba(77,134,184,.2);border-radius:6px;color:var(--texto-2);background:#06111b}.gw-chip.ok{color:var(--verde);border-color:rgba(77,225,154,.25)}
-  .gw-main-actions{display:flex;gap:7px;flex-wrap:wrap;margin:9px 0 13px}.gw-main-actions button{font-size:11px;padding:7px 9px!important}
-  .gw-components{display:grid;gap:6px}.gw-component{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 10px;border:1px solid rgba(77,134,184,.14);background:rgba(6,17,27,.78);border-radius:7px}.gw-component h4{font-size:12px;margin:0 0 2px}.gw-component p{font-size:9.5px;color:var(--suave);margin:0;line-height:1.35}.gw-comp-actions{display:flex;align-items:center;gap:5px}.gw-dot{width:7px;height:7px;border-radius:50%;background:#536879}.gw-dot.ok{background:var(--verde);box-shadow:0 0 5px rgba(77,225,154,.45)}.gw-component button{font-size:9.5px!important;padding:5px 7px!important}
-  .gw-terminal-side{min-height:0;display:flex;flex-direction:column;background:#050c12}.gw-terminal-head{height:36px;flex:none;padding:0 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(77,134,184,.14);font-size:10.5px;color:var(--suave)}#gw-term{flex:1;min-height:0;padding:6px}.gw-terminal-note{font-size:9.5px;color:var(--suave);margin-left:auto}.gw-terminal-actions{display:flex;gap:5px}.gw-terminal-actions button{font-size:9px!important;padding:4px 7px!important}
-  @media(max-width:980px){.gw-body{grid-template-columns:1fr}.gw-left{max-height:45vh;border-right:0;border-bottom:1px solid var(--linea)}}
 
   /* Monitoreo */
   .monitoring-view{padding:0!important;background:none!important;border:0!important;box-shadow:none!important}
@@ -906,4 +899,4 @@
 }
 
 /* v3.5.1 — portapapeles de terminal */
-@media(max-width:720px){.term-shortcuts,.gw-terminal-note{display:none}.term-barra{gap:6px!important}.term-barra #term-copiar,.term-barra #term-pegar{padding:6px 8px!important}.gw-terminal-head{height:auto;min-height:36px;flex-wrap:wrap;padding:5px 8px}}
+@media(max-width:720px){.term-shortcuts{display:none}.term-barra{gap:6px!important}.term-barra #term-copiar,.term-barra #term-pegar{padding:6px 8px!important}}

@@ -1121,7 +1121,6 @@ var TOKEN = '';
   // ── Atajos de teclado ──────────────────────────────────────────
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape'){
-      if (document.getElementById('gw-velo').classList.contains('abierto')){ cerrarGatewayWISP(); return; }
       if (document.getElementById('sshadmin-velo').classList.contains('abierto')){ cerrarSSHAdmin(); return; }
       if (document.getElementById('m-firewall').classList.contains('abierto')){ cerrarFirewall(); return; }
       if (document.getElementById('fx-velo').classList.contains('abierto')){ cerrarArchivos(); return; }
@@ -1410,43 +1409,6 @@ var TOKEN = '';
     }).catch(function(){sshStatus('ssh-port-status','Error de comunicación al aplicar. La sesión actual sigue abierta.','err');b.disabled=false;});
   };
   $('ssh-port-cancelar').onclick=function(){ cancelarPruebaPuerto(false).catch(function(e){aviso(e.message||'No pude cancelar la prueba.',false);}); };
-
-  // ── Gateway WISP modular con terminal integrada ──────────────
-  var gwServidor=null,gwTerm=null,gwFit=null,gwWs=null,gwPendingCmd=null,gwPackageReady=false,gwPreparing=false;
-  function abrirGWTerminal(nombre){
-    if(typeof Terminal!=='function'||typeof FitAddon==='undefined'||typeof FitAddon.FitAddon!=='function'){aviso('No se pudo cargar xterm.js.',false);return;}
-    cerrarGWTerminal();
-    var n=$('gw-term'); vaciar(n); gwTerm=new Terminal({cursorBlink:true,fontSize:12,fontFamily:"'JetBrains Mono', Consolas, monospace",theme:{background:'#050c12',foreground:'#d8e4ea',cursor:'#4de19a',selectionBackground:'#1f3b49'}}); gwFit=new FitAddon.FitAddon();gwTerm.loadAddon(gwFit);gwTerm.open(n);gwFit.fit();activarAtajosPortapapeles(gwTerm);
-    gwWs=new WebSocket(wsTerminalURL(nombre));gwWs.binaryType='arraybuffer';var enc=new TextEncoder();
-    gwWs.onopen=function(){if(gwTerm){gwWs.send(JSON.stringify({cols:gwTerm.cols,rows:gwTerm.rows}));gwTerm.focus();if(gwPendingCmd){var cmd=gwPendingCmd;gwPendingCmd=null;setTimeout(function(){enviarGW(cmd);},80);}}};
-    gwWs.onmessage=function(e){if(gwTerm)gwTerm.write(new Uint8Array(e.data));};gwWs.onerror=function(){if(gwTerm)gwTerm.write('\r\n\x1b[31m[error en terminal Gateway WISP]\x1b[0m\r\n');};gwWs.onclose=function(){if(gwTerm)gwTerm.write('\r\n\x1b[33m[sesión terminada]\x1b[0m\r\n');};
-    gwTerm.onData(function(d){if(gwWs&&gwWs.readyState===1)gwWs.send(enc.encode(d));});gwTerm.onResize(function(t){if(gwWs&&gwWs.readyState===1)gwWs.send(JSON.stringify({cols:t.cols,rows:t.rows}));});
-    setTimeout(function(){if(gwFit){gwFit.fit();gwTerm.focus();}},80);
-  }
-  function cerrarGWTerminal(){if(gwWs){gwWs.close();gwWs=null;}if(gwTerm){gwTerm.dispose();gwTerm=null;gwFit=null;}if($('gw-term'))vaciar($('gw-term'));}
-  function enviarGW(cmd){if(!gwWs||gwWs.readyState!==1){gwPendingCmd=cmd;if(gwTerm)gwTerm.write('\r\n\x1b[33m[esperando a que la terminal esté lista…]\x1b[0m\r\n');return;}gwTerm.clear();gwTerm.write('\x1b[2J\x1b[H');gwWs.send(new TextEncoder().encode(cmd+'\r'));gwTerm.focus();}
-  function gwBotones(disabled){$('gw-install-all').disabled=disabled;$('gw-uninstall-all').disabled=disabled;document.querySelectorAll('#gw-components button[data-a]').forEach(function(b){b.disabled=disabled;});}
-  function prepararGWPaquete(){if(!gwServidor||gwPreparing)return Promise.resolve(false);gwPreparing=true;gwPackageReady=false;gwBotones(true);$('gw-package-state').textContent='Preparando paquete…';$('gw-package-state').className='gw-chip';return api('/api/herramientas/gateway-wisp/preparar',{method:'POST',body:JSON.stringify({servidor:gwServidor})}).then(function(r){if(r.error){$('gw-package-state').textContent='Error de paquete';$('gw-package-state').className='gw-chip';if(gwTerm)gwTerm.write('\r\n\x1b[31m[No pude preparar el paquete: '+r.error+']\x1b[0m\r\n');return false;}gwPackageReady=true;$('gw-bundle-ver').textContent='v'+(r.versionPaquete||'?');$('gw-package-state').textContent='✓ Paquete listo';$('gw-package-state').className='gw-chip ok';gwBotones(false);if(gwTerm)gwTerm.write('\r\n\x1b[32m[Gateway WISP '+(r.versionPaquete||'')+' listo. Elige una acción a la izquierda.]\x1b[0m\r\n');return true;}).catch(function(){$('gw-package-state').textContent='Error de paquete';return false;}).finally(function(){gwPreparing=false;});}
-  function cargarGWEstado(){
-    if(!gwServidor)return;$('gw-state-main').textContent='Consultando…';
-    api('/api/herramientas/gateway-wisp/estado?servidor='+encodeURIComponent(gwServidor)).then(function(r){
-      if(r.error){$('gw-state-main').textContent='No disponible';return;}
-      $('gw-bundle-ver').textContent='v'+(r.versionPaquete||'?');$('gw-installed-ver').textContent=(r.version&&r.version!=='absent')?r.version:'—';$('gw-state-main').textContent=r.instalado?'● Gateway detectado':'○ No instalado';$('gw-state-main').className='gw-chip '+(r.instalado?'ok':'');
-      document.querySelectorAll('#gw-components .gw-component').forEach(function(row){var c=row.dataset.comp;var st=(r.componentes||{})[c];var dot=row.querySelector('.gw-dot');if(dot)dot.className='gw-dot '+(st==='installed'?'ok':'');});
-    }).catch(function(){$('gw-state-main').textContent='Error consultando';});
-  }
-  function abrirGatewayWISP(nombre){gwServidor=nombre;gwPackageReady=false;gwPendingCmd=null;$('gw-srv').textContent=nombre;cerrarHerramientas();$('gw-velo').classList.add('abierto');abrirGWTerminal(nombre);cargarGWEstado();prepararGWPaquete();setTimeout(function(){if(gwFit)gwFit.fit();},100);}
-  function cerrarGatewayWISP(){$('gw-velo').classList.remove('abierto');cerrarGWTerminal();gwServidor=null;gwPackageReady=false;gwPendingCmd=null;}
-  $('gw-cerrar').onclick=cerrarGatewayWISP;$('gw-refresh').onclick=cargarGWEstado;
-  $('gw-term-copiar').onclick=function(){copiarSeleccionTerminal(gwTerm);};$('gw-term-pegar').onclick=function(){pegarEnTerminal(gwTerm);};
-  $('tool-gw-install').onclick=function(){if(!toolsServidor){aviso('No hay servidor seleccionado.',false);return;}abrirGatewayWISP(toolsServidor);};
-  function gwAccion(accion,comp){
-    if(!gwServidor)return;
-    if((accion==='desinstalar-todo'||accion==='desinstalar-componente')&&!confirm(accion==='desinstalar-todo'?'Se creará un backup y se retirará la integración Gateway WISP sin purgar paquetes de terceros. ¿Continuar?':'¿Quitar de forma conservadora la integración de este componente?'))return;
-    var ejecutar=function(){gwBotones(true);return api('/api/herramientas/gateway-wisp/comando',{method:'POST',body:JSON.stringify({servidor:gwServidor,accion:accion,componente:comp||''})}).then(function(r){if(r.error){aviso(r.error,false);return;}enviarGW(r.comando);}).catch(function(){aviso('No pude preparar el paquete Gateway WISP.',false);}).finally(function(){gwBotones(false);});};if(!gwPackageReady){prepararGWPaquete().then(function(ok){if(ok)ejecutar();});}else ejecutar();
-  }
-  $('gw-install-all').onclick=function(){gwAccion('instalar-todo','');};$('gw-uninstall-all').onclick=function(){gwAccion('desinstalar-todo','');};
-  document.querySelectorAll('#gw-components .gw-component button[data-a]').forEach(function(b){b.onclick=function(){var row=b.closest('.gw-component'),comp=row.dataset.comp,act=b.dataset.a==='install'?'instalar-componente':'desinstalar-componente';gwAccion(act,comp);};});
 
   $('tool-firewall').onclick=function(){
     if(!toolsServidor){ aviso('No hay servidor seleccionado.',false); return; }

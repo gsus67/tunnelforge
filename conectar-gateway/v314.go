@@ -1,20 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
-	"embed"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -23,11 +19,6 @@ import (
 
 	"golang.org/x/crypto/ssh"
 )
-
-//go:embed assets/gateway-wisp.tar.gz
-var v314Assets embed.FS
-
-const gatewayWISPBundleVersion = "1.5.0"
 
 // -----------------------------------------------------------------------------
 // SSH key: crear/instalar y usar una key local existente
@@ -911,168 +902,4 @@ func manejarToolPuertoSSHCancelar(w http.ResponseWriter, r *http.Request) {
 // Compatibilidad: el endpoint viejo ya no aplica cambios en un solo paso.
 func manejarToolCambiarPuertoSSH(w http.ResponseWriter, r *http.Request) {
 	responderError(w, fmt.Errorf("el cambio de puerto ahora se realiza en dos fases: Probar nuevo puerto y Aplicar cambio"))
-}
-
-// -----------------------------------------------------------------------------
-// Gateway WISP modular embebido
-// -----------------------------------------------------------------------------
-
-func prepararGatewayWISP(servidor string) (string, error) {
-	c, err := clienteSFTP(servidor)
-	if err != nil {
-		return "", err
-	}
-	data, err := v314Assets.ReadFile("assets/gateway-wisp.tar.gz")
-	if err != nil {
-		return "", err
-	}
-	dir := "/tmp/gateway-wisp-access/gateway-wisp"
-	if err = c.MkdirAll(dir); err != nil {
-		return "", err
-	}
-	_ = c.Chmod("/tmp/gateway-wisp-access", 0700)
-	_ = c.Chmod(dir, 0700)
-	remoto := path.Join(dir, "gateway-wisp.tar.gz")
-	f, err := c.Create(remoto)
-	if err != nil {
-		return "", err
-	}
-	_, copiaErr := io.Copy(f, bytes.NewReader(data))
-	cierreErr := f.Close()
-	if copiaErr != nil {
-		return "", copiaErr
-	}
-	if cierreErr != nil {
-		return "", cierreErr
-	}
-	_ = c.Chmod(remoto, 0600)
-
-	// Extraer y verificar desde el backend, no escribiendo comandos a ciegas
-	// en el PTY. Así el botón queda listo incluso si xterm todavía está abriendo.
-	cli, err := clienteConexionActiva(servidor)
-	if err != nil {
-		return "", err
-	}
-	root := path.Join(dir, "src/gateway-wisp")
-	cmd := fmt.Sprintf(`set -eu
-cd %s
-rm -rf src
-mkdir -m 700 src
-tar -xzf gateway-wisp.tar.gz -C src
-chmod -R go-rwx src
-[ -x %s ]
-printf '__GW_BUNDLE_READY__\n'`, shellQuote(dir), shellQuote(path.Join(root, "gateway-wisp-manager")))
-	out, err := ejecutarSesion(cli, cmd, "")
-	if err != nil {
-		return "", fmt.Errorf("no pude preparar el paquete Gateway WISP: %v", err)
-	}
-	if !strings.Contains(out, "__GW_BUNDLE_READY__") {
-		return "", fmt.Errorf("el paquete se transfirió pero no pasó la verificación")
-	}
-	return root, nil
-}
-
-func comandoGatewayWISP(root, args string) string {
-	return fmt.Sprintf(`cd %s && if [ ! -x ./gateway-wisp-manager ]; then printf 'ERROR: paquete modular incompleto.\n'; else if [ "$(id -u)" -eq 0 ]; then ./gateway-wisp-manager %s; else sudo ./gateway-wisp-manager %s; fi; fi`, shellQuote(root), args, args)
-}
-
-func manejarGatewayWISPPreparar(w http.ResponseWriter, r *http.Request) {
-	var p struct {
-		Servidor string `json:"servidor"`
-	}
-	if err := decodificar(r, &p); err != nil {
-		responderError(w, err)
-		return
-	}
-	root, err := prepararGatewayWISP(p.Servidor)
-	if err != nil {
-		responderError(w, err)
-		return
-	}
-	responder(w, map[string]any{"ok": true, "preparado": true, "root": root, "versionPaquete": gatewayWISPBundleVersion})
-}
-
-func manejarGatewayWISPComando(w http.ResponseWriter, r *http.Request) {
-	var p struct {
-		Servidor   string `json:"servidor"`
-		Accion     string `json:"accion"`
-		Componente string `json:"componente"`
-	}
-	if err := decodificar(r, &p); err != nil {
-		responderError(w, err)
-		return
-	}
-	p.Servidor = strings.TrimSpace(p.Servidor)
-	p.Accion = strings.TrimSpace(p.Accion)
-	p.Componente = strings.TrimSpace(p.Componente)
-	if p.Servidor == "" {
-		responderError(w, fmt.Errorf("servidor obligatorio"))
-		return
-	}
-	validComp := map[string]bool{"system": true, "wireguard": true, "firewall": true, "qos": true, "dns": true, "wgdashboard": true, "crowdsec": true, "netdata": true, "panel": true, "maintenance": true}
-	var args string
-	switch p.Accion {
-	case "instalar-todo":
-		args = "install full"
-	case "desinstalar-todo":
-		args = "uninstall full"
-	case "instalar-componente":
-		if !validComp[p.Componente] {
-			responderError(w, fmt.Errorf("componente inválido"))
-			return
-		}
-		args = "component install " + p.Componente
-	case "desinstalar-componente":
-		if !validComp[p.Componente] {
-			responderError(w, fmt.Errorf("componente inválido"))
-			return
-		}
-		args = "component uninstall " + p.Componente
-	default:
-		responderError(w, fmt.Errorf("acción inválida"))
-		return
-	}
-	root, err := prepararGatewayWISP(p.Servidor)
-	if err != nil {
-		responderError(w, err)
-		return
-	}
-	cmd := comandoGatewayWISP(root, args)
-	responder(w, map[string]any{"ok": true, "comando": cmd, "versionPaquete": gatewayWISPBundleVersion})
-}
-
-func manejarGatewayWISPEstado(w http.ResponseWriter, r *http.Request) {
-	nombre := strings.TrimSpace(r.URL.Query().Get("servidor"))
-	cli, err := clienteConexionActiva(nombre)
-	if err != nil {
-		responderError(w, err)
-		return
-	}
-	cmd := `printf 'VERSION='; cat /etc/wisp/version 2>/dev/null || echo absent
-printf 'CONFIG='; [ -f /etc/wisp/config.env ] && echo yes || echo no
-printf 'system='; [ -f /etc/sysctl.d/99-wisp-gateway.conf ] && echo installed || echo absent
-printf 'wireguard='; command -v wg >/dev/null 2>&1 && echo installed || echo absent
-printf 'firewall='; command -v nft >/dev/null 2>&1 && echo installed || echo absent
-printf 'qos='; [ -f /etc/systemd/system/qos-cake-wg0.service ] && echo installed || echo absent
-printf 'dns='; if command -v ctrld >/dev/null 2>&1 || systemctl list-unit-files 2>/dev/null | grep -Eq '^(AdGuardHome|dns)\.service'; then echo installed; else echo absent; fi
-printf 'wgdashboard='; [ -x /root/WGDashboard/src/wgd.sh ] && echo installed || echo absent
-printf 'crowdsec='; command -v cscli >/dev/null 2>&1 && echo installed || echo absent
-printf 'netdata='; if command -v netdata >/dev/null 2>&1 || systemctl list-unit-files 2>/dev/null | grep -q '^netdata.service'; then echo installed; else echo absent; fi
-printf 'panel='; [ -f /etc/systemd/system/panel-wisp.service ] && echo installed || echo absent
-printf 'maintenance='; [ -f /etc/systemd/system/backup-wisp.timer ] && echo installed || echo absent`
-	out, _ := ejecutarSesion(cli, cmd, "")
-	res := map[string]string{}
-	for _, line := range strings.Split(out, "\n") {
-		if i := strings.Index(line, "="); i > 0 {
-			res[line[:i]] = strings.TrimSpace(line[i+1:])
-		}
-	}
-	instalado := res["CONFIG"] == "yes" || (res["VERSION"] != "" && res["VERSION"] != "absent")
-	responder(w, map[string]any{
-		"ok": true, "instalado": instalado, "version": res["VERSION"], "versionPaquete": gatewayWISPBundleVersion,
-		"componentes": map[string]string{
-			"system": res["system"], "wireguard": res["wireguard"], "firewall": res["firewall"], "qos": res["qos"], "dns": res["dns"],
-			"wgdashboard": res["wgdashboard"], "crowdsec": res["crowdsec"], "netdata": res["netdata"], "panel": res["panel"], "maintenance": res["maintenance"],
-		},
-	})
 }
