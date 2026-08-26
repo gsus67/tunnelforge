@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Gsus — Licencia MIT (ver LICENSE)
 // Host nativo mínimo para tunnel.dll. Se compila en GitHub Actions y luego
-// queda embebido dentro de Conectar-Gateway.exe junto con los DLL oficiales.
+// queda embebido dentro de TunnelForge.exe junto con los DLL oficiales.
 //
 // La telemetría se lee aquí, dentro del servicio elevado, porque WireGuardNT
 // puede denegar WireGuardOpenAdapter al proceso Wails no elevado. El archivo

@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Gsus — Licencia MIT (ver LICENSE)
 // ============================================================================
-// Conectar Gateway v2 — túneles SSH con interfaz gráfica
+// TunnelForge — túneles SSH con interfaz gráfica
 // ============================================================================
 // Aplicación autocontenida de un solo ejecutable:
 //   - Motor SSH propio embebido (golang.org/x/crypto/ssh, librería oficial Go)
@@ -719,7 +719,7 @@ func main() {
 	limpiarBackupActualizacion()
 	for _, a := range os.Args[1:] {
 		if a == "--version" || a == "-v" {
-			fmt.Println("conectar-gateway", version)
+			fmt.Println("TunnelForge", version)
 			return
 		}
 	}

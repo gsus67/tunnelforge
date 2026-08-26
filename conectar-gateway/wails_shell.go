@@ -43,7 +43,7 @@ func mostrarVentana(token, wsBase string, apiHandler http.Handler) {
 	}
 	bridge := &AppBridge{token: token, wsBase: wsBase}
 	err = wails.Run(&options.App{
-		Title:     "Gateway WISP Access",
+		Title:     "TunnelForge",
 		Width:     1440,
 		Height:    810,
 		MinWidth:  1100,

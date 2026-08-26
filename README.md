@@ -1,4 +1,4 @@
-# Gateway WISP Access
+# TunnelForge
 
 Cliente SSH de escritorio para administrar gateways: abre los túneles a los
 paneles del servidor de un clic y trae terminal SSH integrado.
@@ -16,7 +16,7 @@ Para evitar crear tags de versiones que todavía no compilan, primero se suben l
 
 ## Dashboard
 
-![Dashboard de Gateway WISP Access](docs/dashboard.png)
+![Dashboard de TunnelForge](docs/dashboard.png)
 
 Vista principal para administrar servidores guardados, conexiones SSH activas, túneles, terminal, archivos y estado de actualizaciones desde una sola ventana.
 
@@ -27,7 +27,7 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 Desde **v3.5.0** puedes iniciar desde la propia aplicación un servidor web para la LAN y abrir **la misma interfaz** desde un teléfono, tablet u otra PC usando la IP privada del equipo. El modo está apagado por defecto, usa un código aleatorio de 6 dígitos, no configura UPnP ni port-forwarding y el navegador remoto nunca recibe el token maestro de la API.
 
-El acceso web está pensado para una **red local de confianza**. La sesión se guarda en una cookie HttpOnly ligada a la IP del cliente y el servidor se detiene automáticamente al cerrar Gateway WISP Access. Los accesos a paneles que solo escuchan en `localhost` (por ejemplo, túneles web SSH) **no se republican en la LAN**; al pulsarlos desde el navegador remoto, Gateway los abre en la PC que ejecuta la aplicación.
+El acceso web está pensado para una **red local de confianza**. La sesión se guarda en una cookie HttpOnly ligada a la IP del cliente y el servidor se detiene automáticamente al cerrar TunnelForge. Los accesos a paneles que solo escuchan en `localhost` (por ejemplo, túneles web SSH) **no se republican en la LAN**; al pulsarlos desde el navegador remoto, TunnelForge los abre en la PC que ejecuta la aplicación.
 
 ---
 
@@ -35,7 +35,7 @@ El acceso web está pensado para una **red local de confianza**. La sesión se g
 
 > **v3.4.11** mantiene WireGuard con configuración y estadísticas estrictamente separadas, conserva la medición corregida de Monitoreo sobre la interfaz principal del servidor y muestra el tráfico en Dashboard y Monitoreo en un formato compacto con flechas (`↑`/`↓`) en lugar de las palabras “Subida” y “Descarga”. WireGuard sigue completamente integrado en el ejecutable de Windows y no requiere instalar WireGuard for Windows ni depender de `wireguard.exe`/`wg.exe`.
 
-Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linux. A partir de **v3.4.3**, el build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `Conectar-Gateway.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
+Desde **v3.4.0** TunnelForge incluye WireGuard local para Windows y Linux. A partir de **v3.4.3**, el build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `TunnelForge.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
 
 - Perfiles múltiples con búsqueda, estado conectado/desconectado y autoconexión.
 - Importación y exportación de archivos `.conf`.
@@ -46,19 +46,19 @@ Desde **v3.4.0** Gateway WISP Access incluye WireGuard local para Windows y Linu
 - Tráfico RX/TX en **Mbit/s**, totales transferidos, interfaz activa y último handshake cuando el motor del sistema expone esas métricas.
 - Estado en vivo por peer cuando `wg` permite leer sus contadores.
 - Vista centrada en el estado del túnel: RX/TX, totales, handshake, interfaz y una fila por peer; la configuración completa se abre con **⚙ Configuración**.
-- PrivateKey y PresharedKey se guardan cifradas en el almacenamiento local de Gateway WISP Access.
+- PrivateKey y PresharedKey se guardan cifradas en el almacenamiento local de TunnelForge.
 - Los perfiles pueden incluirse en el backup portable `.cgw`; sus secretos viajan dentro del contenedor cifrado del backup y se vuelven a cifrar al restaurar.
 - Los hooks `PreUp`, `PostUp`, `PreDown` y `PostDown` importados se conservan, pero quedan **deshabilitados por defecto** hasta que el usuario los autoriza expresamente.
 
-En Windows **no hace falta instalar ningún cliente WireGuard aparte**: Gateway WISP Access registra un servicio `WireGuardTunnel$...` cuyo ejecutable es el host nativo privado extraído desde la propia aplicación; ese host carga el motor oficial `tunnel.dll`. Para el usuario sigue siendo una sola aplicación, sin instalador adicional. Las estadísticas RX/TX y handshake las consulta el host del servicio mediante la API de WireGuardNT y entrega a la UI únicamente telemetría sin secretos; la aplicación completa no necesita ejecutarse como administrador. En Linux se mantiene `wireguard-tools` (`wg`/`wg-quick`) del sistema y puede instalarse mediante el gestor de paquetes compatible cuando hay `pkexec`.
+En Windows **no hace falta instalar ningún cliente WireGuard aparte**: TunnelForge registra un servicio `WireGuardTunnel$...` cuyo ejecutable es el host nativo privado extraído desde la propia aplicación; ese host carga el motor oficial `tunnel.dll`. Para el usuario sigue siendo una sola aplicación, sin instalador adicional. Las estadísticas RX/TX y handshake las consulta el host del servicio mediante la API de WireGuardNT y entrega a la UI únicamente telemetría sin secretos; la aplicación completa no necesita ejecutarse como administrador. En Linux se mantiene `wireguard-tools` (`wg`/`wg-quick`) del sistema y puede instalarse mediante el gestor de paquetes compatible cuando hay `pkexec`.
 
-> Gateway WISP Access no es el cliente oficial de WireGuard. El nombre WireGuard se utiliza para describir compatibilidad e integración con el software/protocolo correspondiente; cada componente externo conserva su licencia y autoría. Consulte [TERCEROS.md](TERCEROS.md).
+> TunnelForge no es el cliente oficial de WireGuard. El nombre WireGuard se utiliza para describir compatibilidad e integración con el software/protocolo correspondiente; cada componente externo conserva su licencia y autoría. Consulte [TERCEROS.md](TERCEROS.md).
 
 ---
 
 ## Monitoreo
 
-Gateway WISP Access puede preparar un servidor central con **Prometheus** y monitorizar únicamente los perfiles que el usuario seleccione. Los agentes `node_exporter` quedan ligados a `127.0.0.1:9100`; Prometheus accede a ellos mediante túneles SSH persistentes administrados por la aplicación.
+TunnelForge puede preparar un servidor central con **Prometheus** y monitorizar únicamente los perfiles que el usuario seleccione. Los agentes `node_exporter` quedan ligados a `127.0.0.1:9100`; Prometheus accede a ellos mediante túneles SSH persistentes administrados por la aplicación.
 
 - Puertos locales de túnel asignados automáticamente (rango 19100–19999 configurable).
 - Resumen nativo de CPU, RAM, disco y tráfico RX/TX en Mbit/s por servidor.
@@ -76,7 +76,7 @@ La instalación automática inicial está deliberadamente limitada a **Debian/Ub
 
 ### Arquitectura de escritorio
 
-Desde **v3.3.0** la interfaz de producción está migrada a **Go + Wails + TypeScript**. Wails reemplaza el wrapper `webview_go` y ofrece la misma ventana nativa en Windows y Linux; el backend Go conserva SSH, SFTP, túneles, cifrado, updater, Gateway WISP y Monitoreo. El frontend vive en `conectar-gateway/frontend/` y se compila desde TypeScript antes de generar el binario.
+Desde **v3.3.0** la interfaz de producción está migrada a **Go + Wails + TypeScript**. Wails reemplaza el wrapper `webview_go` y ofrece la misma ventana nativa en Windows y Linux; el backend Go conserva SSH, SFTP, túneles, cifrado, updater y Monitoreo. El frontend vive en `conectar-gateway/frontend/` y se compila desde TypeScript antes de generar el binario.
 
 La API existente se reutiliza dentro del `AssetServer` de Wails para reducir regresiones; únicamente la Terminal mantiene un WebSocket loopback en `127.0.0.1`, protegido por token y con el origen interno de Wails autorizado explícitamente.
 
@@ -96,7 +96,7 @@ La API loopback protegida sigue existiendo como canal interno para el WebSocket 
   sube y baja archivos, crea carpetas, renombra, borra y edita texto UTF-8
 - **Herramientas por servidor**: scripts, test de velocidad, firewall y administración SSH segura desde una ventana con terminal interactiva.
 - **Tráfico real**: RX/TX de la interfaz principal del servidor mostrado en Mbit/s.
-- **Web local opcional**: publica la misma interfaz en la LAN para usar Gateway desde teléfono, tablet u otra PC con código de acceso.
+- **Web local opcional**: publica la misma interfaz en la LAN para usar TunnelForge desde teléfono, tablet u otra PC con código de acceso.
 - **Firewall seguro**: protege el puerto SSH, crea backup antes de cambios y evita reescribir reglas nftables personalizadas.
 - **SSH administrado**: crea/instala keys, carga una key local existente y cambia el puerto SSH solo después de verificar una segunda conexión real.
 
@@ -115,8 +115,8 @@ Descarga el ejecutable de la pestaña **[Releases](../../releases)**:
 
 | Archivo | Sistema |
 |---|---|
-| `Conectar-Gateway.exe` | Windows 10/11 (64 bits) |
-| `conectar-gateway-linux` | Linux (64 bits) |
+| `TunnelForge.exe` | Windows 10/11 (64 bits) |
+| `tunnelforge-linux` | Linux (64 bits) |
 
 Ponlo donde quieras y ábrelo. La aplicación no necesita PuTTY ni OpenSSH para sus funciones SSH. Wails usa el WebView del sistema. En **Windows**, WireGuard ya viene dentro del ejecutable oficial; en **Linux**, la VPN local requiere `wireguard-tools` del sistema.
 
@@ -220,7 +220,7 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
 - **Verificación de huella (TOFU)**: la primera conexión pide confirmar la
   huella del servidor; si más tarde cambia, la app se niega a conectar y avisa.
   Protege contra suplantación del servidor.
-- **Endurecimiento SSH opcional**: después de generar e instalar una key, Gateway
+- **Endurecimiento SSH opcional**: después de generar e instalar una key, TunnelForge
   comprueba que realmente funciona y puede desactivar el login por contraseña.
   Mantiene `root` únicamente por key (`PermitRootLogin prohibit-password`) para
   no bloquear perfiles administrativos. Valida con `sshd -t`/`sshd -T`, recarga
@@ -243,7 +243,7 @@ El panel aparece plegado y muestra un semáforo de estado: verde (al día), amar
 El repositorio de Releases es **público**, así que buscar e instalar
 actualizaciones no requiere ninguna credencial. Opcionalmente se puede
 configurar un **fine-grained personal access token** de GitHub (acceso
-solamente a `gsus67/gateway-wisp-access`, permiso **Contents: read**) para
+solamente a `gsus67/tunnelforge`, permiso **Contents: read**) para
 subir el límite de consultas anónimas de la API de GitHub (60/hora por IP). En
 Windows el token se guarda protegido con **DPAPI**, ligado a tu cuenta de
 Windows.
@@ -260,7 +260,7 @@ subirse al repositorio ni incluirse en el ejecutable**. El workflow comprueba qu
 el secret corresponde a la clave pública embebida antes de publicar.
 
 En Windows, **Actualizar ahora** descarga y verifica el nuevo ejecutable, arranca
-un actualizador auxiliar, cierra Gateway, reemplaza el `.exe` y vuelve a abrirlo.
+un actualizador auxiliar, cierra TunnelForge, reemplaza el `.exe` y vuelve a abrirlo.
 La app no instala automáticamente versiones inferiores a la actual. En Linux, por
 ahora, la comprobación de Releases funciona pero el reemplazo automático del
 binario está deshabilitado.
@@ -314,7 +314,7 @@ Windows (build completo con WireGuard embebido):
 ```powershell
 .\herramientas\preparar-wireguard-windows.ps1
 cd conectar-gateway
-wails build -clean -tags wireguard_embedded -o Conectar-Gateway
+wails build -clean -tags wireguard_embedded -o TunnelForge
 ```
 
 El script fija **WireGuard for Windows v1.1** a un commit concreto, ejecuta su `embeddable-dll-service` oficial y coloca temporalmente `tunnel.dll` + el `wireguard.dll` precompilado oficial en `wireguard-assets/`. Esos DLL están ignorados por Git y se incrustan en el `.exe` únicamente cuando se compila con `-tags wireguard_embedded`. GitHub Actions hace este paso automáticamente.
@@ -323,7 +323,7 @@ Linux (Debian/Ubuntu moderno):
 
 ```bash
 sudo apt install build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
-wails build -clean -tags webkit2_41 -o conectar-gateway-linux
+wails build -clean -tags webkit2_41 -o tunnelforge-linux
 ```
 
 GitHub Actions ejecuta `go mod tidy` antes de compilar para completar `go.sum`, construye Windows y Linux en runners nativos separados y reúne ambos artefactos para el Release firmado.
@@ -378,11 +378,11 @@ Copyright (c) 2026 Gsus — Licencia MIT (ver [LICENSE](LICENSE)).
 
 ### Crear e instalar una Key SSH desde la app
 
-En **Agregar / editar servidor**, completa nombre, host, usuario y la contraseña SSH actual y pulsa **Crear e instalar Key**. Gateway genera una ED25519, instala solo la clave pública en `~/.ssh/authorized_keys`, guarda la privada localmente y **comprueba una conexión nueva usando esa key** antes de actualizar el perfil.
+En **Agregar / editar servidor**, completa nombre, host, usuario y la contraseña SSH actual y pulsa **Crear e instalar Key**. TunnelForge genera una ED25519, instala solo la clave pública en `~/.ssh/authorized_keys`, guarda la privada localmente y **comprueba una conexión nueva usando esa key** antes de actualizar el perfil.
 
-Cuando la comprobación termina, Gateway pregunta si quieres **asegurar SSH**. Si aceptas, desactiva la autenticación por contraseña e interactiva, mantiene el acceso por claves y deja `root` en modo **solo key**. No usa `PermitRootLogin no` porque eso bloquearía un perfil que necesite administrar el servidor como root.
+Cuando la comprobación termina, TunnelForge pregunta si quieres **asegurar SSH**. Si aceptas, desactiva la autenticación por contraseña e interactiva, mantiene el acceso por claves y deja `root` en modo **solo key**. No usa `PermitRootLogin no` porque eso bloquearía un perfil que necesite administrar el servidor como root.
 
-En cada **servidor conectado** hay además un botón discreto de seguridad SSH. Desde ahí puedes endurecer otra vez el servidor o volver a permitir `PasswordAuthentication` para usuarios normales. Al reabrir contraseña, `root` permanece deliberadamente en modo **solo key** (`PermitRootLogin prohibit-password`). Gateway normaliza las directivas globales conflictivas de `/etc/ssh/sshd_config`, deja intactos los bloques `Match`, valida la configuración y conserva rollback antes de confirmar el cambio.
+En cada **servidor conectado** hay además un botón discreto de seguridad SSH. Desde ahí puedes endurecer otra vez el servidor o volver a permitir `PasswordAuthentication` para usuarios normales. Al reabrir contraseña, `root` permanece deliberadamente en modo **solo key** (`PermitRootLogin prohibit-password`). TunnelForge normaliza las directivas globales conflictivas de `/etc/ssh/sshd_config`, deja intactos los bloques `Match`, valida la configuración y conserva rollback antes de confirmar el cambio.
 
 
 ### Terminal

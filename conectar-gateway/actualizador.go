@@ -22,7 +22,7 @@ import (
 
 const (
 	updateRepoOwner     = "gsus67"
-	updateRepoName      = "gateway-wisp-access"
+	updateRepoName      = "tunnelforge"
 	updateManifestName  = "update-manifest.json"
 	updateSignatureName = "update-manifest.sig"
 	updatePublicKeyB64  = "6SpruRdmfhfJk0i0oLMM4onShah2733MFsKMNycOFrk="
@@ -133,7 +133,7 @@ func githubRequest(token, method, url, accept string) (*http.Response, error) {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	req.Header.Set("User-Agent", "Gateway-WISP-Access/"+version)
+	req.Header.Set("User-Agent", "TunnelForge/"+version)
 	cli := &http.Client{Timeout: 30 * time.Second}
 	resp, err := cli.Do(req)
 	if err != nil {
@@ -238,7 +238,7 @@ func verificarManifest(token string, rel githubRelease) (updateManifest, []byte,
 		return m, nil, errors.New("clave pública de actualización inválida")
 	}
 	if !ed25519.Verify(ed25519.PublicKey(pub), mb, sb) {
-		return m, nil, errors.New("FIRMA INVÁLIDA: la actualización no fue firmada por Gateway WISP Access")
+		return m, nil, errors.New("FIRMA INVÁLIDA: la actualización no fue firmada por TunnelForge")
 	}
 	if err := json.Unmarshal(mb, &m); err != nil {
 		return m, nil, fmt.Errorf("manifest inválido: %w", err)
@@ -341,7 +341,7 @@ func prepararEInstalarActualizacion() (string, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", err
 	}
-	nuevo := filepath.Join(dir, "Conectar-Gateway-"+manifest.Version+".exe")
+	nuevo := filepath.Join(dir, "TunnelForge-"+manifest.Version+".exe")
 	if err := os.WriteFile(nuevo, bin, 0700); err != nil {
 		return "", err
 	}

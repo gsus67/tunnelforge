@@ -3,7 +3,7 @@ package main
 
 // Integración WireGuard local.
 //
-// La UI y el almacenamiento pertenecen a Gateway WISP Access. En Windows el
+// La UI y el almacenamiento pertenecen a TunnelForge. En Windows el
 // motor oficial se distribuye embebido dentro de la propia aplicación usando
 // tunnel.dll + WireGuardNT; no hace falta instalar WireGuard for Windows. En
 // Linux se siguen usando las herramientas wireguard-tools del sistema.

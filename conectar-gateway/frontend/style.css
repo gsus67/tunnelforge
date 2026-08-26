@@ -732,8 +732,6 @@
   .sshadmin-footer{flex:none;min-height:38px;padding:8px 14px;border-top:1px solid var(--linea);background:#071019;color:var(--suave);font-size:10.5px;display:flex;align-items:center;gap:8px}
   @media(max-width:900px){.sshadmin-body{grid-template-columns:1fr}}
 
-  /* v3.1.14: Gateway WISP modular con terminal dentro de la propia ventana */
-
   /* Monitoreo */
   .monitoring-view{padding:0!important;background:none!important;border:0!important;box-shadow:none!important}
   .monitor-layout{display:grid;grid-template-columns:minmax(330px,390px) minmax(0,1fr);gap:10px;height:calc(100vh - 124px);min-height:560px}

@@ -86,7 +86,7 @@ func cifrarPaquete(p *Paquete, password string) ([]byte, error) {
 func descifrarPaquete(datos []byte, password string) (*Paquete, error) {
 	var s sobre
 	if err := json.Unmarshal(datos, &s); err != nil {
-		return nil, fmt.Errorf("el archivo no es una copia de Conectar Gateway")
+		return nil, fmt.Errorf("el archivo no es una copia de TunnelForge")
 	}
 	if s.Formato != formatoPaquete {
 		return nil, fmt.Errorf("formato de copia no reconocido: %s", s.Formato)

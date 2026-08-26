@@ -1,4 +1,4 @@
-// Gateway WISP Access frontend — TypeScript migration.
+// TunnelForge frontend — TypeScript migration.
 // Wails owns the desktop shell; this file is compiled as a classic script so
 // existing inline UI handlers remain accessible while the codebase is typed incrementally.
 interface GatewayRuntimeConfig { token?: string; wsBase: string; version: string; web?: boolean; }
@@ -88,7 +88,7 @@ var TOKEN = '';
     return cfgWeb;
   }
   var RUNTIME_READY = inicializarRuntime().catch(function(err){
-    console.error('No se pudo inicializar Gateway WISP Access',err);
+    console.error('No se pudo inicializar TunnelForge',err);
     webLoginVisible(true,err && err.message ? err.message : 'No se pudo iniciar la interfaz.');
     throw err;
   });
@@ -1083,7 +1083,7 @@ var TOKEN = '';
   $('upd-inicio').onchange=function(){api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'preferencias',buscarAlInicio:this.checked})});};
   $('upd-instalar').onclick=function(){
     if(!updUltima||!updUltima.disponible)return;
-    if(!window.confirm('Instalar Gateway WISP Access v'+updUltima.nueva+' ahora? La app se cerrará y volverá a abrir sola.'))return;
+    if(!window.confirm('Instalar TunnelForge v'+updUltima.nueva+' ahora? La app se cerrará y volverá a abrir sola.'))return;
     var b=this;b.disabled=true;updEstado('Descargando, verificando firma y SHA-256…','');
     api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'instalar'})}).then(function(r){
       if(r.error){updEstado(r.error,'err');b.disabled=false;return;} updEstado('Actualización verificada. Reiniciando en v'+r.version+'…','ok');
@@ -1236,7 +1236,7 @@ var TOKEN = '';
     wireguard:['WireGuard','Perfiles VPN locales. En Windows, WireGuard viene integrado en la aplicación; Linux usa wireguard-tools del sistema.'],
     updates:['Actualizaciones','Comprueba e instala versiones firmadas desde el repositorio privado.'],
     webaccess:['Web local','Publica esta misma interfaz en tu LAN para usarla desde el teléfono, tablet u otra PC.'],
-    info:['Gateway WISP Access','Información de seguridad, componentes y versión instalada.']
+    info:['TunnelForge','Información de seguridad, componentes y versión instalada.']
   };
   function mostrarVista(nombre){
     if(!titulosVista[nombre]) nombre='dashboard';

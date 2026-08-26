@@ -1,5 +1,16 @@
 ## Sin publicar
 
+- **Renombrado el proyecto a TunnelForge** (antes Gateway WISP Access / Conectar Gateway):
+  repositorio de GitHub movido a [`gsus67/tunnelforge`](https://github.com/gsus67/tunnelforge)
+  (GitHub redirige el nombre viejo), ejecutables pasan a `TunnelForge.exe`/`tunnelforge-linux`,
+  y se actualizó toda la marca en la UI, README, TERCEROS.md, `wails.json`, `versioninfo.json`,
+  `app.manifest` y el User-Agent del actualizador. **Deliberadamente sin tocar** el namespace
+  interno `gateway-wisp-*`/`gateway_wisp_*` que la app usa para reconocer lo que ya instaló en
+  servidores reales (tags de firewall, comentarios de SSH keys, servicios systemd, métricas de
+  Prometheus) ni el formato de cifrado local (perfiles WireGuard, token de GitHub) — cambiar esos
+  identificadores rompería datos y estado ya existentes en instalaciones reales sin aportar nada
+  visible. Tampoco cambia la carpeta de configuración (`%APPDATA%\conectar-gateway\` /
+  `~/.config/conectar-gateway/`), para no perder servidores/perfiles ya guardados.
 - Eliminada la integración **Gateway WISP modular** (instalar/desinstalar el stack completo o por componentes desde Herramientas): endpoints `/api/herramientas/gateway-wisp/*`, el paquete embebido `assets/gateway-wisp.tar.gz` y la ventana dedicada con terminal integrada. El repositorio [`gateway-wisp-wireguard`](https://github.com/gsus67/gateway-wisp-wireguard) sigue existiendo por separado para quien administre el stack a mano.
 - Repositorio pasado a **público** para poder firmar los binarios de Windows con SignPath.io (requiere proyecto open source real).
 - Limpieza de restos muertos del repo: `conectar-gateway/ui.html`/`ui.html.tmp`, `conectar-gateway/static/` y `frontend-next/` (la UI de producción real es `conectar-gateway/frontend/` desde v3.3.0; el CHANGELOG de esa versión ya daba estos archivos por eliminados, pero seguían en el árbol). `frontend/dist/*` deja de versionarse (ya estaba en `.gitignore`, pero quedaron copias antiguas trackeadas desde antes de esa regla).

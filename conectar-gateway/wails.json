@@ -1,13 +1,13 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "Gateway WISP Access",
-  "outputfilename": "Conectar-Gateway",
+  "name": "TunnelForge",
+  "outputfilename": "TunnelForge",
   "frontend:install": "npm install --no-audit --no-fund",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run build -- --watch",
   "info": {
     "companyName": "Gsus",
-    "productName": "Gateway WISP Access",
+    "productName": "TunnelForge",
     "productVersion": "3.6.0",
     "copyright": "Copyright © 2026 Gsus",
     "comments": "Administrador SSH, WISP y monitoreo para Windows y Linux"

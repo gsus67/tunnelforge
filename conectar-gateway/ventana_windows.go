@@ -65,13 +65,13 @@ func seleccionarDestinoCopia(nombre string) (string, bool, error) {
 
 	// GetSaveFileNameW exige pares descripción/patrón separados por NUL y un
 	// NUL doble al final; por eso no se usa UTF16PtrFromString para el filtro.
-	filtro := utf16.Encode([]rune("Copia Gateway (*.cgw)\x00*.cgw\x00Todos los archivos (*.*)\x00*.*\x00\x00"))
-	titulo, _ := syscall.UTF16PtrFromString("Guardar copia de Gateway WISP Access")
+	filtro := utf16.Encode([]rune("Copia TunnelForge (*.cgw)\x00*.cgw\x00Todos los archivos (*.*)\x00*.*\x00\x00"))
+	titulo, _ := syscall.UTF16PtrFromString("Guardar copia de TunnelForge")
 	dir, _ := syscall.UTF16PtrFromString(carpetaDescargas())
 	ext, _ := syscall.UTF16PtrFromString("cgw")
 
 	var owner uintptr
-	if t, e := syscall.UTF16PtrFromString("Gateway WISP Access"); e == nil {
+	if t, e := syscall.UTF16PtrFromString("TunnelForge"); e == nil {
 		owner, _, _ = procFindWindowW.Call(0, uintptr(unsafe.Pointer(t)))
 	}
 
@@ -122,7 +122,7 @@ func seleccionarDestinoWireGuard(nombre string) (string, bool, error) {
 	dir, _ := syscall.UTF16PtrFromString(carpetaDescargas())
 	ext, _ := syscall.UTF16PtrFromString("conf")
 	var owner uintptr
-	if t, e := syscall.UTF16PtrFromString("Gateway WISP Access"); e == nil {
+	if t, e := syscall.UTF16PtrFromString("TunnelForge"); e == nil {
 		owner, _, _ = procFindWindowW.Call(0, uintptr(unsafe.Pointer(t)))
 	}
 	of := openFileNameW{HwndOwner: owner, LpstrFilter: &filtro[0], NFilterIndex: 1, LpstrFile: &archivo[0], NMaxFile: uint32(len(archivo)), LpstrInitialDir: dir, LpstrTitle: titulo, Flags: ofnOverwritePrompt | ofnNoChangeDir | ofnPathMustExist | ofnExplorer, LpstrDefExt: ext}

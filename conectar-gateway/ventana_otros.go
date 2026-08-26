@@ -17,7 +17,7 @@ func seleccionarDestinoCopia(nombre string) (string, bool, error) {
 	inicial := filepath.Join(carpetaDescargas(), nombre)
 	if runtime.GOOS == "darwin" {
 		if osa, err := exec.LookPath("osascript"); err == nil {
-			script := `set p to choose file name with prompt "Guardar copia de Gateway WISP Access" default name "` + strings.ReplaceAll(nombre, `"`, ``) + `"` + "\n" + `POSIX path of p`
+			script := `set p to choose file name with prompt "Guardar copia de TunnelForge" default name "` + strings.ReplaceAll(nombre, `"`, ``) + `"` + "\n" + `POSIX path of p`
 			out, err := exec.Command(osa, "-e", script).Output()
 			if err != nil {
 				if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
@@ -33,7 +33,7 @@ func seleccionarDestinoCopia(nombre string) (string, bool, error) {
 		}
 	}
 	if zenity, err := exec.LookPath("zenity"); err == nil {
-		out, err := exec.Command(zenity, "--file-selection", "--save", "--confirm-overwrite", "--title=Guardar copia de Gateway WISP Access", "--filename="+inicial, "--file-filter=Copias Gateway | *.cgw").Output()
+		out, err := exec.Command(zenity, "--file-selection", "--save", "--confirm-overwrite", "--title=Guardar copia de TunnelForge", "--filename="+inicial, "--file-filter=Copias TunnelForge | *.cgw").Output()
 		if err != nil {
 			if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
 				return "", true, nil
@@ -47,7 +47,7 @@ func seleccionarDestinoCopia(nombre string) (string, bool, error) {
 		return ruta, false, nil
 	}
 	if kdialog, err := exec.LookPath("kdialog"); err == nil {
-		out, err := exec.Command(kdialog, "--getsavefilename", inicial, "Copia Gateway (*.cgw)").Output()
+		out, err := exec.Command(kdialog, "--getsavefilename", inicial, "Copia TunnelForge (*.cgw)").Output()
 		if err != nil {
 			if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
 				return "", true, nil

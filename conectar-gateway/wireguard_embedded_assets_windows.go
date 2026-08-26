@@ -15,7 +15,7 @@ import (
 const wgEmbeddedEngineVersion = "WireGuard Windows v1.1 / WireGuardNT 1.1 · host nativo integrado con telemetría · API header verificada"
 
 // Estos binarios se preparan en GitHub Actions desde las fuentes/descargas
-// oficiales de WireGuard y se incrustan dentro de Conectar-Gateway.exe.
+// oficiales de WireGuard y se incrustan dentro de TunnelForge.exe.
 // No se guardan en el repositorio.
 //
 //go:embed wireguard-assets/windows/amd64/wg-service-host.exe

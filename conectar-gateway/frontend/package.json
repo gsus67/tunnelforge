@@ -1,5 +1,5 @@
 {
-  "name": "gateway-wisp-access-frontend",
+  "name": "tunnelforge-frontend",
   "private": true,
   "version": "3.6.0",
   "scripts": {

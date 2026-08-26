@@ -10,5 +10,5 @@ func wgEmbeddedAvailable() bool { return false }
 func wgEmbeddedDescription() string { return "WireGuard integrado" }
 
 func wgEnsureEmbeddedEngine() (string, error) {
-	return "", fmt.Errorf("esta compilación de desarrollo no contiene el motor WireGuard embebido; usa el build oficial de Gateway WISP Access")
+	return "", fmt.Errorf("esta compilación de desarrollo no contiene el motor WireGuard embebido; usa el build oficial de TunnelForge")
 }

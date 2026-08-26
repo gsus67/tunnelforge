@@ -14,14 +14,14 @@
     }
   },
   "StringFileInfo": {
-    "ProductName": "Gateway WISP Access",
+    "ProductName": "TunnelForge",
     "FileDescription": "SSH, administración WISP y monitoreo para Windows y Linux",
     "LegalCopyright": "Copyright (c) 2026 Gsus - Licencia MIT",
     "CompanyName": "Gsus",
     "FileVersion": "3.6.0",
     "ProductVersion": "3.6.0",
-    "InternalName": "conectar-gateway",
-    "OriginalFilename": "Conectar-Gateway.exe"
+    "InternalName": "TunnelForge",
+    "OriginalFilename": "TunnelForge.exe"
   },
   "VarFileInfo": {
     "Translation": {

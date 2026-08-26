@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Gsus — Licencia MIT (ver LICENSE)
 //
-// Monitoreo centralizado de Gateway WISP Access.
+// Monitoreo centralizado de TunnelForge.
 // Prometheus/node_exporter se ejecutan como programas independientes;
 // esta aplicación los instala/configura y los comunica por SSH.
 package main

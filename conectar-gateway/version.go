@@ -3,7 +3,7 @@ package main
 
 import "net/http"
 
-const repoReleasesURL = "https://github.com/gsus67/gateway-wisp-access/releases"
+const repoReleasesURL = "https://github.com/gsus67/tunnelforge/releases"
 
 func manejarVersion(w http.ResponseWriter, r *http.Request) {
 	responder(w, map[string]any{"version": version, "releasesURL": repoReleasesURL})

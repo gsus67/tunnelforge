@@ -19,7 +19,7 @@ import (
 
 func wgWindowsCommand(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	// Gateway WISP Access es una app GUI. Los comandos de estado se ejecutan
+	// TunnelForge es una app GUI. Los comandos de estado se ejecutan
 	// periódicamente; sin HideWindow Windows crea una consola que parpadea.
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd
@@ -34,7 +34,7 @@ func wgEngineStatus() WGEngineInfo {
 		Platform:   "windows",
 	}
 	if info.Installed {
-		info.Message = "Incluido dentro de Gateway WISP Access · no requiere instalar WireGuard aparte."
+		info.Message = "Incluido dentro de TunnelForge · no requiere instalar WireGuard aparte."
 	} else {
 		info.Message = "Esta compilación no incluye el motor WireGuard embebido. Usa el ejecutable oficial generado por GitHub Actions."
 	}
@@ -173,7 +173,7 @@ func wgAdminInstallService(name, configPath, engineDir, startMode string) error 
 		"start=", startMode,
 		"error=", "normal",
 		"depend=", "Nsi/TcpIp",
-		"DisplayName=", "Gateway WISP Access - "+name); err != nil {
+		"DisplayName=", "TunnelForge - "+name); err != nil {
 		return err
 	}
 	if err := wgSC("sidtype", service, "unrestricted"); err != nil {

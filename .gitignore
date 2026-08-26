@@ -1,6 +1,6 @@
 # Binarios compilados (se publican en Releases, no en el repo)
 *.exe
-conectar-gateway-linux
+tunnelforge-linux
 
 # Datos personales del operador (IPs, huellas): NUNCA al repo
 conexiones.json

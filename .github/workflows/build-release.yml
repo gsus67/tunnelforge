@@ -68,10 +68,10 @@ jobs:
         working-directory: conectar-gateway
         shell: pwsh
         run: |
-          wails build -clean -tags wireguard_embedded -o Conectar-Gateway
+          wails build -clean -tags wireguard_embedded -o TunnelForge
           $candidatos = @(
-            "build/bin/Conectar-Gateway.exe",
-            "build/bin/Conectar-Gateway"
+            "build/bin/TunnelForge.exe",
+            "build/bin/TunnelForge"
           )
           $binario = $candidatos | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $binario) {
@@ -79,13 +79,13 @@ jobs:
             Get-ChildItem "build/bin" -Force -ErrorAction SilentlyContinue
             exit 1
           }
-          Copy-Item $binario "../Conectar-Gateway.exe" -Force
+          Copy-Item $binario "../TunnelForge.exe" -Force
           Write-Host "Binario Windows preparado desde: $binario"
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-amd64
-          path: Conectar-Gateway.exe
+          path: TunnelForge.exe
           if-no-files-found: error
 
   build-linux:
@@ -137,14 +137,14 @@ jobs:
       - name: Compilar Linux
         working-directory: conectar-gateway
         run: |
-          wails build -clean -tags webkit2_41 -o conectar-gateway-linux
-          cp build/bin/conectar-gateway-linux ../conectar-gateway-linux
-          chmod +x ../conectar-gateway-linux
+          wails build -clean -tags webkit2_41 -o tunnelforge-linux
+          cp build/bin/tunnelforge-linux ../tunnelforge-linux
+          chmod +x ../tunnelforge-linux
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux-amd64
-          path: conectar-gateway-linux
+          path: tunnelforge-linux
           if-no-files-found: error
 
   release:
@@ -162,10 +162,10 @@ jobs:
 
       - name: Preparar binarios
         run: |
-          cp artifacts/Conectar-Gateway.exe ./Conectar-Gateway.exe
-          cp artifacts/conectar-gateway-linux ./conectar-gateway-linux
-          chmod +x conectar-gateway-linux
-          ls -lh Conectar-Gateway.exe conectar-gateway-linux
+          cp artifacts/TunnelForge.exe ./TunnelForge.exe
+          cp artifacts/tunnelforge-linux ./tunnelforge-linux
+          chmod +x tunnelforge-linux
+          ls -lh TunnelForge.exe tunnelforge-linux
 
       - name: Verificar versión del tag
         run: |
@@ -194,8 +194,8 @@ jobs:
               'version':tag.removeprefix('v'),
               'tag':tag,
               'assets':{
-                  'windows-amd64':meta('Conectar-Gateway.exe'),
-                  'linux-amd64':meta('conectar-gateway-linux'),
+                  'windows-amd64':meta('TunnelForge.exe'),
+                  'linux-amd64':meta('tunnelforge-linux'),
               },
           }
           with open('update-manifest.json','w',newline='\n') as f:
@@ -205,7 +205,7 @@ jobs:
           openssl pkeyutl -sign -rawin -inkey /tmp/update-signing-key.pem \
             -in update-manifest.json -out update-manifest.sig
           rm -f /tmp/update-signing-key.pem
-          sha256sum Conectar-Gateway.exe conectar-gateway-linux update-manifest.json > SHA256SUMS.txt
+          sha256sum TunnelForge.exe tunnelforge-linux update-manifest.json > SHA256SUMS.txt
 
       - name: Publicar en el Release
         env:
@@ -213,7 +213,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="$GITHUB_REF_NAME"
-          ASSETS=(Conectar-Gateway.exe conectar-gateway-linux update-manifest.json update-manifest.sig SHA256SUMS.txt)
+          ASSETS=(TunnelForge.exe tunnelforge-linux update-manifest.json update-manifest.sig SHA256SUMS.txt)
 
           retry_gh() {
             local attempt=1
