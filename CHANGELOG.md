@@ -1,4 +1,4 @@
-## Sin publicar
+## v3.7.0
 
 - **Renombrado el proyecto a TunnelForge** (antes Gateway WISP Access / Conectar Gateway):
   repositorio de GitHub movido a [`gsus67/tunnelforge`](https://github.com/gsus67/tunnelforge)
