@@ -20,6 +20,9 @@ import (
 	"time"
 )
 
+// El repositorio de Releases es público: las consultas a la API de GitHub
+// se hacen siempre sin autenticación, sin token ni configuración previa.
+
 const (
 	updateRepoOwner     = "gsus67"
 	updateRepoName      = "tunnelforge"
@@ -29,8 +32,7 @@ const (
 )
 
 type updateConfig struct {
-	TokenProtegido string `json:"tokenProtegido,omitempty"`
-	BuscarAlInicio bool   `json:"buscarAlInicio"`
+	BuscarAlInicio bool `json:"buscarAlInicio"`
 }
 
 type githubRelease struct {
@@ -87,51 +89,12 @@ func guardarConfigActualizaciones(c updateConfig) error {
 	return os.WriteFile(rutaActualizaciones(), b, 0600)
 }
 
-func guardarTokenActualizaciones(token string) error {
-	token = strings.TrimSpace(token)
-	if token == "" {
-		return errors.New("el token está vacío")
-	}
-	protegido, err := protegerSecretoSistema([]byte(token))
-	if err != nil {
-		return fmt.Errorf("proteger token: %w", err)
-	}
-	c := cargarConfigActualizaciones()
-	c.TokenProtegido = base64.StdEncoding.EncodeToString(protegido)
-	return guardarConfigActualizaciones(c)
-}
-
-func borrarTokenActualizaciones() error {
-	c := cargarConfigActualizaciones()
-	c.TokenProtegido = ""
-	return guardarConfigActualizaciones(c)
-}
-
-func tokenActualizaciones() (string, error) {
-	c := cargarConfigActualizaciones()
-	if c.TokenProtegido == "" {
-		return "", errors.New("no hay token de GitHub configurado")
-	}
-	b, err := base64.StdEncoding.DecodeString(c.TokenProtegido)
-	if err != nil {
-		return "", errors.New("token guardado corrupto")
-	}
-	plano, err := desprotegerSecretoSistema(b)
-	if err != nil {
-		return "", fmt.Errorf("no pude desbloquear el token: %w", err)
-	}
-	return string(plano), nil
-}
-
-func githubRequest(token, method, url, accept string) (*http.Response, error) {
+func githubRequest(method, url, accept string) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", accept)
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	req.Header.Set("User-Agent", "TunnelForge/"+version)
 	cli := &http.Client{Timeout: 30 * time.Second}
@@ -143,35 +106,20 @@ func githubRequest(token, method, url, accept string) (*http.Response, error) {
 		defer resp.Body.Close()
 		cuerpo, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		if resp.StatusCode == http.StatusNotFound {
-			if token == "" {
-				return nil, fmt.Errorf("GitHub respondió 404: no encontré la release (repositorio público, sin token)")
-			}
-			return nil, fmt.Errorf("GitHub respondió 404: revisa que el token tenga acceso al repositorio")
+			return nil, fmt.Errorf("GitHub respondió 404: no encontré la release")
 		}
-		if resp.StatusCode == http.StatusForbidden && token == "" {
-			return nil, fmt.Errorf("GitHub respondió 403 (probablemente límite de consultas anónimas): configura un token para subir el límite")
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, fmt.Errorf("GitHub respondió 403: límite de consultas anónimas alcanzado, probá de nuevo más tarde")
 		}
 		return nil, fmt.Errorf("GitHub respondió %s: %s", resp.Status, strings.TrimSpace(string(cuerpo)))
 	}
 	return resp, nil
 }
 
-// tokenActualizacionesOpcional devuelve el token guardado o "" si no hay
-// ninguno configurado. El repositorio de Releases es público desde 2026-08-25:
-// un token ya no es obligatorio, solo sirve para subir el límite de consultas
-// anónimas de la API de GitHub (60/hora por IP).
-func tokenActualizacionesOpcional() string {
-	t, err := tokenActualizaciones()
-	if err != nil {
-		return ""
-	}
-	return t
-}
-
-func ultimaRelease(token string) (githubRelease, error) {
+func ultimaRelease() (githubRelease, error) {
 	var rel githubRelease
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", updateRepoOwner, updateRepoName)
-	resp, err := githubRequest(token, http.MethodGet, url, "application/vnd.github+json")
+	resp, err := githubRequest(http.MethodGet, url, "application/vnd.github+json")
 	if err != nil {
 		return rel, err
 	}
@@ -194,9 +142,9 @@ func assetPorNombre(rel githubRelease, nombre string) (githubAsset, bool) {
 	return githubAsset{}, false
 }
 
-func descargarAsset(token string, id int64, limite int64) ([]byte, error) {
+func descargarAsset(id int64, limite int64) ([]byte, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/assets/%d", updateRepoOwner, updateRepoName, id)
-	resp, err := githubRequest(token, http.MethodGet, url, "application/octet-stream")
+	resp, err := githubRequest(http.MethodGet, url, "application/octet-stream")
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +163,7 @@ func descargarAsset(token string, id int64, limite int64) ([]byte, error) {
 	return b, nil
 }
 
-func verificarManifest(token string, rel githubRelease) (updateManifest, []byte, error) {
+func verificarManifest(rel githubRelease) (updateManifest, []byte, error) {
 	var m updateManifest
 	ma, ok := assetPorNombre(rel, updateManifestName)
 	if !ok {
@@ -225,11 +173,11 @@ func verificarManifest(token string, rel githubRelease) (updateManifest, []byte,
 	if !ok {
 		return m, nil, fmt.Errorf("la release no contiene %s", updateSignatureName)
 	}
-	mb, err := descargarAsset(token, ma.ID, 1<<20)
+	mb, err := descargarAsset(ma.ID, 1<<20)
 	if err != nil {
 		return m, nil, err
 	}
-	sb, err := descargarAsset(token, sa.ID, 4096)
+	sb, err := descargarAsset(sa.ID, 4096)
 	if err != nil {
 		return m, nil, err
 	}
@@ -275,12 +223,11 @@ func compararVersiones(a, b string) int {
 
 func buscarActualizacion() (updateInfo, githubRelease, updateManifest, error) {
 	info := updateInfo{Actual: version}
-	token := tokenActualizacionesOpcional()
-	rel, err := ultimaRelease(token)
+	rel, err := ultimaRelease()
 	if err != nil {
 		return info, rel, updateManifest{}, err
 	}
-	m, _, err := verificarManifest(token, rel)
+	m, _, err := verificarManifest(rel)
 	if err != nil {
 		return info, rel, m, err
 	}
@@ -306,7 +253,6 @@ func prepararEInstalarActualizacion() (string, error) {
 	if runtime.GOOS != "windows" {
 		return "", errors.New("la actualización automática está habilitada por ahora solo en Windows")
 	}
-	token := tokenActualizacionesOpcional()
 	info, rel, manifest, err := buscarActualizacion()
 	if err != nil {
 		return "", err
@@ -325,7 +271,7 @@ func prepararEInstalarActualizacion() (string, error) {
 	if ma.Size <= 0 || ma.Size > 200<<20 {
 		return "", errors.New("tamaño del ejecutable inválido en el manifest")
 	}
-	bin, err := descargarAsset(token, ga.ID, 200<<20)
+	bin, err := descargarAsset(ga.ID, 200<<20)
 	if err != nil {
 		return "", err
 	}
@@ -440,11 +386,10 @@ func manejarActualizaciones(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		c := cargarConfigActualizaciones()
-		responder(w, map[string]any{"version": version, "tokenConfigurado": c.TokenProtegido != "", "buscarAlInicio": c.BuscarAlInicio, "repo": "https://github.com/" + updateRepoOwner + "/" + updateRepoName})
+		responder(w, map[string]any{"version": version, "buscarAlInicio": c.BuscarAlInicio, "repo": "https://github.com/" + updateRepoOwner + "/" + updateRepoName})
 	case http.MethodPost:
 		var p struct {
 			Accion         string `json:"accion"`
-			Token          string `json:"token"`
 			BuscarAlInicio *bool  `json:"buscarAlInicio"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&p); err != nil {
@@ -452,24 +397,6 @@ func manejarActualizaciones(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		switch p.Accion {
-		case "guardar-token":
-			if err := guardarTokenActualizaciones(p.Token); err != nil {
-				responderError(w, err)
-				return
-			}
-			// Probar acceso antes de confirmar el guardado.
-			if _, _, _, err := buscarActualizacion(); err != nil {
-				_ = borrarTokenActualizaciones()
-				responderError(w, fmt.Errorf("token rechazado o sin acceso: %w", err))
-				return
-			}
-			responder(w, map[string]any{"ok": true})
-		case "borrar-token":
-			if err := borrarTokenActualizaciones(); err != nil {
-				responderError(w, err)
-				return
-			}
-			responder(w, map[string]any{"ok": true})
 		case "buscar":
 			info, _, _, err := buscarActualizacion()
 			if err != nil {

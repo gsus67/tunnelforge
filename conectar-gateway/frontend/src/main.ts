@@ -1032,7 +1032,7 @@ var TOKEN = '';
   $('wgc-delete').onclick=function(){if(!wgcSelected)return;var p=wgcProfileById(wgcSelected);if(!confirm('¿Eliminar el perfil WireGuard "'+(p?p.name:'')+'"?'))return;api('/api/wireguard/eliminar',{method:'POST',body:JSON.stringify({id:wgcSelected})}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcSelected=null;cargarWireGuard();wgcNote('Perfil eliminado.','ok');});};
   $('wgc-engine-install').onclick=function(){var b=this;b.disabled=true;b.textContent='Preparando…';api('/api/wireguard/motor/instalar',{method:'POST',body:'{}'}).then(function(r){if(r.error){wgcNote(r.error,'err');return;}wgcNote(r.message||'Motor preparado. Vuelve a comprobar después de instalar.','warn');setTimeout(wgcPoll,1500);}).finally(function(){b.disabled=false;b.textContent='Instalar herramientas WireGuard (Linux)';});};
 
-  // ── Actualizaciones firmadas (repo público, token opcional) ───
+  // ── Actualizaciones firmadas (repo público, sin token) ────────
   var updUltima = null;
   function updSemaforo(estado, resumen){
     var p=$('upd-punto');
@@ -1066,19 +1066,9 @@ var TOKEN = '';
   }).catch(function(){});
   api('/api/actualizaciones').then(function(c){
     $('upd-inicio').checked=!!c.buscarAlInicio;
-    updEstado(c.tokenConfigurado?'Token configurado de forma segura.':'Repositorio público: no hace falta token para buscar actualizaciones. Configura uno solo si querés subir el límite de consultas a GitHub.',c.tokenConfigurado?'ok':'');
     updSemaforo('amarillo', 'pendiente de comprobar');
     if(c.buscarAlInicio) updBuscar(true);
   }).catch(function(){});
-  $('upd-guardar').onclick=function(){
-    var token=$('upd-token').value.trim(); if(!token){updEstado('Pega primero el token de GitHub.','err');return;}
-    var b=this;b.disabled=true;updEstado('Guardando y comprobando acceso al repo privado…','');
-    api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'guardar-token',token:token})}).then(function(r){
-      $('upd-token').value=''; if(r.error){updEstado(r.error,'err');updSemaforo('amarillo','token sin verificar');return;} updEstado('Token guardado y acceso verificado.','ok'); updSemaforo('amarillo','pendiente de comprobar'); updBuscar(false);
-    }).finally(function(){b.disabled=false;});
-  };
-  $('upd-token-web').onclick=function(){ abrirFuera('https://github.com/settings/personal-access-tokens/new'); };
-  $('upd-borrar').onclick=function(){ api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'borrar-token'})}).then(function(r){ if(r.error){updEstado(r.error,'err');return;} $('upd-instalar').style.display='none';$('upd-notas').style.display='none';updEstado('Token borrado.','ok');updSemaforo('amarillo','token no configurado'); }); };
   $('upd-buscar').onclick=function(){updBuscar(false);};
   $('upd-inicio').onchange=function(){api('/api/actualizaciones',{method:'POST',body:JSON.stringify({accion:'preferencias',buscarAlInicio:this.checked})});};
   $('upd-instalar').onclick=function(){

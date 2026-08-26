@@ -256,8 +256,6 @@
   .updapp .txt{font-size:13px;color:var(--texto-2);line-height:1.65;margin-bottom:14px}
   .updapp .txt b{color:var(--texto)}
   .updapp .acciones{display:flex;gap:10px;flex-wrap:wrap;align-items:center;width:100%}
-  .updapp .token{display:flex;gap:10px;flex:1;min-width:320px}
-  .updapp .token input{flex:1}
   .updapp .estado{width:100%;font-size:12.5px;color:var(--texto-2);line-height:1.65;white-space:pre-wrap;margin-top:12px}
   .updapp .estado.ok{color:var(--verde)} .updapp .estado.err{color:var(--rojo)}
   .updapp .notas{width:100%;max-height:180px;overflow:auto;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.03);font-size:12px;white-space:pre-wrap;display:none;margin-top:8px}
@@ -351,7 +349,6 @@
     .tun-fila{display:grid;grid-template-columns:1fr 1fr;align-items:center}
     .tun-fila input.n{grid-column:1/-1}
     .tun-fila input.r,.tun-fila .aw{width:100%}
-    .updapp .token{min-width:0;flex-direction:column}
   }
 
   /* navegación por vistas: el dashboard ya no duplica herramientas del sidebar */
@@ -445,7 +442,7 @@
   .app-shell{border-radius:8px !important;}
   .sidebar{border-radius:0 !important;}
   .content-shell{border-radius:0 !important;}
-  .brand-card,.side-status,.panel,.srv,.cnx,.dashboard-updates,.update-page-status,.info-card,.modal,.fx,.term-hist,#term,.fx .items,.sin-conexion,.vacio,.tuneles,.updapp .notas,.updapp .token input,input[type=text],input[type=password],input[type=number],select,.fx .ruta,.nav-item,.nav-item .ni,.panel-title .ico,.toolbar-btn,.srv .metodo,.tag,.cnx .enlaces a,button{border-radius:8px !important;}
+  .brand-card,.side-status,.panel,.srv,.cnx,.dashboard-updates,.update-page-status,.info-card,.modal,.fx,.term-hist,#term,.fx .items,.sin-conexion,.vacio,.tuneles,.updapp .notas,input[type=text],input[type=password],input[type=number],select,.fx .ruta,.nav-item,.nav-item .ni,.panel-title .ico,.toolbar-btn,.srv .metodo,.tag,.cnx .enlaces a,button{border-radius:8px !important;}
   .brand-logo{border-radius:10px !important;}
   .srv .franja,.cnx::before,.upd-punto,.side-status .dot{border-radius:999px !important;}
   .panel-header,.du-head{margin-bottom:10px;}
