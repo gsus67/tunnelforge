@@ -177,7 +177,7 @@ jobs:
       - name: Crear y firmar manifest de actualización
         env:
           UPDATE_SIGNING_PRIVATE_KEY_PEM: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY_PEM }}
-          EXPECTED_UPDATE_PUBLIC_KEY_B64: 6SpruRdmfhfJk0i0oLMM4onShah2733MFsKMNycOFrk=
+          EXPECTED_UPDATE_PUBLIC_KEY_B64: Q6DHUUNnyQj/Zdjr3RP3feqyXndsUDsHciaKEFBtmv0=
         run: |
           test -n "$UPDATE_SIGNING_PRIVATE_KEY_PEM" || { echo "Falta el secret UPDATE_SIGNING_PRIVATE_KEY_PEM"; exit 1; }
           umask 077

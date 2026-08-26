@@ -25,7 +25,7 @@ const (
 	updateRepoName      = "tunnelforge"
 	updateManifestName  = "update-manifest.json"
 	updateSignatureName = "update-manifest.sig"
-	updatePublicKeyB64  = "6SpruRdmfhfJk0i0oLMM4onShah2733MFsKMNycOFrk="
+	updatePublicKeyB64  = "Q6DHUUNnyQj/Zdjr3RP3feqyXndsUDsHciaKEFBtmv0="
 )
 
 type updateConfig struct {
