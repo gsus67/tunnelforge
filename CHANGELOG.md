@@ -1,3 +1,9 @@
+## v1.0.1
+
+- Actualizaciones sin token: se saca por completo la UI y el soporte de
+  personal access token del panel de Actualizaciones — buscar/instalar
+  queda en un solo paso, ya que el repositorio de Releases es público.
+
 ## v1.0.0
 
 Primer lanzamiento oficial como **TunnelForge** (antes Gateway WISP Access /
