@@ -1,4 +1,12 @@
-## v3.7.0
+## v1.0.0
+
+Primer lanzamiento oficial como **TunnelForge** (antes Gateway WISP Access /
+Conectar Gateway). El proyecto viene de la v3.7.0 en su nombre anterior —
+este reinicio de numeración marca el relanzamiento bajo el nombre y repo
+nuevos, no una regresión de funcionalidad. Ver las versiones `v2.x`/`v3.x`
+del historial para el detalle acumulado de todo lo construido hasta acá.
+
+## v3.7.0 (histórico, como Gateway WISP Access)
 
 - **Renombrado el proyecto a TunnelForge** (antes Gateway WISP Access / Conectar Gateway):
   repositorio de GitHub movido a [`gsus67/tunnelforge`](https://github.com/gsus67/tunnelforge)

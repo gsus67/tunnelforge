@@ -1,14 +1,14 @@
 {
   "FixedFileInfo": {
     "FileVersion": {
-      "Major": 3,
-      "Minor": 7,
+      "Major": 1,
+      "Minor": 0,
       "Patch": 0,
       "Build": 0
     },
     "ProductVersion": {
-      "Major": 3,
-      "Minor": 7,
+      "Major": 1,
+      "Minor": 0,
       "Patch": 0,
       "Build": 0
     }
@@ -18,8 +18,8 @@
     "FileDescription": "SSH, administración WISP y monitoreo para Windows y Linux",
     "LegalCopyright": "Copyright (c) 2026 Gsus - Licencia MIT",
     "CompanyName": "Gsus",
-    "FileVersion": "3.7.0",
-    "ProductVersion": "3.7.0",
+    "FileVersion": "1.0.0",
+    "ProductVersion": "1.0.0",
     "InternalName": "TunnelForge",
     "OriginalFilename": "TunnelForge.exe"
   },
