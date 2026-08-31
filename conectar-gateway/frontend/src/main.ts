@@ -1144,6 +1144,12 @@ var TOKEN = '';
   api('/api/actualizaciones').then(function(c){
     $('upd-inicio').checked=!!c.buscarAlInicio;
     updSemaforo('amarillo', 'pendiente de comprobar');
+    if(c.ultimoIntento){
+      var pasos={'renombrar-exe-actual':'no se pudo apartar el .exe actual','escribir-exe-nuevo':'no se pudo escribir el .exe nuevo (Defender / Acceso a carpetas controlado / antivirus lo bloqueó)','lanzar-exe-nuevo':'el .exe nuevo no arrancó (bloqueado por Windows/antivirus) — se restauró la versión anterior','iniciar-updater':'no se pudo lanzar el asistente de actualización','updater-lanzado':'el asistente de actualización no llegó a completar'};
+      var det=pasos[c.ultimoIntento.paso]||c.ultimoIntento.paso;
+      updEstado('El último intento de actualizar a v'+(c.ultimoIntento.version||'?')+' falló: '+det+(c.ultimoIntento.error?' ('+c.ultimoIntento.error+')':'')+'. Probá con «Actualizar ahora» de nuevo, o reemplazá el .exe a mano desde Releases.','err');
+      updSemaforo('rojo','último intento falló');
+    }
     if(c.buscarAlInicio) updBuscar(true);
   }).catch(function(){});
   $('upd-buscar').onclick=function(){updBuscar(false);};

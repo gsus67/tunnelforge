@@ -82,6 +82,46 @@ jobs:
           Copy-Item $binario "../TunnelForge.exe" -Force
           Write-Host "Binario Windows preparado desde: $binario"
 
+      # --- Firma Authenticode (SignPath.io) ---
+      # Se activa SOLA cuando existan los secrets/vars de SignPath; mientras
+      # tanto el build sale sin firmar como hasta ahora. Ver docs/FIRMA-WINDOWS.md.
+      # Requeridos: secret SIGNPATH_API_TOKEN ; vars SIGNPATH_ORG_ID,
+      # SIGNPATH_PROJECT_SLUG, SIGNPATH_POLICY_SLUG.
+      - name: ¿Firma configurada?
+        id: firma
+        shell: bash
+        run: echo "activa=${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORG_ID != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Subir binario sin firmar (para SignPath)
+        id: upload-unsigned
+        if: steps.firma.outputs.activa == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-unsigned
+          path: TunnelForge.exe
+          if-no-files-found: error
+
+      - name: Firmar con SignPath
+        if: steps.firma.outputs.activa == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORG_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          artifact-configuration-slug: exe
+          wait-for-completion: true
+          output-artifact-directory: signed
+      - name: Reemplazar por el binario firmado
+        if: steps.firma.outputs.activa == 'true'
+        shell: pwsh
+        run: |
+          $s = Get-ChildItem -Recurse -Filter TunnelForge.exe signed | Select-Object -First 1
+          if (-not $s) { Write-Error "SignPath no devolvió TunnelForge.exe firmado"; exit 1 }
+          Copy-Item $s.FullName "TunnelForge.exe" -Force
+          & signtool verify /pa /v "TunnelForge.exe" 2>&1 | Write-Host
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-amd64

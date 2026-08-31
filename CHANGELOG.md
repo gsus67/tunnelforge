@@ -1,3 +1,14 @@
+## v1.1.5
+
+- Autoupdate: si el reemplazo del `.exe` falla (Defender / Acceso a carpetas
+  controlado / antivirus bloquean escribir o lanzar el binario nuevo), el
+  asistente ya no vuelve en silencio a la versión anterior — deja registrado
+  el paso que falló y el panel **Updates** lo muestra al arrancar. Backup con
+  nombre único para no quedar trabado por un `.old` bloqueado de un intento
+  anterior.
+- CI preparado para **firmar el binario de Windows con SignPath** (se activa
+  al configurar los secrets/variables — ver `docs/FIRMA-WINDOWS.md`).
+
 ## v1.1.4
 
 - MikroTik: se corregía la desconexión a los ~30 s — RouterOS cierra la sesión

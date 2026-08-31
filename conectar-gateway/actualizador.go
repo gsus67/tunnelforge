@@ -300,8 +300,10 @@ func prepararEInstalarActualizacion() (string, error) {
 	if err := copiarArchivo(actual, helper, 0700); err != nil {
 		return "", fmt.Errorf("crear updater: %w", err)
 	}
-	cmd := exec.Command(helper, "--apply-update", nuevo, actual)
+	registrarIntentoUpdate(intentoUpdate{Version: manifest.Version, Paso: "updater-lanzado", OK: false})
+	cmd := exec.Command(helper, "--apply-update", nuevo, actual, manifest.Version)
 	if err := cmd.Start(); err != nil {
+		registrarIntentoUpdate(intentoUpdate{Version: manifest.Version, Paso: "iniciar-updater", Error: err.Error(), OK: false})
 		return "", fmt.Errorf("iniciar updater: %w", err)
 	}
 	go func() {
@@ -336,37 +338,88 @@ func copiarArchivo(origen, destino string, modo os.FileMode) error {
 	return closeErr
 }
 
+// intentoUpdate deja rastro del último intento de auto-actualización — el
+// helper corre después de que la app principal salió, así que sin esto un
+// fallo (renombrar/copiar/lanzar el nuevo .exe, típicamente bloqueado por
+// Defender/Acceso a carpetas controlado/antivirus) volvía en silencio a la
+// versión anterior. La app lo lee al arrancar y lo muestra en Updates.
+type intentoUpdate struct {
+	Version string `json:"version"`
+	Paso    string `json:"paso"`
+	Error   string `json:"error,omitempty"`
+	OK      bool   `json:"ok"`
+	Cuando  string `json:"cuando"`
+}
+
+func rutaIntentoUpdate() string { return rutaJunto(filepath.Join("updates", "ultimo-intento.json")) }
+
+func registrarIntentoUpdate(a intentoUpdate) {
+	a.Cuando = time.Now().Format(time.RFC3339)
+	_ = os.MkdirAll(filepath.Dir(rutaIntentoUpdate()), 0700)
+	if b, err := json.MarshalIndent(a, "", "  "); err == nil {
+		_ = os.WriteFile(rutaIntentoUpdate(), b, 0600)
+	}
+}
+
+func leerIntentoUpdate() (intentoUpdate, bool) {
+	var a intentoUpdate
+	b, err := os.ReadFile(rutaIntentoUpdate())
+	if err != nil || json.Unmarshal(b, &a) != nil || a.Paso == "" {
+		return a, false
+	}
+	return a, true
+}
+
 func manejarModoActualizador() bool {
-	if len(os.Args) != 4 || os.Args[1] != "--apply-update" {
+	if len(os.Args) < 4 || os.Args[1] != "--apply-update" {
 		return false
 	}
 	nuevo, destino := os.Args[2], os.Args[3]
+	ver := ""
+	if len(os.Args) >= 5 {
+		ver = os.Args[4]
+	}
+	fallo := func(paso string, err error) bool {
+		s := ""
+		if err != nil {
+			s = err.Error()
+		}
+		registrarIntentoUpdate(intentoUpdate{Version: ver, Paso: paso, Error: s, OK: false})
+		return true
+	}
+
+	// Nombre de backup único: si un .old previo quedó bloqueado, no volvemos
+	// a fallar para siempre por la colisión.
 	backup := destino + ".old"
 	var ultimo error
 	for i := 0; i < 120; i++ {
-		_ = os.Remove(backup)
 		if err := os.Rename(destino, backup); err == nil {
 			ultimo = nil
 			break
 		} else {
 			ultimo = err
 		}
+		if i == 20 {
+			backup = fmt.Sprintf("%s.old-%d", destino, time.Now().Unix())
+		}
+		_ = os.Remove(backup)
 		time.Sleep(250 * time.Millisecond)
 	}
 	if ultimo != nil {
-		return true
+		return fallo("renombrar-exe-actual", ultimo)
 	}
 	if err := copiarArchivo(nuevo, destino, 0700); err != nil {
 		_ = os.Rename(backup, destino)
-		return true
+		return fallo("escribir-exe-nuevo", err)
 	}
 	if err := exec.Command(destino).Start(); err != nil {
 		_ = os.Remove(destino)
 		_ = os.Rename(backup, destino)
 		_ = exec.Command(destino).Start()
-		return true
+		return fallo("lanzar-exe-nuevo", err)
 	}
 	_ = os.Remove(nuevo)
+	registrarIntentoUpdate(intentoUpdate{Version: ver, Paso: "listo", OK: true})
 	// El .old se conserva como rollback hasta el siguiente arranque correcto.
 	return true
 }
@@ -376,9 +429,15 @@ func limpiarBackupActualizacion() {
 	if err != nil {
 		return
 	}
-	old := exe + ".old"
-	if _, err := os.Stat(old); err == nil {
-		go func() { time.Sleep(4 * time.Second); _ = os.Remove(old) }()
+	// Si el intento anterior efectivamente aplicó (la versión que corre ya es
+	// >= la del intento), se limpia el rastro para no seguir avisando.
+	if a, ok := leerIntentoUpdate(); ok && (a.OK || (a.Version != "" && compararVersiones(version, a.Version) >= 0)) {
+		_ = os.Remove(rutaIntentoUpdate())
+	}
+	matches, _ := filepath.Glob(exe + ".old*")
+	for _, old := range matches {
+		o := old
+		go func() { time.Sleep(4 * time.Second); _ = os.Remove(o) }()
 	}
 }
 
@@ -386,7 +445,11 @@ func manejarActualizaciones(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		c := cargarConfigActualizaciones()
-		responder(w, map[string]any{"version": version, "buscarAlInicio": c.BuscarAlInicio, "repo": "https://github.com/" + updateRepoOwner + "/" + updateRepoName})
+		resp := map[string]any{"version": version, "buscarAlInicio": c.BuscarAlInicio, "repo": "https://github.com/" + updateRepoOwner + "/" + updateRepoName}
+		if a, ok := leerIntentoUpdate(); ok && !a.OK && compararVersiones(version, a.Version) < 0 {
+			resp["ultimoIntento"] = a
+		}
+		responder(w, resp)
 	case http.MethodPost:
 		var p struct {
 			Accion         string `json:"accion"`
