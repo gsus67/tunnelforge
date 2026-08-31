@@ -1511,16 +1511,20 @@ var TOKEN = '';
   }
   function cerrarMikrotik(){ $('m-mikrotik').classList.remove('abierto'); }
   $('mt-salir').onclick = cerrarMikrotik;
-  $('mt-refrescar').onclick = function(){ cargarFwMT(); };
+  var mtTabActual = 'fw';
+  $('mt-refrescar').onclick = function(){ if(mtTabActual==='fw') cargarFwMT(); };
   function mtTab(cual){
-    var fw = cual==='fw';
-    $('mt-tab-fw').classList.toggle('activo',fw);
-    $('mt-tab-cmd').classList.toggle('activo',!fw);
-    $('mt-panel-fw').hidden = !fw;
-    $('mt-panel-cmd').hidden = fw;
+    mtTabActual = cual;
+    ['fw','cmd','script','speed'].forEach(function(t){
+      $('mt-tab-'+t).classList.toggle('activo', t===cual);
+      $('mt-panel-'+t).hidden = t!==cual;
+    });
+    $('mt-refrescar').hidden = cual!=='fw';
   }
   $('mt-tab-fw').onclick=function(){ mtTab('fw'); };
   $('mt-tab-cmd').onclick=function(){ mtTab('cmd'); };
+  $('mt-tab-script').onclick=function(){ mtTab('script'); };
+  $('mt-tab-speed').onclick=function(){ mtTab('speed'); };
   function mtNota(txt,tipo){ var n=$('mt-fw-nota'); n.textContent=txt||''; n.className='fw-note'+(tipo?' '+tipo:''); }
 
   function pintarFwMT(r){
@@ -1597,6 +1601,47 @@ var TOKEN = '';
       }).catch(function(){ $('mt-cmd-out').textContent='No pude ejecutar el comando.'; }).finally(function(){ boton.disabled=false; });
     };
     enviar(false);
+  };
+
+  // Script MikroTik
+  $('mt-script-file').onchange=function(){
+    var f=this.files && this.files[0]; if(!f) return;
+    if(f.size>200*1024){ $('mt-script-out').textContent='El archivo supera 200 KB.'; return; }
+    var rd=new FileReader();
+    rd.onload=function(){ $('mt-script-source').value=String(rd.result||''); $('mt-script-out').textContent='Cargado: '+f.name; };
+    rd.readAsText(f);
+    this.value='';
+  };
+  function mtScript(op, boton){
+    if(!mtServidor) return;
+    var source=$('mt-script-source').value.trim();
+    if(!source){ $('mt-script-out').textContent='Escribí o cargá un script.'; return; }
+    var payload:any={ servidor:mtServidor, op:op, source:source };
+    if(op==='save') payload.nombre=$('mt-script-nombre').value.trim();
+    boton.disabled=true; $('mt-script-out').textContent=(op==='save'?'Guardando…':'Ejecutando en el router…');
+    api('/api/herramientas/mikrotik/script',{method:'POST',body:JSON.stringify(payload)}).then(function(r){
+      if(r.error){ $('mt-script-out').textContent=r.error; return; }
+      if(r.guardado){ $('mt-script-out').textContent='Guardado como "'+r.guardado+'".\n'+(r.nota||''); return; }
+      $('mt-script-out').textContent=r.salida||'(sin salida)';
+    }).catch(function(){ $('mt-script-out').textContent='No pude contactar al router.'; }).finally(function(){ boton.disabled=false; });
+  }
+  $('mt-script-run').onclick=function(){ mtScript('run',this); };
+  $('mt-script-guardar').onclick=function(){ mtScript('save',this); };
+
+  // Test de velocidad MikroTik
+  $('mt-speed-run').onclick=function(){
+    if(!mtServidor) return;
+    var boton=this; boton.disabled=true;
+    $('mt-speed-out').textContent='Midiendo… (puede tardar hasta ~1 min)';
+    api('/api/herramientas/mikrotik/speedtest',{method:'POST',body:JSON.stringify({servidor:mtServidor,bytes:parseInt($('mt-speed-bytes').value,10)||25000000})}).then(function(r){
+      if(r.error){ $('mt-speed-out').textContent=r.error; return; }
+      var l=[];
+      l.push('Latencia   : '+(r.latenciaMs!=null?r.latenciaMs+' ms'+(r.perdida?'  (pérdida '+r.perdida+')':''):'no disponible'));
+      if(r.descargaMbps!=null) l.push('Descarga   : '+r.descargaMbps+' Mbit/s   ('+r.descargaMB+' MB en '+r.segundos+' s)');
+      else l.push('Descarga   : '+(r.avisoDescarga||'no disponible'));
+      if(r.nota) l.push('\n'+r.nota);
+      $('mt-speed-out').textContent=l.join('\n');
+    }).catch(function(){ $('mt-speed-out').textContent='No pude ejecutar el test.'; }).finally(function(){ boton.disabled=false; });
   };
 
   // ── Selector de clave SSH y diagnóstico ──────────────────────

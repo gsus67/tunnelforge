@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -354,4 +355,270 @@ func manejarMikrotikComando(w http.ResponseWriter, r *http.Request) {
 		pretty = pretty[:60000] + "\n… salida recortada …"
 	}
 	responder(w, map[string]any{"ok": code >= 200 && code < 300, "status": code, "metodo": metodo, "path": path, "cuerpo": pretty})
+}
+
+// --- Scripts RouterOS ----------------------------------------------------
+
+var reNombreScriptMT = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+
+func prettyJSON(datos []byte) string {
+	s := strings.TrimSpace(string(datos))
+	var tmp any
+	if json.Unmarshal(datos, &tmp) == nil {
+		if b, e := json.MarshalIndent(tmp, "", "  "); e == nil {
+			s = string(b)
+		}
+	}
+	if len(s) > 40000 {
+		s = s[:40000] + "\n… salida recortada …"
+	}
+	return s
+}
+
+func idDeRespuesta(datos []byte) string {
+	var obj map[string]any
+	if json.Unmarshal(datos, &obj) == nil {
+		for _, k := range []string{".id", "ret", "id"} {
+			if v := routerOSString(obj[k]); v != "" {
+				return v
+			}
+		}
+	}
+	var arr []map[string]any
+	if json.Unmarshal(datos, &arr) == nil && len(arr) > 0 {
+		for _, k := range []string{".id", "ret", "id"} {
+			if v := routerOSString(arr[0][k]); v != "" {
+				return v
+			}
+		}
+	}
+	return ""
+}
+
+func manejarMikrotikScript(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		responderError(w, fmt.Errorf("método no permitido"))
+		return
+	}
+	var pet struct {
+		Servidor string `json:"servidor"`
+		Op       string `json:"op"` // run | save
+		Nombre   string `json:"nombre"`
+		Source   string `json:"source"`
+	}
+	if err := decodificar(r, &pet); err != nil {
+		responderError(w, err)
+		return
+	}
+	pet.Source = strings.TrimSpace(pet.Source)
+	if pet.Source == "" {
+		responderError(w, fmt.Errorf("el script está vacío"))
+		return
+	}
+	if len(pet.Source) > 200*1024 {
+		responderError(w, fmt.Errorf("el script supera el límite de 200 KB"))
+		return
+	}
+	cli, _, err := clienteMikrotikPorNombre(pet.Servidor)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+
+	if pet.Op == "save" {
+		nombre := strings.TrimSpace(pet.Nombre)
+		if !reNombreScriptMT.MatchString(nombre) {
+			responderError(w, fmt.Errorf("nombre inválido (letras, números, . _ -)"))
+			return
+		}
+		code, body, derr := cli.do(http.MethodPut, "/system/script", map[string]string{"name": nombre, "source": pet.Source})
+		if derr != nil || code < 200 || code >= 300 {
+			responderError(w, fmt.Errorf("RouterOS no guardó el script (%d): %s", code, recorte(body)))
+			return
+		}
+		responder(w, map[string]any{"ok": true, "guardado": nombre,
+			"nota": "Guardado en /system/script. Ejecutalo desde la pestaña Consola con POST /system/script/run y {\"number\":\"" + nombre + "\"} o desde Winbox."})
+		return
+	}
+
+	// run: ejecución asíncrona vía /rest/execute (RouterOS 7.10+).
+	cli.http.Timeout = 30 * time.Second
+	code, body, derr := cli.do(http.MethodPost, "/execute", map[string]string{"script": pet.Source})
+	if derr != nil {
+		responderError(w, fmt.Errorf("no pude lanzar el script: %w", derr))
+		return
+	}
+	if code == http.StatusNotFound || code == http.StatusBadRequest {
+		responderError(w, fmt.Errorf("este RouterOS no acepta /rest/execute (%d). Usá la pestaña Consola para comandos sueltos, o Guardá el script y ejecutalo desde Winbox", code))
+		return
+	}
+	if code < 200 || code >= 300 {
+		responderError(w, fmt.Errorf("RouterOS rechazó el script (%d): %s", code, recorte(body)))
+		return
+	}
+	id := idDeRespuesta(body)
+	if id == "" {
+		// Algunas versiones devuelven ya el resultado completo.
+		responder(w, map[string]any{"ok": true, "salida": prettyJSON(body)})
+		return
+	}
+	var ultima []byte
+	for i := 0; i < 24; i++ {
+		time.Sleep(300 * time.Millisecond)
+		c, b, e := cli.do(http.MethodGet, "/execute/"+strings.TrimPrefix(id, "*"), nil)
+		if e != nil || c < 200 || c >= 300 {
+			continue
+		}
+		ultima = b
+		var obj map[string]any
+		if json.Unmarshal(b, &obj) == nil {
+			if routerOSString(obj["finished"]) == "true" || obj["ret"] != nil || routerOSString(obj["done"]) == "true" {
+				break
+			}
+		}
+	}
+	if len(ultima) == 0 {
+		responder(w, map[string]any{"ok": true, "salida": "Script lanzado (id " + id + "). RouterOS no devolvió salida por REST; revisá /log o /system/script en el router."})
+		return
+	}
+	responder(w, map[string]any{"ok": true, "salida": prettyJSON(ultima)})
+}
+
+// --- Test de velocidad --------------------------------------------------
+
+func manejarMikrotikSpeedtest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		responderError(w, fmt.Errorf("método no permitido"))
+		return
+	}
+	var pet struct {
+		Servidor string `json:"servidor"`
+		Bytes    int64  `json:"bytes"`
+	}
+	if err := decodificar(r, &pet); err != nil {
+		responderError(w, err)
+		return
+	}
+	bytesDL := pet.Bytes
+	if bytesDL <= 0 {
+		bytesDL = 25_000_000
+	}
+	if bytesDL > 100_000_000 {
+		bytesDL = 100_000_000
+	}
+	cli, _, err := clienteMikrotikPorNombre(pet.Servidor)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	cli.http.Timeout = 60 * time.Second
+
+	res := map[string]any{"ok": true}
+
+	// Latencia
+	if _, body, e := cli.do(http.MethodPost, "/ping", map[string]string{"address": "1.1.1.1", "count": "4"}); e == nil {
+		var filas []map[string]any
+		if json.Unmarshal(body, &filas) == nil {
+			var suma float64
+			var n int
+			var loss string
+			for _, f := range filas {
+				if t := parsePingMs(routerOSString(f["time"])); t > 0 {
+					suma += t
+					n++
+				}
+				if v := routerOSString(f["packet-loss"]); v != "" {
+					loss = v
+				}
+				if v := parsePingMs(routerOSString(f["avg-rtt"])); v > 0 {
+					res["latenciaMs"] = round1(v)
+				}
+			}
+			if _, ok := res["latenciaMs"]; !ok && n > 0 {
+				res["latenciaMs"] = round1(suma / float64(n))
+			}
+			if loss != "" {
+				res["perdida"] = loss + "%"
+			}
+		}
+	}
+
+	// Descarga vía /tool/fetch contra speed.cloudflare.com
+	url := fmt.Sprintf("https://speed.cloudflare.com/__down?bytes=%d", bytesDL)
+	code, body, e := cli.do(http.MethodPost, "/tool/fetch", map[string]string{
+		"url": url, "mode": "https", "keep-result": "no",
+	})
+	if e != nil {
+		res["avisoDescarga"] = "No se pudo medir la descarga: " + e.Error()
+	} else if code < 200 || code >= 300 {
+		res["avisoDescarga"] = fmt.Sprintf("RouterOS rechazó /tool/fetch (%d): %s", code, recorte(body))
+	} else {
+		var obj map[string]any
+		_ = json.Unmarshal(body, &obj)
+		kib := routerOSFloat(obj["downloaded"]) // RouterOS reporta KiB
+		dur := parseRouterOSDuration(routerOSString(obj["duration"]))
+		if dur <= 0 {
+			dur = routerOSFloat(obj["duration"])
+		}
+		if kib > 0 && dur > 0 {
+			mbps := (kib * 1024 * 8) / dur / 1e6
+			res["descargaMbps"] = round1(mbps)
+			res["descargaMB"] = round1(kib / 1024)
+			res["segundos"] = round1(dur)
+		} else {
+			res["avisoDescarga"] = "RouterOS no devolvió tamaño/duración de la descarga (" + prettyJSON(body) + ")"
+		}
+	}
+	res["nota"] = "Descarga medida con /tool/fetch contra speed.cloudflare.com. La subida no se mide desde RouterOS."
+	responder(w, res)
+}
+
+func parsePingMs(s string) float64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	// formatos posibles: "12ms345us", "1s200ms", "980us", "12.3ms"
+	var total float64
+	num := ""
+	flush := func(unidad string) {
+		if num == "" {
+			return
+		}
+		v, _ := strconv.ParseFloat(num, 64)
+		switch unidad {
+		case "s":
+			total += v * 1000
+		case "ms":
+			total += v
+		case "us":
+			total += v / 1000
+		}
+		num = ""
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c >= '0' && c <= '9') || c == '.' {
+			num += string(c)
+			continue
+		}
+		if c == 'u' && i+1 < len(s) && s[i+1] == 's' {
+			flush("us")
+			i++
+		} else if c == 'm' && i+1 < len(s) && s[i+1] == 's' {
+			flush("ms")
+			i++
+		} else if c == 's' {
+			flush("s")
+		}
+	}
+	if num != "" { // número suelto = ms
+		v, _ := strconv.ParseFloat(num, 64)
+		total += v
+	}
+	return total
+}
+
+func round1(v float64) float64 {
+	return float64(int64(v*10+0.5)) / 10
 }

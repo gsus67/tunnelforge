@@ -669,6 +669,8 @@
     <div class="mt-tabs">
       <button class="activo" id="mt-tab-fw">Firewall</button>
       <button id="mt-tab-cmd">Consola RouterOS</button>
+      <button id="mt-tab-script">Script</button>
+      <button id="mt-tab-speed">Test de velocidad</button>
     </div>
 
     <div class="mt-panel" id="mt-panel-fw">
@@ -698,8 +700,33 @@
       <pre class="mt-cmd-out" id="mt-cmd-out">Escribí una ruta y ejecutá.</pre>
     </div>
 
+    <div class="mt-panel" id="mt-panel-script" hidden>
+      <div class="mt-cmd-row">
+        <input type="text" id="mt-script-nombre" placeholder="nombre (para guardar)" style="width:200px">
+        <label class="mt-file"><input type="file" id="mt-script-file" accept=".rsc,.txt" hidden>Cargar .rsc…</label>
+        <span style="flex:1"></span>
+        <button id="mt-script-guardar">Guardar en el router</button>
+        <button class="principal" id="mt-script-run">Ejecutar</button>
+      </div>
+      <textarea id="mt-script-source" rows="8" placeholder="Fuente del script RouterOS. Ej:&#10;:put [/system/resource/get uptime]&#10;/ip/address/print"></textarea>
+      <div class="mt-cmd-hint">Ejecutar usa <b>/rest/execute</b> (RouterOS 7.10+). Guardar lo deja en <b>/system/script</b>.</div>
+      <pre class="mt-cmd-out" id="mt-script-out">Escribí o cargá un script.</pre>
+    </div>
+
+    <div class="mt-panel" id="mt-panel-speed" hidden>
+      <div class="mt-cmd-row">
+        <label style="font-size:11px;color:var(--suave)">Descarga
+          <select id="mt-speed-bytes"><option value="25000000">25 MB</option><option value="50000000">50 MB</option><option value="100000000">100 MB</option></select>
+        </label>
+        <span style="flex:1"></span>
+        <button class="principal" id="mt-speed-run">Medir</button>
+      </div>
+      <div class="mt-cmd-hint">Latencia con <b>/ping</b> a 1.1.1.1 y descarga con <b>/tool/fetch</b> contra speed.cloudflare.com. La subida no se mide desde RouterOS.</div>
+      <pre class="mt-cmd-out" id="mt-speed-out">Pulsá «Medir».</pre>
+    </div>
+
     <div class="botones">
-      <button id="mt-refrescar">Actualizar firewall</button>
+      <button id="mt-refrescar">Actualizar</button>
       <button id="mt-salir">Cerrar</button>
     </div>
   </div>
