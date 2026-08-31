@@ -448,8 +448,8 @@ func manejarMikrotikScript(w http.ResponseWriter, r *http.Request) {
 		responderError(w, fmt.Errorf("no pude lanzar el script: %w", derr))
 		return
 	}
-	if code == http.StatusNotFound || code == http.StatusBadRequest {
-		responderError(w, fmt.Errorf("este RouterOS no acepta /rest/execute (%d). Usá la pestaña Consola para comandos sueltos, o Guardá el script y ejecutalo desde Winbox", code))
+	if code == http.StatusNotFound {
+		responderError(w, fmt.Errorf("este RouterOS no tiene /rest/execute. Usá la pestaña Consola para comandos sueltos, o Guardá el script y ejecutalo desde Winbox"))
 		return
 	}
 	if code < 200 || code >= 300 {
@@ -457,31 +457,32 @@ func manejarMikrotikScript(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := idDeRespuesta(body)
-	if id == "" {
-		// Algunas versiones devuelven ya el resultado completo.
-		responder(w, map[string]any{"ok": true, "salida": prettyJSON(body)})
-		return
-	}
-	var ultima []byte
-	for i := 0; i < 24; i++ {
-		time.Sleep(300 * time.Millisecond)
-		c, b, e := cli.do(http.MethodGet, "/execute/"+strings.TrimPrefix(id, "*"), nil)
-		if e != nil || c < 200 || c >= 300 {
-			continue
-		}
-		ultima = b
-		var obj map[string]any
-		if json.Unmarshal(b, &obj) == nil {
-			if routerOSString(obj["finished"]) == "true" || obj["ret"] != nil || routerOSString(obj["done"]) == "true" {
-				break
+	// RouterOS 7.x lanza el script de forma asíncrona y NO deja recuperar su
+	// salida por REST (`GET /rest/execute/<id>` da "no such command"). Lo
+	// mejor que se puede devolver es lo que el script haya escrito con `:log`.
+	time.Sleep(700 * time.Millisecond)
+	var lineas []string
+	if _, lb, le := cli.do(http.MethodGet, "/log", nil); le == nil {
+		var log []map[string]any
+		if json.Unmarshal(lb, &log) == nil {
+			desde := len(log) - 15
+			if desde < 0 {
+				desde = 0
+			}
+			for _, x := range log[desde:] {
+				lineas = append(lineas, routerOSString(x["time"])+"  "+routerOSString(x["topics"])+"  "+routerOSString(x["message"]))
 			}
 		}
 	}
-	if len(ultima) == 0 {
-		responder(w, map[string]any{"ok": true, "salida": "Script lanzado (id " + id + "). RouterOS no devolvió salida por REST; revisá /log o /system/script en el router."})
-		return
+	salida := "Script ejecutado"
+	if id != "" {
+		salida += " (id " + id + ")"
 	}
-	responder(w, map[string]any{"ok": true, "salida": prettyJSON(ultima)})
+	salida += ".\nRouterOS no devuelve la salida de `:put` por REST — usá `:log info \"...\"` para ver resultados acá o revisá /system/script en el router."
+	if len(lineas) > 0 {
+		salida += "\n\n— últimas líneas de /log —\n" + strings.Join(lineas, "\n")
+	}
+	responder(w, map[string]any{"ok": true, "salida": salida})
 }
 
 // --- Test de velocidad --------------------------------------------------
@@ -553,20 +554,24 @@ func manejarMikrotikSpeedtest(w http.ResponseWriter, r *http.Request) {
 	} else if code < 200 || code >= 300 {
 		res["avisoDescarga"] = fmt.Sprintf("RouterOS rechazó /tool/fetch (%d): %s", code, recorte(body))
 	} else {
-		var obj map[string]any
-		_ = json.Unmarshal(body, &obj)
-		kib := routerOSFloat(obj["downloaded"]) // RouterOS reporta KiB
-		dur := parseRouterOSDuration(routerOSString(obj["duration"]))
+		// /tool/fetch devuelve un array de secciones; la última con
+		// status=finished trae downloaded (KiB) y duration.
+		fin := seccionFetchFinal(body)
+		kib := routerOSFloat(fin["downloaded"])
+		dur := parseRouterOSDuration(routerOSString(fin["duration"]))
 		if dur <= 0 {
-			dur = routerOSFloat(obj["duration"])
+			dur = routerOSFloat(fin["duration"])
 		}
 		if kib > 0 && dur > 0 {
 			mbps := (kib * 1024 * 8) / dur / 1e6
 			res["descargaMbps"] = round1(mbps)
 			res["descargaMB"] = round1(kib / 1024)
 			res["segundos"] = round1(dur)
+		} else if kib > 0 {
+			res["descargaMB"] = round1(kib / 1024)
+			res["avisoDescarga"] = "descargó " + fmt.Sprintf("%.1f", kib/1024) + " MB pero RouterOS reportó duración 0 — probá con un tamaño mayor"
 		} else {
-			res["avisoDescarga"] = "RouterOS no devolvió tamaño/duración de la descarga (" + prettyJSON(body) + ")"
+			res["avisoDescarga"] = "RouterOS no devolvió tamaño de la descarga (" + prettyJSON(body) + ")"
 		}
 	}
 	res["nota"] = "Descarga medida con /tool/fetch contra speed.cloudflare.com. La subida no se mide desde RouterOS."
@@ -621,4 +626,24 @@ func parsePingMs(s string) float64 {
 
 func round1(v float64) float64 {
 	return float64(int64(v*10+0.5)) / 10
+}
+
+// seccionFetchFinal toma la respuesta (array) de /tool/fetch y devuelve la
+// sección "finished" (o la última). Tolera que venga como objeto suelto.
+func seccionFetchFinal(body []byte) map[string]any {
+	var arr []map[string]any
+	if json.Unmarshal(body, &arr) == nil && len(arr) > 0 {
+		for i := len(arr) - 1; i >= 0; i-- {
+			if routerOSString(arr[i]["status"]) == "finished" {
+				return arr[i]
+			}
+		}
+		return arr[len(arr)-1]
+	}
+	var obj map[string]any
+	_ = json.Unmarshal(body, &obj)
+	if obj == nil {
+		return map[string]any{}
+	}
+	return obj
 }

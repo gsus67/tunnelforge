@@ -138,15 +138,23 @@ func nuevoMikrotikClient(s Servidor, passPlano string) (*mikrotikClient, error) 
 	if !monitoringHostValido(host) {
 		return nil, fmt.Errorf("el host %q no es válido", host)
 	}
+	esquema := "https"
+	if s.APIHTTP {
+		esquema = "http"
+	}
 	puerto := s.APIPuerto
 	if puerto == 0 {
-		puerto = 443
+		if s.APIHTTP {
+			puerto = 80
+		} else {
+			puerto = 443
+		}
 	}
 	if puerto < 1 || puerto > 65535 {
 		return nil, fmt.Errorf("el puerto API %d no es válido", puerto)
 	}
 	host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
-	base := (&url.URL{Scheme: "https", Host: net.JoinHostPort(host, strconv.Itoa(puerto)), Path: "/rest"}).String()
+	base := (&url.URL{Scheme: esquema, Host: net.JoinHostPort(host, strconv.Itoa(puerto)), Path: "/rest"}).String()
 	transport := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: s.APIInseguro}} //nolint:gosec // opción explícita por perfil para certificados autofirmados de RouterOS
 	return &mikrotikClient{
 		baseURL:  base,

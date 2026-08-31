@@ -1,3 +1,14 @@
+## v1.1.2
+
+- MikroTik: opción **Usar HTTP sin TLS** en el perfil, para routers con el
+  servicio `www` (puerto 80) y sin `www-ssl`. Antes solo se intentaba HTTPS.
+- Test de velocidad: `/tool/fetch` devuelve un array de secciones — se lee la
+  sección `finished` (antes el parseo fallaba y la descarga salía siempre
+  "no disponible").
+- Script → Ejecutar: RouterOS 7.x no deja recuperar la salida de `/rest/execute`
+  por REST; ahora se ejecuta y se muestran las últimas líneas de `/log`, con la
+  sugerencia de usar `:log` en vez de `:put` para ver resultados.
+
 ## v1.1.1
 
 - Los servidores MikroTik ahora se manejan igual que los de Linux: tienen

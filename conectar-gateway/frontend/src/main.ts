@@ -429,7 +429,7 @@ var TOKEN = '';
         api('/api/servidores', {method:'POST', body: JSON.stringify({
           nombre: s.nombre, host: s.host, puerto: s.puerto, usuario: s.usuario,
           key: s.key, tipo: s.tipo || 'linux', apiPuerto: s.apiPuerto || 0,
-          apiInseguro: !!s.apiInseguro, apiInterfaz: s.apiInterfaz || '',
+          apiInseguro: !!s.apiInseguro, apiHttp: !!s.apiHttp, apiInterfaz: s.apiInterfaz || '',
           guardarPassword: !!s.tienePassword,
           favorito: !s.favorito, tuneles: s.tuneles || []
         })}).then(refrescarLista);
@@ -509,16 +509,19 @@ var TOKEN = '';
   function actualizarCamposTipo(){
     var mikrotik=$('f-tipo').value==='mikrotik';
     $('f-api-puerto-campo').hidden=!mikrotik;
-    $('f-api-inseguro-campo').hidden=!mikrotik;
+    $('f-api-http-campo').hidden=!mikrotik;
+    $('f-api-inseguro-campo').hidden=!mikrotik || $('f-api-http').checked;
     $('f-api-interfaz-campo').hidden=!mikrotik;
     $('lbl-pass').textContent=mikrotik?'Contraseña de la API':'Contraseña';
   }
   $('f-tipo').onchange=actualizarCamposTipo;
+  $('f-api-http').onchange=actualizarCamposTipo;
   function cargarEnForm(s){
     $('f-nombre').value = s.nombre; $('f-host').value = s.host;
     $('f-puerto').value = s.puerto; $('f-usuario').value = s.usuario;
     $('f-tipo').value = s.tipo === 'mikrotik' ? 'mikrotik' : 'linux';
-    $('f-api-puerto').value = s.apiPuerto || 443; $('f-api-inseguro').checked = !!s.apiInseguro;
+    $('f-api-http').checked = !!s.apiHttp;
+    $('f-api-puerto').value = s.apiPuerto || (s.apiHttp?80:443); $('f-api-inseguro').checked = !!s.apiInseguro;
     $('f-api-interfaz').value = s.apiInterfaz || '';
     $('f-key').value = s.key || ''; $('f-pass').value = '';
     $('f-guardar').checked = !!s.tienePassword;
@@ -527,7 +530,7 @@ var TOKEN = '';
   }
   $('btn-limpiar').onclick = function(){
     ['f-nombre','f-host','f-usuario','f-key','f-pass','f-api-interfaz'].forEach(function(i){ $(i).value=''; });
-    $('f-puerto').value = 22; $('f-tipo').value='linux'; $('f-api-puerto').value=443; $('f-api-inseguro').checked=false;
+    $('f-puerto').value = 22; $('f-tipo').value='linux'; $('f-api-puerto').value=443; $('f-api-inseguro').checked=false; $('f-api-http').checked=false;
     $('f-guardar').checked = false; actualizarCamposTipo(); pintarTunelesForm(tunelesDefecto);
   };
   function guardarServidorDesdeForm(){
@@ -538,6 +541,7 @@ var TOKEN = '';
       puerto: parseInt($('f-puerto').value)||22, usuario: $('f-usuario').value.trim(),
       tipo: $('f-tipo').value, apiPuerto: $('f-tipo').value==='mikrotik'?(parseInt($('f-api-puerto').value)||443):0,
       apiInseguro: $('f-tipo').value==='mikrotik'&&$('f-api-inseguro').checked,
+      apiHttp: $('f-tipo').value==='mikrotik'&&$('f-api-http').checked,
       apiInterfaz: $('f-tipo').value==='mikrotik'?$('f-api-interfaz').value.trim():'',
       key: $('f-key').value.trim(), password: $('f-pass').value,
       guardarPassword: $('f-guardar').checked,

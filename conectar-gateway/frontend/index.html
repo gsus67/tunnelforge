@@ -117,6 +117,7 @@
             <div><label>Tipo de servidor</label><select id="f-tipo"><option value="linux">Linux / Debian</option><option value="mikrotik">MikroTik (RouterOS)</option></select></div>
             <div><label>Puerto SSH</label><input type="number" id="f-puerto" value="22"></div>
             <div id="f-api-puerto-campo" hidden><label>Puerto API HTTPS</label><input type="number" id="f-api-puerto" value="443" min="1" max="65535"></div>
+            <div id="f-api-http-campo" class="mikrotik-check" hidden><label>Protocolo</label><div class="check"><input type="checkbox" id="f-api-http"><label for="f-api-http">Usar HTTP sin TLS (servicio <code>www</code>, sin <code>www-ssl</code>)</label></div></div>
             <div id="f-api-inseguro-campo" class="mikrotik-check" hidden><label>Certificado HTTPS</label><div class="check"><input type="checkbox" id="f-api-inseguro"><label for="f-api-inseguro">Aceptar certificado autofirmado</label></div></div>
             <div id="f-api-interfaz-campo" hidden><label>Interfaz de tráfico (vacío = ruta por defecto)</label><input type="text" id="f-api-interfaz" placeholder="ether1"></div>
             <div><label>Usuario</label><input type="text" id="f-usuario" placeholder="root"></div>

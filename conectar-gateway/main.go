@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "1.1.1"
+const version = "1.1.2"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -128,6 +128,9 @@ type Servidor struct {
 	Tipo        string  `json:"tipo,omitempty"`
 	APIPuerto   int     `json:"apiPuerto,omitempty"`
 	APIInseguro bool    `json:"apiInseguro,omitempty"`
+	// REST API por HTTP en vez de HTTPS (servicio `www` de RouterOS, sin
+	// `www-ssl`). Default false = HTTPS.
+	APIHTTP bool `json:"apiHttp,omitempty"`
 	// Interfaz de la que se lee el RX/TX del resumen (MikroTik). Vacío =
 	// autodetección por la ruta por defecto.
 	APIInterfaz string `json:"apiInterfaz,omitempty"`
@@ -808,7 +811,7 @@ func main() {
 				salida = append(salida, map[string]any{
 					"nombre": s.Nombre, "host": s.Host, "puerto": s.Puerto,
 					"usuario": s.Usuario, "key": s.Key,
-					"tipo": s.Tipo, "apiPuerto": s.APIPuerto, "apiInseguro": s.APIInseguro, "apiInterfaz": s.APIInterfaz,
+					"tipo": s.Tipo, "apiPuerto": s.APIPuerto, "apiInseguro": s.APIInseguro, "apiHttp": s.APIHTTP, "apiInterfaz": s.APIInterfaz,
 					"tienePassword": s.PassCifr != "", "confiado": s.Huella != "",
 					"favorito": s.Favorito, "tuneles": func() []Tunel {
 						if s.Tuneles != nil {
@@ -826,6 +829,7 @@ func main() {
 				Puerto                               int
 				APIPuerto                            int
 				APIInseguro                          bool
+				APIHTTP                              bool
 				APIInterfaz                          string
 				GuardarPassword                      bool
 				Favorito                             *bool // puntero: distinguir "no lo mandó" de "false"
@@ -861,7 +865,7 @@ func main() {
 				s = &lista[len(lista)-1]
 			}
 			s.Host, s.Puerto, s.Usuario = pet.Host, pet.Puerto, pet.Usuario
-			s.Tipo, s.APIPuerto, s.APIInseguro = pet.Tipo, pet.APIPuerto, pet.APIInseguro
+			s.Tipo, s.APIPuerto, s.APIInseguro, s.APIHTTP = pet.Tipo, pet.APIPuerto, pet.APIInseguro, pet.APIHTTP
 			s.APIInterfaz = strings.TrimSpace(pet.APIInterfaz)
 			s.Key = normalizarRuta(pet.Key)
 			if pet.Favorito != nil {
@@ -1065,12 +1069,7 @@ func main() {
 				return
 			}
 			if !cli.alcanzable() {
-				responderError(w, fmt.Errorf("no pude conectar con la REST API de %s (%s:%d) — revisá host, puerto API, usuario/contraseña y que www-ssl esté habilitado", pet.Nombre, perfil.Host, func() int {
-					if perfil.APIPuerto > 0 {
-						return perfil.APIPuerto
-					}
-					return 443
-				}()))
+				responderError(w, fmt.Errorf("no pude conectar con la REST API de %s en %s — revisá host, puerto API, usuario/contraseña, y que el servicio www (HTTP) o www-ssl (HTTPS) esté habilitado según la casilla", pet.Nombre, perfil.Host))
 				return
 			}
 			mu.Lock()
