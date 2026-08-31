@@ -1,4 +1,4 @@
-# Firma Authenticode del ejecutable de Windows
+# Firma Authenticode del ejecutable de Windows (Azure Trusted Signing)
 
 Sin firma, Windows (SmartScreen, Acceso a carpetas controlado de Defender,
 antivirus de terceros) trata a `TunnelForge.exe` como desconocido y el
@@ -6,46 +6,65 @@ antivirus de terceros) trata a `TunnelForge.exe` como desconocido y el
 SHA‑256 del updater propio, reemplaza el `.exe`… pero al intentar lanzar el
 nuevo, Windows lo bloquea y el asistente restaura la versión anterior.
 
-El workflow `build-release.yml` ya trae el paso de firma con **SignPath.io**
-(plan gratuito para proyectos open source). Se **activa solo** cuando existen
-estos valores en el repo — mientras tanto el build sale sin firmar como hasta
-ahora:
+El workflow `build-release.yml` ya trae el paso de firma con **Azure Trusted
+Signing**. Se **activa solo** cuando existan los valores de abajo; mientras
+tanto el build sale sin firmar como hasta ahora.
 
-| Tipo | Nombre | De dónde sale |
+| Tipo | Nombre | Qué es |
 |---|---|---|
-| Secret | `SIGNPATH_API_TOKEN` | SignPath → *User settings* → *API tokens* |
-| Variable | `SIGNPATH_ORG_ID` | SignPath → *Organization* → GUID de la organización |
-| Variable | `SIGNPATH_PROJECT_SLUG` | slug del proyecto que crees en SignPath |
-| Variable | `SIGNPATH_POLICY_SLUG` | slug de la *signing policy* (ej. `release-signing`) |
+| Secret | `AZURE_CLIENT_SECRET` | secret del app registration (service principal) |
+| Variable | `AZURE_TENANT_ID` | GUID del tenant de Entra ID |
+| Variable | `AZURE_CLIENT_ID` | GUID (app id) del service principal |
+| Variable | `TRUSTED_SIGNING_ENDPOINT` | URL regional, ej. `https://eus.codesigning.azure.net/` |
+| Variable | `TRUSTED_SIGNING_ACCOUNT` | nombre de la Trusted Signing account |
+| Variable | `TRUSTED_SIGNING_PROFILE` | nombre del Certificate Profile (tipo *Public Trust*) |
 
 ## Pasos (una sola vez)
 
-1. Crear cuenta en <https://signpath.io> y solicitar el **plan OSS gratuito**
-   para `github.com/gsus67/tunnelforge` (revisión manual de SignPath, suele
-   tardar unos días; ellos emiten el certificado).
-2. En SignPath: crear un **Project** (`tunnelforge`), dentro un
-   **Artifact configuration** con slug `exe` (tipo *Portable Executable*), y
-   una **Signing policy** (ej. `release-signing`) que apunte al certificado
-   del plan OSS.
-3. Conectar el repo de GitHub como *trusted build system* (GitHub Actions) en
-   la config del proyecto de SignPath, autorizando este workflow.
-4. En GitHub → repo → *Settings* → *Secrets and variables* → *Actions*:
-   - **Secret**: `SIGNPATH_API_TOKEN`
-   - **Variables**: `SIGNPATH_ORG_ID`, `SIGNPATH_PROJECT_SLUG`,
-     `SIGNPATH_POLICY_SLUG`
-5. Subir un tag `vX.Y.Z` nuevo. El job de Windows detecta los valores, sube el
-   `.exe` sin firmar como artefacto, lo manda a firmar a SignPath, baja el
-   firmado y lo publica en la Release. `signtool verify /pa` confirma la firma
-   en el log.
+1. **Suscripción de Azure.** El servicio cuesta ~2 USD/mes por identidad + un
+   monto ínfimo por operación de firma.
+2. **Registrar el recurso.** En el portal, *Subscriptions → Resource
+   providers* → registrar `Microsoft.CodeSigning`.
+3. **Crear la Trusted Signing account** (*Trusted Signing Accounts → Create*).
+   Anotá la **región** — de ahí sale `TRUSTED_SIGNING_ENDPOINT`
+   (`https://<region-abrev>.codesigning.azure.net/`, p.ej. `eus`, `wus2`).
+4. **Validación de identidad.** *Identity validations → New*:
+   - **Individual**: requiere historial verificable de 3+ años (documento +
+     verificación). Puede tardar días.
+   - **Organización**: número D‑U‑N‑S y datos de la empresa.
+   Sin una identidad *Completed* no se puede crear un Certificate Profile
+   público.
+5. **Certificate Profile.** *Certificate Profiles → Create* → tipo
+   **Public Trust** → asociarlo a la identidad validada. Su nombre es
+   `TRUSTED_SIGNING_PROFILE`.
+6. **Service principal para el CI.** En Entra ID, *App registrations → New*.
+   Crear un **client secret** (guardá el *value*). Anotá *Application (client)
+   ID* y *Directory (tenant) ID*.
+7. **Permisos.** En la Trusted Signing account → *Access control (IAM)* →
+   asignar al service principal el rol **Trusted Signing Certificate Profile
+   Signer**.
+8. **GitHub** → repo → *Settings → Secrets and variables → Actions*:
+   - **Secret**: `AZURE_CLIENT_SECRET`
+   - **Variables**: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`,
+     `TRUSTED_SIGNING_ENDPOINT`, `TRUSTED_SIGNING_ACCOUNT`,
+     `TRUSTED_SIGNING_PROFILE`
+9. Subir un tag `vX.Y.Z`. El job de Windows detecta los valores, firma
+   `TunnelForge.exe` con `azure/trusted-signing-action`, lo timestampea contra
+   `timestamp.acs.microsoft.com` y verifica con `signtool verify /pa`. El
+   binario firmado es el que se publica en la Release.
 
-## Alternativas si no se usa SignPath
+## Nota sobre reputación de SmartScreen
 
-- **Azure Trusted Signing** (~10 USD/mes): certificado real, verificación de
-  identidad (para persona física pide historial verificable de 3+ años).
-  Se firmaría con `Azure.CodeSigning` en vez del paso de SignPath.
-- **Certificado OV/EV de Sectigo/DigiCert** (~200–600 USD/año): con EV,
-  SmartScreen confía al instante; con OV la reputación se gana con descargas.
+Trusted Signing emite certificados de validez corta que rotan solos; la
+reputación de SmartScreen se acumula por **identidad**, no por certificado, así
+que no se pierde en cada rotación. Aun así, las primeras descargas de una
+identidad nueva pueden mostrar el aviso de SmartScreen hasta que junta
+reputación.
 
-Hasta que exista un certificado, el binario de Windows sale **sin firmar** y
-el autoupdate puede requerir aprobar el archivo a mano en Windows Security, o
-reemplazar el `.exe` manualmente desde la página de Releases.
+## Mientras no haya firma
+
+El binario de Windows sale **sin firmar** y el autoupdate puede requerir
+aprobar el archivo a mano en Windows Security (Historial de protección /
+Acceso a carpetas controlado), o reemplazar el `.exe` manualmente desde la
+página de Releases. Desde v1.1.5 el panel *Updates* informa en qué paso falló
+el último intento.

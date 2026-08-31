@@ -1,3 +1,10 @@
+## v1.1.6
+
+- CI: la firma Authenticode del binario de Windows pasa a **Azure Trusted
+  Signing** (en vez de SignPath). Se activa al cargar los secrets/variables de
+  Azure — ver `docs/FIRMA-WINDOWS.md`. Sin eso, el build sale sin firmar como
+  hasta ahora.
+
 ## v1.1.5
 
 - Autoupdate: si el reemplazo del `.exe` falla (Defender / Acceso a carpetas

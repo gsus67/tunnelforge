@@ -82,45 +82,43 @@ jobs:
           Copy-Item $binario "../TunnelForge.exe" -Force
           Write-Host "Binario Windows preparado desde: $binario"
 
-      # --- Firma Authenticode (SignPath.io) ---
-      # Se activa SOLA cuando existan los secrets/vars de SignPath; mientras
-      # tanto el build sale sin firmar como hasta ahora. Ver docs/FIRMA-WINDOWS.md.
-      # Requeridos: secret SIGNPATH_API_TOKEN ; vars SIGNPATH_ORG_ID,
-      # SIGNPATH_PROJECT_SLUG, SIGNPATH_POLICY_SLUG.
+      # --- Firma Authenticode (Azure Trusted Signing) ---
+      # Se activa SOLA cuando existan los secrets/vars de Azure; mientras tanto
+      # el build sale sin firmar como hasta ahora. Ver docs/FIRMA-WINDOWS.md.
+      # Requeridos:
+      #   secret  AZURE_CLIENT_SECRET
+      #   vars    AZURE_TENANT_ID, AZURE_CLIENT_ID,
+      #           TRUSTED_SIGNING_ENDPOINT (ej. https://eus.codesigning.azure.net/),
+      #           TRUSTED_SIGNING_ACCOUNT, TRUSTED_SIGNING_PROFILE
       - name: ¿Firma configurada?
         id: firma
         shell: bash
-        run: echo "activa=${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORG_ID != '' }}" >> "$GITHUB_OUTPUT"
+        run: echo "activa=${{ secrets.AZURE_CLIENT_SECRET != '' && vars.TRUSTED_SIGNING_ACCOUNT != '' }}" >> "$GITHUB_OUTPUT"
 
-      - name: Subir binario sin firmar (para SignPath)
-        id: upload-unsigned
+      - name: Firmar con Azure Trusted Signing
         if: steps.firma.outputs.activa == 'true'
-        uses: actions/upload-artifact@v4
+        uses: azure/trusted-signing-action@v0.5.1
         with:
-          name: windows-unsigned
-          path: TunnelForge.exe
-          if-no-files-found: error
+          azure-tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          azure-client-id: ${{ vars.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ vars.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ vars.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.TRUSTED_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
 
-      - name: Firmar con SignPath
-        if: steps.firma.outputs.activa == 'true'
-        uses: signpath/github-action-submit-signing-request@v1
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORG_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
-          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
-          artifact-configuration-slug: exe
-          wait-for-completion: true
-          output-artifact-directory: signed
-      - name: Reemplazar por el binario firmado
+      - name: Verificar firma
         if: steps.firma.outputs.activa == 'true'
         shell: pwsh
         run: |
-          $s = Get-ChildItem -Recurse -Filter TunnelForge.exe signed | Select-Object -First 1
-          if (-not $s) { Write-Error "SignPath no devolvió TunnelForge.exe firmado"; exit 1 }
-          Copy-Item $s.FullName "TunnelForge.exe" -Force
-          & signtool verify /pa /v "TunnelForge.exe" 2>&1 | Write-Host
+          $st = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue | Select-Object -Last 1
+          if (-not $st) { $st = "signtool" }
+          & $st verify /pa /v "TunnelForge.exe"
+          if ($LASTEXITCODE -ne 0) { Write-Error "signtool verify falló"; exit 1 }
 
       - uses: actions/upload-artifact@v4
         with:
