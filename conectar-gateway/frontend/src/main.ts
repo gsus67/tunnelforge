@@ -290,6 +290,22 @@ var TOKEN = '';
       txt.appendChild(document.createTextNode((c.host||'servidor') + ' · ' + (c.usuario||'usuario')));
       fila.appendChild(txt);
 
+      if (c.tipo === 'mikrotik'){
+        var bToolsMT = botonAccion('tools','Herramientas');
+        bToolsMT.onclick = function(){ abrirHerramientasMikrotik(c.servidor); };
+        fila.appendChild(bToolsMT);
+        var bDescMT = botonAccion('disconnect','Desconectar este servidor','disconnect');
+        bDescMT.onclick = function(){
+          desconectandoManual[c.servidor] = true;
+          api('/api/desconectar',{method:'POST',body:JSON.stringify({nombre:c.servidor})}).then(function(){ refrescarEstado(); });
+        };
+        fila.appendChild(bDescMT);
+        var trMT = nodo('div','trafico'); trMT.appendChild(document.createTextNode('REST · '+(c.desde||''))); fila.appendChild(trMT);
+        div.appendChild(fila);
+        cont.appendChild(div);
+        return;
+      }
+
       var bTerm = botonAccion('terminal','Terminal');
       bTerm.onclick = function(){ abrirTerminal(c.servidor); };
       fila.appendChild(bTerm);
@@ -446,12 +462,7 @@ var TOKEN = '';
         if (confirm('¿Borrar "' + s.nombre + '"?'))
           api('/api/servidores?nombre=' + encodeURIComponent(s.nombre), {method:'DELETE'}).then(refrescarLista);
       };
-      if (!esMikrotik) acciones.appendChild(bC);
-      if (esMikrotik){
-        var bMT = nodo('button','','Herramientas');
-        bMT.onclick = function(){ abrirHerramientasMikrotik(s.nombre); };
-        acciones.appendChild(bMT);
-      }
+      acciones.appendChild(bC);
       acciones.appendChild(bE); acciones.appendChild(bB);
       div.appendChild(acciones);
       cont.appendChild(div);
@@ -613,6 +624,11 @@ var TOKEN = '';
       }
       if (r.ok){
         var msg;
+        if (r.tipo === 'mikrotik'){
+          aviso('Conectado a ' + nombre + ' (REST API). Abrí Herramientas desde Servidores conectados.', true);
+          refrescarEstado();
+          return;
+        }
         if (r.sinTuneles){
           msg = 'Conectado a ' + nombre + ' — sin túneles (puertos ocupados por otra conexión). Usa la terminal.';
         } else {

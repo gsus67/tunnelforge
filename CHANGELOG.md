@@ -1,3 +1,11 @@
+## v1.1.1
+
+- Los servidores MikroTik ahora se manejan igual que los de Linux: tienen
+  botón **Conectar** (que verifica la REST API y los fija en «Servidores
+  conectados»), y **Herramientas** vive en esa lista de activos, no en la
+  tarjeta guardada. Un MikroTik conectado muestra solo Herramientas y
+  Desconectar (sin Terminal/Archivos, que son SSH).
+
 ## v1.1.0
 
 - Monitoreo incorpora servidores MikroTik con RouterOS 7.1 o posterior mediante
