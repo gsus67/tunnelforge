@@ -95,7 +95,7 @@ La API loopback protegida sigue existiendo como canal interno para el WebSocket 
 - **Buscador** de servidores por nombre, host o usuario
 - **Gestor de archivos (SFTP)**: navega el servidor y tu equipo lado a lado,
   sube y baja archivos, crea carpetas, renombra, borra y edita texto UTF-8
-- **Herramientas por servidor**: scripts, test de velocidad, firewall y administración SSH segura desde una ventana con terminal interactiva.
+- **Herramientas por servidor**: scripts, test de velocidad, firewall y administración SSH segura desde una ventana con terminal interactiva. En servidores MikroTik, Herramientas ofrece en cambio la administración del firewall de RouterOS (`/ip/firewall/filter`) y una consola contra su REST API.
 - **Tráfico real**: RX/TX de la interfaz principal del servidor mostrado en Mbit/s.
 - **Web local opcional**: publica la misma interfaz en la LAN para usar TunnelForge desde teléfono, tablet u otra PC con código de acceso.
 - **Firewall seguro**: protege el puerto SSH, crea backup antes de cambios y evita reescribir reglas nftables personalizadas.

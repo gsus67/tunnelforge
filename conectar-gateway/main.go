@@ -940,6 +940,8 @@ func main() {
 	mux.HandleFunc("/api/herramientas/ejecutar-script", proteger(manejarEjecutarScript))
 	mux.HandleFunc("/api/herramientas/test-velocidad", proteger(manejarTestVelocidad))
 	mux.HandleFunc("/api/herramientas/firewall", proteger(manejarFirewall))
+	mux.HandleFunc("/api/herramientas/mikrotik/firewall", proteger(manejarMikrotikFirewall))
+	mux.HandleFunc("/api/herramientas/mikrotik/comando", proteger(manejarMikrotikComando))
 	mux.HandleFunc("/api/herramientas/crear-key", proteger(manejarToolCrearKey))
 	mux.HandleFunc("/api/herramientas/usar-key", proteger(manejarToolUsarKey))
 	mux.HandleFunc("/api/herramientas/cambiar-puerto-ssh", proteger(manejarToolCambiarPuertoSSH))

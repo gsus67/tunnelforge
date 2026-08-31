@@ -10,6 +10,11 @@
   tráfico** para fijarla a mano.
 - Cada servidor guardado del Dashboard muestra un icono de tipo: Tux para Linux,
   la marca hexagonal de MikroTik.
+- Herramientas para servidores MikroTik: administración del firewall
+  (`/ip/firewall/filter` — listar, activar/desactivar, borrar y agregar reglas,
+  con aviso y confirmación para la cadena `input` y comprobación de que la API
+  sigue respondiendo tras el cambio) y una consola contra la REST API de
+  RouterOS (GET de solo lectura; POST/PUT/PATCH/DELETE con confirmación).
 
 ## v1.0.1
 

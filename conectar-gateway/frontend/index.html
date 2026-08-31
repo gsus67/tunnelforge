@@ -662,6 +662,49 @@
   </div>
 </div>
 
+<!-- Herramientas MikroTik -->
+<div class="velo" id="m-mikrotik">
+  <div class="modal mikrotik-modal">
+    <h3>Herramientas MikroTik — <span id="mt-srv">sin servidor</span></h3>
+    <div class="mt-tabs">
+      <button class="activo" id="mt-tab-fw">Firewall</button>
+      <button id="mt-tab-cmd">Consola RouterOS</button>
+    </div>
+
+    <div class="mt-panel" id="mt-panel-fw">
+      <div class="mt-warn" id="mt-fw-warn">Los cambios en la cadena <b>input</b> pueden cortarte el acceso a la API — tené Winbox o la consola a mano.</div>
+      <div class="mt-rules-scroll"><table class="mt-rules"><thead><tr><th>#</th><th>Cadena</th><th>Acción</th><th>Match / comentario</th><th></th></tr></thead><tbody id="mt-fw-body"><tr><td colspan="5">Consultando el firewall…</td></tr></tbody></table></div>
+      <div class="mt-addrule">
+        <span>Regla nueva:</span>
+        <select id="mt-fw-chain"><option value="input">input</option><option value="forward">forward</option><option value="output">output</option></select>
+        <select id="mt-fw-action"><option value="accept">accept</option><option value="drop">drop</option><option value="reject">reject</option></select>
+        <input type="text" id="mt-fw-proto" placeholder="protocol (tcp)">
+        <input type="text" id="mt-fw-dport" placeholder="dst-port (8291)">
+        <input type="text" id="mt-fw-src" placeholder="src-address">
+        <input type="text" id="mt-fw-comment" placeholder="comentario">
+        <button class="principal" id="mt-fw-add">Agregar</button>
+      </div>
+      <div class="fw-note" id="mt-fw-nota"></div>
+    </div>
+
+    <div class="mt-panel" id="mt-panel-cmd" hidden>
+      <div class="mt-cmd-row">
+        <select id="mt-cmd-metodo"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+        <input type="text" id="mt-cmd-path" placeholder="/interface  ·  /ip/address  ·  /system/routerboard" style="flex:1">
+        <button class="principal" id="mt-cmd-run">Ejecutar</button>
+      </div>
+      <textarea id="mt-cmd-body" rows="3" placeholder='Cuerpo JSON (solo para POST/PUT/PATCH). Ej: {"address":"8.8.8.8","count":"3"}' hidden></textarea>
+      <div class="mt-cmd-hint">GET es de solo lectura. POST/PUT/PATCH/DELETE modifican el router y piden confirmación.</div>
+      <pre class="mt-cmd-out" id="mt-cmd-out">Escribí una ruta y ejecutá.</pre>
+    </div>
+
+    <div class="botones">
+      <button id="mt-refrescar">Actualizar firewall</button>
+      <button id="mt-salir">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: confirmar huella -->
 <div class="velo" id="m-huella">
   <div class="modal">
