@@ -664,16 +664,30 @@
 </div>
 
 <!-- Herramientas MikroTik -->
-<div class="velo" id="m-mikrotik">
-  <div class="modal mikrotik-modal">
-    <h3>Herramientas MikroTik — <span id="mt-srv">sin servidor</span></h3>
-    <div class="mt-tabs">
-      <button class="activo" id="mt-tab-fw">Firewall</button>
-      <button id="mt-tab-script">Script</button>
-      <button id="mt-tab-speed">Test de velocidad</button>
+<div class="tools-velo" id="m-mikrotik">
+  <div class="tools-barra">
+    <span class="t">Herramientas MikroTik — <b id="mt-srv">sin servidor</b></span>
+    <span class="sep"></span>
+    <button id="mt-salir">Cerrar <span style="opacity:.6">(Esc)</span></button>
+  </div>
+  <div class="tools-cuerpo">
+    <div class="tools-grid" id="mt-grid">
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v6c0 5-3.1 9.2-7 10.6C8.1 20.2 5 16 5 11V5l7-3z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg></div>
+        <div><h4>Firewall</h4><p>Reglas de <b>/ip/firewall/filter</b> en su orden real: activar, desactivar, borrar y agregar, con confirmación para la cadena <b>input</b> y chequeo de la API tras cada cambio.</p><button class="principal" id="mt-open-fw">Administrar firewall</button></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.3 2.3-3-3 2.3-2.3z"/><path d="M14 18l2 2 4-4-2-2"/></svg></div>
+        <div><h4>Script</h4><p>Pegá o cargá un <b>.rsc</b> y ejecutalo con <b>/rest/execute</b>, o guardalo en <b>/system/script</b> del router.</p><button class="principal" id="mt-open-script">Abrir editor</button></div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 17a8 8 0 0 1 16 0"/><path d="M12 13l4-4"/><path d="M7 17h10"/></svg></div>
+        <div><h4>Test de velocidad</h4><p>Latencia con <b>/ping</b> y descarga con <b>/tool/fetch</b> contra speed.cloudflare.com. La subida no se mide desde RouterOS.</p><button class="principal" id="mt-open-speed">Medir</button></div>
+      </div>
     </div>
 
-    <div class="mt-panel" id="mt-panel-fw">
+    <div class="mt-panel" id="mt-panel-fw" hidden>
+      <div class="mt-panel-head"><button class="ghost" id="mt-back-fw">← Herramientas</button><button id="mt-refrescar">Actualizar firewall</button></div>
       <div class="mt-warn" id="mt-fw-warn">Los cambios en la cadena <b>input</b> pueden cortarte el acceso a la API — tené Winbox o la consola a mano.</div>
       <div class="mt-rules-scroll"><table class="mt-rules"><thead><tr><th>#</th><th>Cadena</th><th>Acción</th><th>Match / comentario</th><th></th></tr></thead><tbody id="mt-fw-body"><tr><td colspan="5">Consultando el firewall…</td></tr></tbody></table></div>
       <div class="mt-addrule">
@@ -690,6 +704,7 @@
     </div>
 
     <div class="mt-panel" id="mt-panel-script" hidden>
+      <div class="mt-panel-head"><button class="ghost" id="mt-back-script">← Herramientas</button></div>
       <div class="mt-cmd-row">
         <input type="text" id="mt-script-nombre" placeholder="nombre (para guardar)" style="width:200px">
         <label class="mt-file"><input type="file" id="mt-script-file" accept=".rsc,.txt" hidden>Cargar .rsc…</label>
@@ -703,6 +718,7 @@
     </div>
 
     <div class="mt-panel" id="mt-panel-speed" hidden>
+      <div class="mt-panel-head"><button class="ghost" id="mt-back-speed">← Herramientas</button></div>
       <div class="mt-cmd-row">
         <label style="font-size:11px;color:var(--suave)">Descarga
           <select id="mt-speed-bytes"><option value="25000000">25 MB</option><option value="50000000">50 MB</option><option value="100000000">100 MB</option></select>
@@ -712,11 +728,6 @@
       </div>
       <div class="mt-cmd-hint">Latencia con <b>/ping</b> a 1.1.1.1 y descarga con <b>/tool/fetch</b> contra speed.cloudflare.com. La subida no se mide desde RouterOS.</div>
       <pre class="mt-cmd-out" id="mt-speed-out">Pulsá «Medir».</pre>
-    </div>
-
-    <div class="botones">
-      <button id="mt-refrescar">Actualizar</button>
-      <button id="mt-salir">Cerrar</button>
     </div>
   </div>
 </div>

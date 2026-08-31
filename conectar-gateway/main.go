@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "1.1.3"
+const version = "1.1.4"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -630,14 +630,26 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 	}
 
 	go func() { // keepalive
-		t := time.NewTicker(30 * time.Second)
+		t := time.NewTicker(20 * time.Second)
 		defer t.Stop()
+		esMT := s.esMikrotik()
 		for {
 			select {
 			case <-con.done:
 				return
 			case <-t.C:
-				if _, _, err := cliente.SendRequest("keepalive@openssh.com", true, nil); err != nil {
+				if esMT {
+					// RouterOS cierra la conexión SSH a los ~30 s si no hay
+					// ningún canal abierto y además desconecta ante el request
+					// global `keepalive@openssh.com`. Se mantiene viva
+					// abriendo un canal de sesión con un comando mínimo.
+					sess, err := cliente.NewSession()
+					if err != nil {
+						return
+					}
+					_ = sess.Run("/system/identity/print")
+					_ = sess.Close()
+				} else if _, _, err := cliente.SendRequest("keepalive@openssh.com", true, nil); err != nil {
 					return
 				}
 			}

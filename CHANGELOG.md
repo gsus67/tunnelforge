@@ -1,3 +1,14 @@
+## v1.1.4
+
+- MikroTik: se corregía la desconexión a los ~30 s — RouterOS cierra la sesión
+  SSH sin canales abiertos (y se cae ante `keepalive@openssh.com`). Ahora el
+  keepalive abre un canal mínimo cada 20 s.
+- Tráfico MikroTik optimizado: un único cliente HTTP reutilizado (keep-alive),
+  la contraseña se descifra una vez y la interfaz WAN se resuelve una sola vez
+  y se cachea — en régimen normal cada muestreo es un solo GET.
+- La ventana de Herramientas MikroTik ahora abre a pantalla completa con
+  tarjetas, igual que la de los servidores Linux.
+
 ## v1.1.3
 
 - MikroTik conectado queda igual que un servidor Linux: se conecta por SSH y

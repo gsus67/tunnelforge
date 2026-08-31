@@ -1514,25 +1514,25 @@ var TOKEN = '';
     mtServidor = nombre;
     $('mt-srv').textContent = nombre;
     $('m-mikrotik').classList.add('abierto');
-    mtTab('fw');
     mtNota('','');
-    cargarFwMT();
+    mtVista('grid');
   }
   function cerrarMikrotik(){ $('m-mikrotik').classList.remove('abierto'); }
   $('mt-salir').onclick = cerrarMikrotik;
-  var mtTabActual = 'fw';
-  $('mt-refrescar').onclick = function(){ if(mtTabActual==='fw') cargarFwMT(); };
-  function mtTab(cual){
-    mtTabActual = cual;
-    ['fw','script','speed'].forEach(function(t){
-      $('mt-tab-'+t).classList.toggle('activo', t===cual);
-      $('mt-panel-'+t).hidden = t!==cual;
-    });
-    $('mt-refrescar').hidden = cual!=='fw';
+  // Landing con tarjetas (como Herramientas de Linux) → panel de la
+  // herramienta elegida, con "← Herramientas" para volver.
+  function mtVista(cual){
+    $('mt-grid').hidden = cual!=='grid';
+    ['fw','script','speed'].forEach(function(t){ $('mt-panel-'+t).hidden = cual!==t; });
+    if(cual==='fw') cargarFwMT();
   }
-  $('mt-tab-fw').onclick=function(){ mtTab('fw'); };
-  $('mt-tab-script').onclick=function(){ mtTab('script'); };
-  $('mt-tab-speed').onclick=function(){ mtTab('speed'); };
+  $('mt-open-fw').onclick   = function(){ mtVista('fw'); };
+  $('mt-open-script').onclick = function(){ mtVista('script'); };
+  $('mt-open-speed').onclick  = function(){ mtVista('speed'); };
+  $('mt-back-fw').onclick    = function(){ mtVista('grid'); };
+  $('mt-back-script').onclick = function(){ mtVista('grid'); };
+  $('mt-back-speed').onclick  = function(){ mtVista('grid'); };
+  $('mt-refrescar').onclick = function(){ cargarFwMT(); };
   function mtNota(txt,tipo){ var n=$('mt-fw-nota'); n.textContent=txt||''; n.className='fw-note'+(tipo?' '+tipo:''); }
 
   function pintarFwMT(r){

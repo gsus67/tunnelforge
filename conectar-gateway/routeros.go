@@ -103,61 +103,36 @@ func contadoresInterfaz(interfaces []map[string]any, nombre string) (rx, tx floa
 	return 0, 0, false
 }
 
-// monitorTraficoMikrotik publica en la conexión SSH los contadores de la
-// interfaz WAN elegida mediante la REST API de RouterOS.
+// monitorTraficoMikrotik publica en la conexión los contadores de la interfaz
+// WAN de RouterOS por REST. Optimizado: un solo cliente HTTP reutilizado
+// (keep-alive), la contraseña se descifra una vez, y la interfaz de tráfico
+// se resuelve una vez (con /ip/route) y se cachea — en régimen normal cada
+// tick es un único GET /interface sobre una conexión ya abierta.
 func monitorTraficoMikrotik(c *Conexion, s Servidor) {
 	const intervalo = 3 * time.Second
+
+	pass := ""
+	if s.PassCifr != "" {
+		if p, e := descifrar(s.PassCifr); e == nil {
+			pass = p
+		}
+	}
+	cli, cerr := nuevoMikrotikClient(s, pass)
+	if cerr != nil {
+		c.traficoMu.Lock()
+		c.traficoDisponible = false
+		c.traficoMu.Unlock()
+		return
+	}
+
 	var prevRX, prevTX float64
 	var prevInterfaz string
 	var prevTime time.Time
+	interfazCache := "" // "" = hay que resolverla con /ip/route
 	fallos := 0
 
-	muestrear := func() {
-		perfil, pass, err := monitoringPerfilServidor(s.Nombre)
-		if err != nil {
-			fallos++
-		} else {
-			var cli *mikrotikClient
-			cli, err = nuevoMikrotikClient(perfil, pass)
-			if err == nil {
-				var interfaces, rutas []map[string]any
-				err = cli.get("/interface", &interfaces)
-				if err == nil {
-					err = cli.get("/ip/route", &rutas)
-				}
-				cli.http.CloseIdleConnections()
-				if err == nil {
-					interfaz := elegirInterfazTrafico(interfaces, rutas, perfil.APIInterfaz)
-					rx, tx, ok := contadoresInterfaz(interfaces, interfaz)
-					if interfaz == "" || !ok {
-						err = fmt.Errorf("no pude elegir la interfaz de tráfico de RouterOS")
-					} else {
-						fallos = 0
-						ahora := time.Now()
-						var rxBps, txBps int64
-						if !prevTime.IsZero() && interfaz == prevInterfaz {
-							dt := ahora.Sub(prevTime).Seconds()
-							if dt > 0 && rx >= prevRX && tx >= prevTX {
-								rxBps = int64((rx - prevRX) / dt)
-								txBps = int64((tx - prevTX) / dt)
-							}
-						}
-						prevRX, prevTX, prevInterfaz, prevTime = rx, tx, interfaz, ahora
-						c.traficoMu.Lock()
-						c.traficoRXBps = rxBps
-						c.traficoTXBps = txBps
-						c.traficoRXTotal = int64(rx)
-						c.traficoTXTotal = int64(tx)
-						c.traficoInterfaz = interfaz
-						c.traficoDisponible = true
-						c.traficoMu.Unlock()
-					}
-				}
-			}
-			if err != nil {
-				fallos++
-			}
-		}
+	marcarFallo := func() {
+		fallos++
 		if fallos >= 2 {
 			c.traficoMu.Lock()
 			c.traficoDisponible = false
@@ -165,6 +140,45 @@ func monitorTraficoMikrotik(c *Conexion, s Servidor) {
 			c.traficoTXBps = 0
 			c.traficoMu.Unlock()
 		}
+	}
+
+	muestrear := func() {
+		var interfaces []map[string]any
+		if err := cli.get("/interface", &interfaces); err != nil {
+			marcarFallo()
+			return
+		}
+		interfaz := interfazCache
+		if interfaz == "" || func() bool { _, _, ok := contadoresInterfaz(interfaces, interfaz); return !ok }() {
+			var rutas []map[string]any
+			_ = cli.get("/ip/route", &rutas)
+			interfaz = elegirInterfazTrafico(interfaces, rutas, s.APIInterfaz)
+			interfazCache = interfaz
+		}
+		rx, tx, ok := contadoresInterfaz(interfaces, interfaz)
+		if interfaz == "" || !ok {
+			marcarFallo()
+			return
+		}
+		fallos = 0
+		ahora := time.Now()
+		var rxBps, txBps int64
+		if !prevTime.IsZero() && interfaz == prevInterfaz {
+			dt := ahora.Sub(prevTime).Seconds()
+			if dt > 0 && rx >= prevRX && tx >= prevTX {
+				rxBps = int64((rx - prevRX) / dt)
+				txBps = int64((tx - prevTX) / dt)
+			}
+		}
+		prevRX, prevTX, prevInterfaz, prevTime = rx, tx, interfaz, ahora
+		c.traficoMu.Lock()
+		c.traficoRXBps = rxBps
+		c.traficoTXBps = txBps
+		c.traficoRXTotal = int64(rx)
+		c.traficoTXTotal = int64(tx)
+		c.traficoInterfaz = interfaz
+		c.traficoDisponible = true
+		c.traficoMu.Unlock()
 	}
 
 	muestrear()
@@ -175,6 +189,7 @@ func monitorTraficoMikrotik(c *Conexion, s Servidor) {
 		case <-ticker.C:
 			muestrear()
 		case <-c.done:
+			cli.http.CloseIdleConnections()
 			return
 		}
 	}

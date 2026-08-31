@@ -691,10 +691,11 @@
   @media(max-width:720px){.fw-actions{grid-template-columns:1fr 90px}.fw-actions button{width:100%}}
 
   /* Herramientas MikroTik */
-  .mikrotik-modal{max-width:820px !important;border-radius:12px !important;padding:16px !important}
-  .mt-tabs{display:flex;gap:4px;margin:10px 0}
-  .mt-tabs button{border:0 !important;background:transparent !important;border-radius:0 !important;padding:6px 12px !important;font-size:12px !important;color:var(--suave);border-bottom:2px solid transparent !important}
-  .mt-tabs button.activo{color:var(--texto);border-bottom-color:#5aa9ff !important}
+  /* Herramientas MikroTik: mismo shell full-screen que Herramientas Linux
+     (.tools-velo). Los paneles viven dentro de .tools-cuerpo. */
+  #m-mikrotik .mt-panel{max-width:900px}
+  .mt-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+  .mt-panel-head button{padding:6px 10px !important;font-size:11px !important}
   .mt-warn{font-size:10.5px;line-height:1.4;color:var(--ambar);border:1px solid rgba(230,180,91,.28);background:rgba(230,180,91,.08);border-radius:7px;padding:7px 9px;margin-bottom:9px}
   .mt-rules-scroll{max-height:260px;overflow:auto;border:1px solid rgba(77,134,184,.16);background:#06111b;border-radius:7px}
   table.mt-rules{width:100%;border-collapse:collapse;font-size:11px}
