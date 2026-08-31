@@ -715,7 +715,7 @@
   .mt-cmd-row{display:flex;gap:7px;align-items:center}
   .mt-cmd-row select,.mt-cmd-row input{height:34px;padding:6px 9px !important}
   .mt-cmd-row button{height:34px;padding:6px 12px !important}
-  #mt-cmd-body,#mt-script-source{width:100%;margin-top:7px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px !important}
+  #mt-script-source{width:100%;margin-top:7px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px !important}
   .mt-file{display:inline-flex;align-items:center;height:34px;padding:0 10px;font-size:11px;border:1px solid rgba(77,134,184,.22);border-radius:8px;color:var(--texto-2);background:rgba(7,19,31,.72);cursor:pointer}
   .mt-file:hover{border-color:rgba(77,225,154,.28);color:var(--texto)}
   .mt-cmd-hint{font-size:10px;color:var(--suave);margin:6px 0}

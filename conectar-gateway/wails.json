@@ -8,7 +8,7 @@
   "info": {
     "companyName": "Gsus",
     "productName": "TunnelForge",
-    "productVersion": "1.1.2",
+    "productVersion": "1.1.3",
     "copyright": "Copyright © 2026 Gsus",
     "comments": "SSH con túneles y terminal, WireGuard local y monitoreo, para Windows y Linux"
   },

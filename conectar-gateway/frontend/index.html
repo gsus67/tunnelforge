@@ -669,7 +669,6 @@
     <h3>Herramientas MikroTik — <span id="mt-srv">sin servidor</span></h3>
     <div class="mt-tabs">
       <button class="activo" id="mt-tab-fw">Firewall</button>
-      <button id="mt-tab-cmd">Consola RouterOS</button>
       <button id="mt-tab-script">Script</button>
       <button id="mt-tab-speed">Test de velocidad</button>
     </div>
@@ -688,17 +687,6 @@
         <button class="principal" id="mt-fw-add">Agregar</button>
       </div>
       <div class="fw-note" id="mt-fw-nota"></div>
-    </div>
-
-    <div class="mt-panel" id="mt-panel-cmd" hidden>
-      <div class="mt-cmd-row">
-        <select id="mt-cmd-metodo"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
-        <input type="text" id="mt-cmd-path" placeholder="/interface  ·  /ip/address  ·  /system/routerboard" style="flex:1">
-        <button class="principal" id="mt-cmd-run">Ejecutar</button>
-      </div>
-      <textarea id="mt-cmd-body" rows="3" placeholder='Cuerpo JSON (solo para POST/PUT/PATCH). Ej: {"address":"8.8.8.8","count":"3"}' hidden></textarea>
-      <div class="mt-cmd-hint">GET es de solo lectura. POST/PUT/PATCH/DELETE modifican el router y piden confirmación.</div>
-      <pre class="mt-cmd-out" id="mt-cmd-out">Escribí una ruta y ejecutá.</pre>
     </div>
 
     <div class="mt-panel" id="mt-panel-script" hidden>

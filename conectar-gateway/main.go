@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "1.1.2"
+const version = "1.1.3"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -222,6 +222,7 @@ type Conexion struct {
 	cliente  *ssh.Client
 	escuchas map[int]net.Listener // puerto local -> escucha actualmente asignada a este servidor
 	servidor string
+	tipo     string
 	desde    time.Time
 	tuneles  []Tunel
 	rx, tx   int64        // bytes de los túneles (atomic); se conserva como respaldo
@@ -244,10 +245,6 @@ var (
 	conexiones        = map[string]*Conexion{}
 	conectando        = map[string]bool{}
 	servidorLocalhost string
-	// Servidores MikroTik "conectados": no hay sesión SSH, solo se verificó
-	// que la REST API responde y se fijan en la lista de activos para tener a
-	// mano las Herramientas. Se limpia igual que `conexiones` al reiniciar.
-	conexionesMT = map[string]time.Time{}
 )
 
 func tieneTunel(c *Conexion, puerto int) bool {
@@ -412,23 +409,12 @@ func cerrarConexion(nombre string) {
 	reasignarPuertosLocked()
 }
 
-// cerrarMikrotik quita un servidor MikroTik de la lista de activos (no hay
-// nada que cerrar de verdad). Se llama con mu bloqueado.
-func cerrarMikrotik(nombre string) bool {
-	if _, ok := conexionesMT[nombre]; !ok {
-		return false
-	}
-	delete(conexionesMT, nombre)
-	return true
-}
-
 // cerrarTodas se llama con mu bloqueado.
 func cerrarTodas() {
 	for _, c := range conexiones {
 		detenerConexionLocked(c)
 	}
 	conexiones = map[string]*Conexion{}
-	conexionesMT = map[string]time.Time{}
 	servidorLocalhost = ""
 }
 
@@ -623,16 +609,20 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 		mu.Unlock()
 	}
 
-	// ---- túneles locales ----
-	tuneles := s.Tuneles
-	if tuneles == nil {
-		mu.Lock()
-		tuneles = cargarTuneles() // compatibilidad con perfiles de versiones anteriores
-		mu.Unlock()
+	// ---- túneles locales (RouterOS usa SSH solo para CLI y SFTP) ----
+	var tuneles []Tunel
+	if !s.esMikrotik() {
+		tuneles = s.Tuneles
+		if tuneles == nil {
+			mu.Lock()
+			tuneles = cargarTuneles() // compatibilidad con perfiles de versiones anteriores
+			mu.Unlock()
+		}
 	}
 	con := &Conexion{
 		cliente:  cliente,
 		servidor: s.Nombre,
+		tipo:     s.Tipo,
 		desde:    time.Now(),
 		tuneles:  append([]Tunel(nil), tuneles...),
 		escuchas: make(map[int]net.Listener),
@@ -663,9 +653,12 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 	if servidorLocalhost == "" {
 		servidorLocalhost = con.servidor
 	}
-	reasignarPuertosLocked()
-	abiertos := puertosAbiertosLocked(con)
-	sinTuneles := len(abiertos) == 0
+	var abiertos []int
+	if !s.esMikrotik() {
+		reasignarPuertosLocked()
+		abiertos = puertosAbiertosLocked(con)
+	}
+	sinTuneles := s.esMikrotik() || len(abiertos) == 0
 	abiertosSet := map[int]bool{}
 	for _, p := range abiertos {
 		abiertosSet[p] = true
@@ -678,7 +671,11 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 	}
 	mu.Unlock()
 
-	go monitorTraficoServidor(con)
+	if s.esMikrotik() {
+		go monitorTraficoMikrotik(con, *s)
+	} else {
+		go monitorTraficoServidor(con)
+	}
 	go func() { // detectar caída de la sesión
 		_ = cliente.Wait()
 		mu.Lock()
@@ -689,6 +686,9 @@ func conectar(s *Servidor, password string, aceptarHuella bool) (map[string]any,
 	}()
 
 	resultado := map[string]any{"ok": true, "puertos": abiertos, "sinTuneles": sinTuneles}
+	if s.esMikrotik() {
+		resultado["tipo"] = "mikrotik"
+	}
 	var abrir []string
 	for _, t := range con.tuneles {
 		if t.AbrirWeb && abiertosSet[t.Puerto] {
@@ -1040,8 +1040,7 @@ func main() {
 			return
 		}
 		mu.Lock()
-		_, yaMT := conexionesMT[pet.Nombre]
-		if _, ya := conexiones[pet.Nombre]; ya || yaMT || conectando[pet.Nombre] {
+		if _, ya := conexiones[pet.Nombre]; ya || conectando[pet.Nombre] {
 			mu.Unlock()
 			responderError(w, fmt.Errorf("ya estás conectado o conectando a '%s'", pet.Nombre))
 			return
@@ -1054,30 +1053,6 @@ func main() {
 			return
 		}
 		copiaServidor := *s
-		if copiaServidor.esMikrotik() {
-			mu.Unlock()
-			// No hay sesión SSH: se verifica que la REST API responda y se
-			// fija en la lista de activos para las Herramientas.
-			perfil, pass, perr := monitoringPerfilServidor(pet.Nombre)
-			if perr != nil {
-				responderError(w, perr)
-				return
-			}
-			cli, cerr := nuevoMikrotikClient(perfil, pass)
-			if cerr != nil {
-				responderError(w, cerr)
-				return
-			}
-			if !cli.alcanzable() {
-				responderError(w, fmt.Errorf("no pude conectar con la REST API de %s en %s — revisá host, puerto API, usuario/contraseña, y que el servicio www (HTTP) o www-ssl (HTTPS) esté habilitado según la casilla", pet.Nombre, perfil.Host))
-				return
-			}
-			mu.Lock()
-			conexionesMT[pet.Nombre] = time.Now()
-			mu.Unlock()
-			responder(w, map[string]any{"ok": true, "tipo": "mikrotik"})
-			return
-		}
 		conectando[pet.Nombre] = true
 		mu.Unlock()
 		defer func() {
@@ -1100,7 +1075,7 @@ func main() {
 		mu.Lock()
 		if pet.Nombre == "" {
 			cerrarTodas()
-		} else if !cerrarMikrotik(pet.Nombre) {
+		} else {
 			cerrarConexion(pet.Nombre)
 		}
 		mu.Unlock()
@@ -1166,6 +1141,7 @@ func main() {
 			c.traficoMu.RUnlock()
 			lista = append(lista, map[string]any{
 				"servidor": nombre,
+				"tipo":     c.tipo,
 				"puertos":  puertos,
 				"tuneles":  c.tuneles,
 				"desde":    c.desde.Format("15:04:05"),
@@ -1175,29 +1151,6 @@ func main() {
 				"traficoInterfaz": traficoInterfaz, "traficoDisponible": traficoDisponible,
 				"localhost": nombre == servidorLocalhost,
 			})
-		}
-		// Servidores MikroTik "conectados" (sin sesión SSH).
-		if len(conexionesMT) > 0 {
-			perfilesMT := map[string]Servidor{}
-			for _, sv := range cargar() {
-				perfilesMT[sv.Nombre] = sv
-			}
-			nombresMT := make([]string, 0, len(conexionesMT))
-			for n := range conexionesMT {
-				nombresMT = append(nombresMT, n)
-			}
-			sort.SliceStable(nombresMT, func(i, j int) bool {
-				return conexionesMT[nombresMT[i]].Before(conexionesMT[nombresMT[j]])
-			})
-			for _, n := range nombresMT {
-				sv := perfilesMT[n]
-				lista = append(lista, map[string]any{
-					"servidor": n, "tipo": "mikrotik",
-					"host": sv.Host, "usuario": sv.Usuario,
-					"puertos": []int{}, "tuneles": []Tunel{},
-					"desde": conexionesMT[n].Format("15:04:05"),
-				})
-			}
 		}
 		responder(w, map[string]any{
 			"conectado": len(lista) > 0, "conexiones": lista, "version": version,

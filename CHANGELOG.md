@@ -1,3 +1,12 @@
+## v1.1.3
+
+- MikroTik conectado queda igual que un servidor Linux: se conecta por SSH y
+  en «Servidores conectados» tiene Terminal (CLI de RouterOS), gestor de
+  archivos (SFTP) y el tráfico de la interfaz WAN en vivo, con el mismo
+  aspecto. Antes solo tenía Herramientas y Desconectar.
+- Se quitó la pestaña «Consola RouterOS» de Herramientas — el Terminal real
+  la reemplaza.
+
 ## v1.1.2
 
 - MikroTik: opción **Usar HTTP sin TLS** en el perfil, para routers con el

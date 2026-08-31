@@ -290,22 +290,6 @@ var TOKEN = '';
       txt.appendChild(document.createTextNode((c.host||'servidor') + ' · ' + (c.usuario||'usuario')));
       fila.appendChild(txt);
 
-      if (c.tipo === 'mikrotik'){
-        var bToolsMT = botonAccion('tools','Herramientas');
-        bToolsMT.onclick = function(){ abrirHerramientasMikrotik(c.servidor); };
-        fila.appendChild(bToolsMT);
-        var bDescMT = botonAccion('disconnect','Desconectar este servidor','disconnect');
-        bDescMT.onclick = function(){
-          desconectandoManual[c.servidor] = true;
-          api('/api/desconectar',{method:'POST',body:JSON.stringify({nombre:c.servidor})}).then(function(){ refrescarEstado(); });
-        };
-        fila.appendChild(bDescMT);
-        var trMT = nodo('div','trafico'); trMT.appendChild(document.createTextNode('REST · '+(c.desde||''))); fila.appendChild(trMT);
-        div.appendChild(fila);
-        cont.appendChild(div);
-        return;
-      }
-
       var bTerm = botonAccion('terminal','Terminal');
       bTerm.onclick = function(){ abrirTerminal(c.servidor); };
       fila.appendChild(bTerm);
@@ -313,7 +297,10 @@ var TOKEN = '';
       bArch.onclick = function(){ abrirArchivos(c.servidor); };
       fila.appendChild(bArch);
       var bTools = botonAccion('tools','Herramientas');
-      bTools.onclick = function(){ abrirHerramientas(c.servidor); };
+      bTools.onclick = function(){
+        if(c.tipo === 'mikrotik') abrirHerramientasMikrotik(c.servidor);
+        else abrirHerramientas(c.servidor);
+      };
       fila.appendChild(bTools);
       var bDesc = botonAccion('disconnect','Desconectar este servidor','disconnect');
       bDesc.onclick = function(){
@@ -360,9 +347,11 @@ var TOKEN = '';
       } else {
         meta.appendChild(nodo('span','ports-toggle','Sin puertos'));
       }
-      var bSSH = nodo('button','ssh-seg','SSH');
-      bSSH.onclick=function(){ alternarSeguridadSSH(c.servidor,bSSH); };
-      meta.appendChild(bSSH); consultarSeguridadSSH(c.servidor,bSSH,false);
+      if(c.tipo !== 'mikrotik'){
+        var bSSH = nodo('button','ssh-seg','SSH');
+        bSSH.onclick=function(){ alternarSeguridadSSH(c.servidor,bSSH); };
+        meta.appendChild(bSSH); consultarSeguridadSSH(c.servidor,bSSH,false);
+      }
       var traficoReal=!!c.traficoDisponible;
       var down=traficoReal ? (c.traficoRxBps||0) : rxS;
       var up=traficoReal ? (c.traficoTxBps||0) : txS;
@@ -629,7 +618,7 @@ var TOKEN = '';
       if (r.ok){
         var msg;
         if (r.tipo === 'mikrotik'){
-          aviso('Conectado a ' + nombre + ' (REST API). Abrí Herramientas desde Servidores conectados.', true);
+          aviso('Conectado a ' + nombre + '.', true);
           refrescarEstado();
           return;
         }
@@ -1519,7 +1508,7 @@ var TOKEN = '';
   $('fw-abrir').onclick=function(){ cambiarPuertoFirewall('abrir',this); };
   $('fw-cerrar-puerto').onclick=function(){ cambiarPuertoFirewall('cerrar',this); };
 
-  // ── Herramientas MikroTik (firewall + consola RouterOS) ──────
+  // ── Herramientas MikroTik ────────────────────────────────────
   var mtServidor = null;
   function abrirHerramientasMikrotik(nombre){
     mtServidor = nombre;
@@ -1535,14 +1524,13 @@ var TOKEN = '';
   $('mt-refrescar').onclick = function(){ if(mtTabActual==='fw') cargarFwMT(); };
   function mtTab(cual){
     mtTabActual = cual;
-    ['fw','cmd','script','speed'].forEach(function(t){
+    ['fw','script','speed'].forEach(function(t){
       $('mt-tab-'+t).classList.toggle('activo', t===cual);
       $('mt-panel-'+t).hidden = t!==cual;
     });
     $('mt-refrescar').hidden = cual!=='fw';
   }
   $('mt-tab-fw').onclick=function(){ mtTab('fw'); };
-  $('mt-tab-cmd').onclick=function(){ mtTab('cmd'); };
   $('mt-tab-script').onclick=function(){ mtTab('script'); };
   $('mt-tab-speed').onclick=function(){ mtTab('speed'); };
   function mtNota(txt,tipo){ var n=$('mt-fw-nota'); n.textContent=txt||''; n.className='fw-note'+(tipo?' '+tipo:''); }
@@ -1601,28 +1589,6 @@ var TOKEN = '';
       srcAddress:$('mt-fw-src').value.trim(), comment:$('mt-fw-comment').value.trim() };
     opFwMT({op:'add', regla:regla}, this);
   };
-  $('mt-cmd-metodo').onchange=function(){ $('mt-cmd-body').hidden = this.value==='GET' || this.value==='DELETE'; };
-  $('mt-cmd-run').onclick=function(){
-    if(!mtServidor) return;
-    var metodo=$('mt-cmd-metodo').value, path=$('mt-cmd-path').value.trim();
-    if(!path){ $('mt-cmd-out').textContent='Escribí una ruta, ej. /interface'; return; }
-    var bodyTxt=$('mt-cmd-body').value.trim();
-    var payload:any={ servidor:mtServidor, metodo:metodo, path:path };
-    if(bodyTxt && metodo!=='GET' && metodo!=='DELETE'){
-      try { payload.body = JSON.parse(bodyTxt); } catch(e){ $('mt-cmd-out').textContent='El cuerpo no es JSON válido.'; return; }
-    }
-    var boton=this; var enviar=function(confirmar){
-      if(confirmar) payload.confirmar=true;
-      boton.disabled=true; $('mt-cmd-out').textContent='Ejecutando '+metodo+' '+path+'…';
-      api('/api/herramientas/mikrotik/comando',{method:'POST',body:JSON.stringify(payload)}).then(function(r){
-        if(r.error){ $('mt-cmd-out').textContent=r.error; return; }
-        if(r.necesitaConfirmar){ if(window.confirm((r.aviso||'Este comando modifica el router.')+'\n\n¿Ejecutar?')){ enviar(true); } else { $('mt-cmd-out').textContent='Cancelado.'; } return; }
-        $('mt-cmd-out').textContent = '['+r.status+' '+r.metodo+' '+r.path+']\n\n'+(r.cuerpo||'(sin cuerpo)');
-      }).catch(function(){ $('mt-cmd-out').textContent='No pude ejecutar el comando.'; }).finally(function(){ boton.disabled=false; });
-    };
-    enviar(false);
-  };
-
   // Script MikroTik
   $('mt-script-file').onchange=function(){
     var f=this.files && this.files[0]; if(!f) return;

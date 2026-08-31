@@ -103,6 +103,83 @@ func contadoresInterfaz(interfaces []map[string]any, nombre string) (rx, tx floa
 	return 0, 0, false
 }
 
+// monitorTraficoMikrotik publica en la conexión SSH los contadores de la
+// interfaz WAN elegida mediante la REST API de RouterOS.
+func monitorTraficoMikrotik(c *Conexion, s Servidor) {
+	const intervalo = 3 * time.Second
+	var prevRX, prevTX float64
+	var prevInterfaz string
+	var prevTime time.Time
+	fallos := 0
+
+	muestrear := func() {
+		perfil, pass, err := monitoringPerfilServidor(s.Nombre)
+		if err != nil {
+			fallos++
+		} else {
+			var cli *mikrotikClient
+			cli, err = nuevoMikrotikClient(perfil, pass)
+			if err == nil {
+				var interfaces, rutas []map[string]any
+				err = cli.get("/interface", &interfaces)
+				if err == nil {
+					err = cli.get("/ip/route", &rutas)
+				}
+				cli.http.CloseIdleConnections()
+				if err == nil {
+					interfaz := elegirInterfazTrafico(interfaces, rutas, perfil.APIInterfaz)
+					rx, tx, ok := contadoresInterfaz(interfaces, interfaz)
+					if interfaz == "" || !ok {
+						err = fmt.Errorf("no pude elegir la interfaz de tráfico de RouterOS")
+					} else {
+						fallos = 0
+						ahora := time.Now()
+						var rxBps, txBps int64
+						if !prevTime.IsZero() && interfaz == prevInterfaz {
+							dt := ahora.Sub(prevTime).Seconds()
+							if dt > 0 && rx >= prevRX && tx >= prevTX {
+								rxBps = int64((rx - prevRX) / dt)
+								txBps = int64((tx - prevTX) / dt)
+							}
+						}
+						prevRX, prevTX, prevInterfaz, prevTime = rx, tx, interfaz, ahora
+						c.traficoMu.Lock()
+						c.traficoRXBps = rxBps
+						c.traficoTXBps = txBps
+						c.traficoRXTotal = int64(rx)
+						c.traficoTXTotal = int64(tx)
+						c.traficoInterfaz = interfaz
+						c.traficoDisponible = true
+						c.traficoMu.Unlock()
+					}
+				}
+			}
+			if err != nil {
+				fallos++
+			}
+		}
+		if fallos >= 2 {
+			c.traficoMu.Lock()
+			c.traficoDisponible = false
+			c.traficoRXBps = 0
+			c.traficoTXBps = 0
+			c.traficoMu.Unlock()
+		}
+	}
+
+	muestrear()
+	ticker := time.NewTicker(intervalo)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			muestrear()
+		case <-c.done:
+			return
+		}
+	}
+}
+
 var mtSamples sync.Map
 
 type mikrotikPeerCounter struct {

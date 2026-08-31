@@ -1,7 +1,7 @@
 {
   "name": "tunnelforge-frontend",
   "private": true,
-  "version": "1.1.2",
+  "version": "1.1.3",
   "scripts": {
     "build": "node build.mjs && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
