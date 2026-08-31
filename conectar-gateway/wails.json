@@ -10,7 +10,7 @@
     "productName": "TunnelForge",
     "productVersion": "1.0.1",
     "copyright": "Copyright © 2026 Gsus",
-    "comments": "Administrador SSH, WISP y monitoreo para Windows y Linux"
+    "comments": "SSH con túneles y terminal, WireGuard local y monitoreo, para Windows y Linux"
   },
   "author": {
     "name": "Gsus"

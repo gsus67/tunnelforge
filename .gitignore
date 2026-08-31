@@ -24,3 +24,6 @@ conectar-gateway/wireguard-runtime/
 # WireGuard embebido: los DLL oficiales se preparan durante el build de Windows
 conectar-gateway/wireguard-assets/windows/amd64/*.dll
 .wireguard-upstream/
+
+# Binario que deja `go build ./...` (el nombre del módulo es `conectar-gateway`)
+conectar-gateway/conectar-gateway

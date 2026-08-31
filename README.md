@@ -1,7 +1,8 @@
 # TunnelForge
 
-Cliente SSH de escritorio para administrar gateways: abre los túneles a los
-paneles del servidor de un clic y trae terminal SSH integrado.
+Cliente de escritorio para Windows y Linux: SSH con túneles y terminal,
+WireGuard local y monitoreo de servidores, en un solo ejecutable. Abre los
+túneles a los paneles del servidor de un clic y trae terminal SSH integrado.
 
 Un solo ejecutable de la aplicación: trae su propio motor SSH y toda la interfaz. No necesita PuTTY ni el cliente OpenSSH del sistema. En Windows usa WebView2 (incluido normalmente en Windows 10/11) y en Linux usa WebKitGTK del sistema.
 
@@ -16,8 +17,6 @@ Para evitar crear tags de versiones que todavía no compilan, primero se suben l
 
 ## Dashboard
 
-![Dashboard de TunnelForge](docs/dashboard.png)
-
 Vista principal para administrar servidores guardados, conexiones SSH activas, túneles, terminal, archivos y estado de actualizaciones desde una sola ventana.
 
 ---
@@ -25,7 +24,7 @@ Vista principal para administrar servidores guardados, conexiones SSH activas, t
 
 ## Acceso web local
 
-Desde **v3.5.0** puedes iniciar desde la propia aplicación un servidor web para la LAN y abrir **la misma interfaz** desde un teléfono, tablet u otra PC usando la IP privada del equipo. El modo está apagado por defecto, usa un código aleatorio de 6 dígitos, no configura UPnP ni port-forwarding y el navegador remoto nunca recibe el token maestro de la API.
+Desde la propia aplicación puedes iniciar un servidor web para la LAN y abrir **la misma interfaz** desde un teléfono, tablet u otra PC usando la IP privada del equipo. El modo está apagado por defecto, usa un código aleatorio de 6 dígitos, no configura UPnP ni port-forwarding y el navegador remoto nunca recibe el token maestro de la API.
 
 El acceso web está pensado para una **red local de confianza**. La sesión se guarda en una cookie HttpOnly ligada a la IP del cliente y el servidor se detiene automáticamente al cerrar TunnelForge. Los accesos a paneles que solo escuchan en `localhost` (por ejemplo, túneles web SSH) **no se republican en la LAN**; al pulsarlos desde el navegador remoto, TunnelForge los abre en la PC que ejecuta la aplicación.
 
@@ -33,9 +32,9 @@ El acceso web está pensado para una **red local de confianza**. La sesión se g
 
 ## WireGuard
 
-> **v3.4.11** mantiene WireGuard con configuración y estadísticas estrictamente separadas, conserva la medición corregida de Monitoreo sobre la interfaz principal del servidor y muestra el tráfico en Dashboard y Monitoreo en un formato compacto con flechas (`↑`/`↓`) en lugar de las palabras “Subida” y “Descarga”. WireGuard sigue completamente integrado en el ejecutable de Windows y no requiere instalar WireGuard for Windows ni depender de `wireguard.exe`/`wg.exe`.
+TunnelForge mantiene WireGuard con configuración y estadísticas estrictamente separadas, mide el tráfico de Monitoreo sobre la interfaz principal del servidor y muestra el tráfico en Dashboard y Monitoreo en un formato compacto con flechas (`↑`/`↓`) en lugar de las palabras “Subida” y “Descarga”. WireGuard está completamente integrado en el ejecutable de Windows y no requiere instalar WireGuard for Windows ni depender de `wireguard.exe`/`wg.exe`.
 
-Desde **v3.4.0** TunnelForge incluye WireGuard local para Windows y Linux. A partir de **v3.4.3**, el build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `TunnelForge.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
+TunnelForge incluye WireGuard local para Windows y Linux. El build oficial de Windows incorpora `tunnel.dll`, el `wireguard.dll` precompilado oficial de WireGuardNT y un host nativo mínimo (`wg-service-host.exe`) como recursos internos del propio `TunnelForge.exe`. La app los extrae a su directorio privado de runtime únicamente cuando se usa WireGuard.
 
 - Perfiles múltiples con búsqueda, estado conectado/desconectado y autoconexión.
 - Importación y exportación de archivos `.conf`.
@@ -70,17 +69,17 @@ TunnelForge puede preparar un servidor central con **Prometheus** y monitorizar 
 - Nombres de peers obtenidos de WGDashboard cuando existe una base SQLite compatible y con fallback a comentarios WireGuard/AllowedIPs.
 - La copia `.cgw` puede transportar toda la configuración de Monitoreo junto con servidores, túneles y claves SSH.
 
-Desde **v3.2.3 Grafana ya no es necesario ni se instala por la aplicación**: la vista nativa cubre el resumen y los peers, mientras Prometheus permanece como motor de recolección e historial. Si una versión anterior instaló Grafana en un servidor, la actualización no lo desinstala automáticamente para evitar eliminar software que el usuario pueda estar utilizando por separado.
+**Grafana no es necesario ni lo instala la aplicación**: la vista nativa cubre el resumen y los peers, mientras Prometheus permanece como motor de recolección e historial. Si una versión anterior instaló Grafana en un servidor, la actualización no lo desinstala automáticamente para evitar eliminar software que el usuario pueda estar utilizando por separado.
 
 La instalación automática inicial está deliberadamente limitada a **Debian/Ubuntu** para evitar aplicar comandos de paquetes no verificados sobre distribuciones distintas. Consulte `TERCEROS.md` para las licencias de Prometheus, node_exporter y WireGuard tools.
 
 ### Arquitectura de escritorio
 
-Desde **v3.3.0** la interfaz de producción está migrada a **Go + Wails + TypeScript**. Wails reemplaza el wrapper `webview_go` y ofrece la misma ventana nativa en Windows y Linux; el backend Go conserva SSH, SFTP, túneles, cifrado, updater y Monitoreo. El frontend vive en `conectar-gateway/frontend/` y se compila desde TypeScript antes de generar el binario.
+La interfaz de producción usa **Go + Wails + TypeScript**. Wails ofrece la ventana nativa en Windows y Linux; el backend Go maneja SSH, SFTP, túneles, cifrado, updater y Monitoreo. El frontend vive en `conectar-gateway/frontend/` y se compila desde TypeScript antes de generar el binario.
 
 La API existente se reutiliza dentro del `AssetServer` de Wails para reducir regresiones; únicamente la Terminal mantiene un WebSocket loopback en `127.0.0.1`, protegido por token y con el origen interno de Wails autorizado explícitamente.
 
-La API loopback protegida sigue existiendo como canal interno para el WebSocket de Terminal y compatibilidad de los módulos ya estabilizados. Desde v3.5.0, la UI también puede publicarse **de forma opcional** en la LAN mediante el módulo Web local autenticado; ese servidor es independiente del listener loopback y permanece apagado hasta que el usuario lo inicia.
+La API loopback protegida sigue existiendo como canal interno para el WebSocket de Terminal y compatibilidad de los módulos ya estabilizados. La UI también puede publicarse **de forma opcional** en la LAN mediante el módulo Web local autenticado; ese servidor es independiente del listener loopback y permanece apagado hasta que el usuario lo inicia.
 
 ## Qué hace
 
@@ -238,15 +237,11 @@ añade al enlace. Los cambios aplican en la siguiente conexión.
 
 ### Actualizaciones
 
-El panel aparece plegado y muestra un semáforo de estado: verde (al día), amarillo (pendiente/no comprobado) y rojo (actualización disponible). de la app
+El panel de la app aparece plegado y muestra un semáforo de estado: verde (al día), amarillo (pendiente/no comprobado) y rojo (actualización disponible).
 
 El repositorio de Releases es **público**, así que buscar e instalar
-actualizaciones no requiere ninguna credencial. Opcionalmente se puede
-configurar un **fine-grained personal access token** de GitHub (acceso
-solamente a `gsus67/tunnelforge`, permiso **Contents: read**) para
-subir el límite de consultas anónimas de la API de GitHub (60/hora por IP). En
-Windows el token se guarda protegido con **DPAPI**, ligado a tu cuenta de
-Windows.
+actualizaciones no requiere ninguna credencial ni configuración: el panel de
+Actualizaciones tiene un solo paso, comprobar e instalar.
 
 El actualizador no confía únicamente en GitHub ni en un SHA-256 publicado al lado
 del binario. Cada Release lleva un `update-manifest.json` firmado con **Ed25519**;
@@ -361,10 +356,14 @@ herramientas/          Scripts de apoyo para trabajar con los repos
 
 `MAYOR.menor.parche` — SemVer:
 
-- **parche** (2.3.**1**): correcciones
-- **menor** (2.**3**.0): funcionalidad nueva compatible
-- **MAYOR** (**3**.0.0): cambio estructural o que rompe compatibilidad
-- Los proyectos nuevos arrancan en **0.1.0**; el 1.0.0 se gana con estabilidad
+- **parche** (1.0.**1**): correcciones
+- **menor** (1.**1**.0): funcionalidad nueva compatible
+- **MAYOR** (**2**.0.0): cambio estructural o que rompe compatibilidad
+
+TunnelForge reinició la numeración en **1.0.0** al relanzarse con nombre y
+repositorio nuevos; viene de la **v3.7.0** del proyecto anterior (Gateway WISP
+Access / Conectar Gateway). El historial `v2.x`/`v3.x` sigue en
+[CHANGELOG.md](CHANGELOG.md) — no fue una regresión de funcionalidad.
 
 Publicar una versión: al subir un tag `vX.Y.Z`, GitHub Actions compila y adjunta
 los binarios al Release automáticamente.

@@ -15,7 +15,7 @@
   },
   "StringFileInfo": {
     "ProductName": "TunnelForge",
-    "FileDescription": "SSH, administración WISP y monitoreo para Windows y Linux",
+    "FileDescription": "SSH con túneles y terminal, WireGuard local y monitoreo, para Windows y Linux",
     "LegalCopyright": "Copyright (c) 2026 Gsus - Licencia MIT",
     "CompanyName": "Gsus",
     "FileVersion": "1.0.1",

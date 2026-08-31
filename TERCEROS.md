@@ -28,13 +28,13 @@ Estos componentes **no se incorporan al binario de TunnelForge**. Se instalan co
 
 Los scripts y métricas `gateway_wisp_*` generados por TunnelForge son código propio del proyecto y se distribuyen bajo MIT. Los componentes anteriores se ejecutan como procesos independientes y no se enlazan con el binario de la aplicación.
 
-**Compatibilidad histórica:** las versiones 3.2.0–3.2.2 podían instalar Grafana OSS como servicio independiente. Desde v3.2.3 la aplicación no instala ni utiliza Grafana. Una actualización no lo elimina automáticamente de servidores donde ya esté presente.
+**Compatibilidad histórica:** versiones antiguas del proyecto anterior (numeración 3.2.x) podían instalar Grafana OSS como servicio independiente. TunnelForge no instala ni utiliza Grafana. Una actualización no lo elimina automáticamente de servidores donde ya esté presente.
 
 Las fuentes de la interfaz (Barlow Condensed, JetBrains Mono) se cargan desde Google Fonts bajo SIL Open Font License.
 
 ## Integración WireGuard local
 
-Desde v3.4.0 la aplicación puede administrar túneles WireGuard locales. Desde **v3.4.3**, el build oficial de Windows incorpora el motor y un host nativo mínimo dentro de `TunnelForge.exe`; Linux continúa utilizando las herramientas de la distribución.
+TunnelForge puede administrar túneles WireGuard locales. El build oficial de Windows incorpora el motor y un host nativo mínimo dentro de `TunnelForge.exe`; Linux continúa utilizando las herramientas de la distribución.
 
 | Componente | Uso | Distribución/licencia |
 |---|---|---|
@@ -53,7 +53,7 @@ Los hooks `PreUp`, `PostUp`, `PreDown` y `PostDown` de un `.conf` pueden ejecuta
 
 ## Interfaz de escritorio
 
-Desde v3.3.0 TunnelForge usa **Wails v2.13.0** en producción. Se eligió la rama estable de Wails para evitar depender de Wails v3 mientras siga publicado como prerelease. Wails conserva su licencia MIT y utiliza WebView2 en Windows y WebKitGTK en Linux como componentes del sistema.
+TunnelForge usa **Wails v2.13.0** en producción. Se eligió la rama estable de Wails para evitar depender de Wails v3 mientras siga publicado como prerelease. Wails conserva su licencia MIT y utiliza WebView2 en Windows y WebKitGTK en Linux como componentes del sistema.
 
 `conectar-gateway/winhdr/EventToken.h` no contiene una copia de código de un tercero: es un adaptador de una línea que incluye el encabezado `eventtoken.h` provisto por el SDK/toolchain de Windows con la capitalización esperada por la compilación. No incorpora por sí mismo una licencia adicional al proyecto.
 

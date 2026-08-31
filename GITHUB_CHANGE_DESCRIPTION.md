@@ -1,5 +1,11 @@
-# v3.5.1 — Copiar y pegar en terminal
+# v1.0.1 — Actualizaciones sin token
 
-La terminal SSH integrada ahora permite copiar la selección y pegar desde el portapapeles con botones visibles y con los atajos estándar `Ctrl+Shift+C` / `Ctrl+Shift+V`. Se mantiene intacto `Ctrl+C` para interrumpir procesos remotos. La terminal del instalador Gateway WISP recibe el mismo comportamiento.
+Se saca por completo la UI y el soporte de personal access token del panel de
+Actualizaciones. Como el repositorio de Releases es público, buscar e instalar
+una actualización no necesita ninguna credencial: el panel queda en un solo
+paso, comprobar e instalar.
 
-El acceso al portapapeles usa la API del navegador/WebView cuando está disponible; si la lectura está bloqueada, el botón Pegar ofrece un cuadro manual para introducir el contenido sin romper la sesión.
+El resto del mecanismo no cambia: cada Release lleva un `update-manifest.json`
+firmado con Ed25519, la app valida la firma con su clave pública embebida y
+comprueba SHA-256 y tamaño del ejecutable contra ese manifest antes de
+instalarlo.
