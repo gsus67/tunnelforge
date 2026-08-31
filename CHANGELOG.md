@@ -1,3 +1,16 @@
+## v1.1.0
+
+- Monitoreo incorpora servidores MikroTik con RouterOS 7.1 o posterior mediante
+  su REST API HTTPS, sin instalar agentes ni crear túneles SSH.
+- CPU, RAM, disco, uptime, peers WireGuard y tráfico de RouterOS se fusionan con
+  las vistas existentes; cada perfil admite puerto API propio y la aceptación
+  explícita de certificados autofirmados.
+- El RX/TX del resumen del MikroTik se toma de la interfaz de la ruta por
+  defecto (como la interfaz principal en Linux), con un campo **Interfaz de
+  tráfico** para fijarla a mano.
+- Cada servidor guardado del Dashboard muestra un icono de tipo: Tux para Linux,
+  la marca hexagonal de MikroTik.
+
 ## v1.0.1
 
 - Actualizaciones sin token: se saca por completo la UI y el soporte de

@@ -42,7 +42,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const version = "1.0.1"
+const version = "1.1.0"
 
 // Tunel: un puerto que se reenvia del servidor a tu PC, con su nombre.
 type Tunel struct {
@@ -116,16 +116,24 @@ func validarTuneles(lista []Tunel) ([]Tunel, error) {
 // Modelo y almacenamiento
 // ---------------------------------------------------------------------------
 type Servidor struct {
-	Nombre   string  `json:"nombre"`
-	Host     string  `json:"host"`
-	Puerto   int     `json:"puerto"`
-	Usuario  string  `json:"usuario"`
-	Key      string  `json:"key,omitempty"`
-	PassCifr string  `json:"passwordCifrada,omitempty"`
-	Huella   string  `json:"huella,omitempty"`
-	Favorito bool    `json:"favorito,omitempty"`
-	Tuneles  []Tunel `json:"tuneles"`
+	Nombre      string  `json:"nombre"`
+	Host        string  `json:"host"`
+	Puerto      int     `json:"puerto"`
+	Usuario     string  `json:"usuario"`
+	Key         string  `json:"key,omitempty"`
+	PassCifr    string  `json:"passwordCifrada,omitempty"`
+	Huella      string  `json:"huella,omitempty"`
+	Favorito    bool    `json:"favorito,omitempty"`
+	Tuneles     []Tunel `json:"tuneles"`
+	Tipo        string  `json:"tipo,omitempty"`
+	APIPuerto   int     `json:"apiPuerto,omitempty"`
+	APIInseguro bool    `json:"apiInseguro,omitempty"`
+	// Interfaz de la que se lee el RX/TX del resumen (MikroTik). Vacío =
+	// autodetección por la ruta por defecto.
+	APIInterfaz string `json:"apiInterfaz,omitempty"`
 }
+
+func (s Servidor) esMikrotik() bool { return s.Tipo == "mikrotik" }
 
 var (
 	mu      sync.Mutex
@@ -785,6 +793,7 @@ func main() {
 				salida = append(salida, map[string]any{
 					"nombre": s.Nombre, "host": s.Host, "puerto": s.Puerto,
 					"usuario": s.Usuario, "key": s.Key,
+					"tipo": s.Tipo, "apiPuerto": s.APIPuerto, "apiInseguro": s.APIInseguro, "apiInterfaz": s.APIInterfaz,
 					"tienePassword": s.PassCifr != "", "confiado": s.Huella != "",
 					"favorito": s.Favorito, "tuneles": func() []Tunel {
 						if s.Tuneles != nil {
@@ -798,7 +807,11 @@ func main() {
 		case "POST":
 			var pet struct {
 				Nombre, Host, Usuario, Key, Password string
+				Tipo                                 string
 				Puerto                               int
+				APIPuerto                            int
+				APIInseguro                          bool
+				APIInterfaz                          string
 				GuardarPassword                      bool
 				Favorito                             *bool // puntero: distinguir "no lo mandó" de "false"
 				Tuneles                              *[]Tunel
@@ -814,6 +827,18 @@ func main() {
 			if pet.Puerto == 0 {
 				pet.Puerto = 22
 			}
+			pet.Tipo = strings.ToLower(strings.TrimSpace(pet.Tipo))
+			if pet.Tipo != "" && pet.Tipo != "linux" && pet.Tipo != "mikrotik" {
+				responderError(w, fmt.Errorf("tipo de servidor no válido"))
+				return
+			}
+			if pet.Tipo == "mikrotik" && pet.APIPuerto == 0 {
+				pet.APIPuerto = 443
+			}
+			if pet.APIPuerto < 0 || pet.APIPuerto > 65535 {
+				responderError(w, fmt.Errorf("puerto API no válido"))
+				return
+			}
 			lista := cargar()
 			s := buscar(lista, pet.Nombre)
 			if s == nil {
@@ -821,6 +846,8 @@ func main() {
 				s = &lista[len(lista)-1]
 			}
 			s.Host, s.Puerto, s.Usuario = pet.Host, pet.Puerto, pet.Usuario
+			s.Tipo, s.APIPuerto, s.APIInseguro = pet.Tipo, pet.APIPuerto, pet.APIInseguro
+			s.APIInterfaz = strings.TrimSpace(pet.APIInterfaz)
 			s.Key = normalizarRuta(pet.Key)
 			if pet.Favorito != nil {
 				s.Favorito = *pet.Favorito
@@ -1003,6 +1030,11 @@ func main() {
 			return
 		}
 		copiaServidor := *s
+		if copiaServidor.esMikrotik() {
+			mu.Unlock()
+			responderError(w, fmt.Errorf("%s es un servidor MikroTik: se consulta directamente por REST API desde Monitoreo y no admite conexión SSH en esta versión", pet.Nombre))
+			return
+		}
 		conectando[pet.Nombre] = true
 		mu.Unlock()
 		defer func() {

@@ -142,6 +142,37 @@ var TOKEN = '';
   function botonAccion(tipo: any, titulo: any, clase?: any){
     var b=nodo('button','mini-action'+(clase?' '+clase:''),''); b.title=titulo; b.setAttribute('aria-label',titulo); b.appendChild(svgAccion(tipo)); return b;
   }
+  // Icono real por tipo de servidor: Tux (Linux) o la marca hexagonal de
+  // MikroTik (su favicon: hexágono + cubo isométrico).
+  function svgTipoServidor(tipo: any){
+    var mikrotik = tipo === 'mikrotik';
+    var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 24 24');
+    function add(tag,attrs){ var x=document.createElementNS('http://www.w3.org/2000/svg',tag); Object.keys(attrs).forEach(function(k){x.setAttribute(k,attrs[k]);}); svg.appendChild(x); }
+    if(mikrotik){
+      add('path',{d:'M12 2 L21 7 V17 L12 22 L3 17 V7 Z','fill':'none','stroke':'currentColor','stroke-width':'1.6','stroke-linejoin':'round'});
+      add('path',{d:'M12 6.4 L16.7 9 L12 11.6 L7.3 9 Z','fill':'none','stroke':'currentColor','stroke-width':'1.5','stroke-linejoin':'round'});
+      add('path',{d:'M7.3 9 L12 11.6 V16.9 L7.3 14.3 Z','fill':'none','stroke':'currentColor','stroke-width':'1.5','stroke-linejoin':'round'});
+      add('path',{d:'M16.7 9 L12 11.6 V16.9 L16.7 14.3 Z','fill':'none','stroke':'currentColor','stroke-width':'1.5','stroke-linejoin':'round'});
+    } else {
+      // Tux, con formas simples para que se lea bien a 14px.
+      var oscuro='var(--bg-2, #0e1924)';
+      add('path',{d:'M8.7 19.5 L6.4 22 M15.3 19.5 L17.6 22','fill':'none','stroke':'#f4a52b','stroke-width':'2','stroke-linecap':'round'});   // patas
+      add('path',{d:'M12 4 c-2.6 0 -4.3 2 -4.3 4.8 c0 1.4 -.4 2.1 -1.1 3 c-.8 1 -1.4 2.4 -1.4 4.2 c0 2.7 3 4.6 6.8 4.6 c3.8 0 6.8 -1.9 6.8 -4.6 c0 -1.8 -.6 -3.2 -1.4 -4.2 c-.7 -.9 -1.1 -1.6 -1.1 -3 c0 -2.8 -1.7 -4.8 -4.3 -4.8 Z','fill':'currentColor','stroke':'none'});   // cuerpo+cabeza
+      add('path',{d:'M12 9.5 c-2 0 -3.4 2 -3.4 4.6 c0 2.4 1.4 4 3.4 4 c2 0 3.4 -1.6 3.4 -4 c0 -2.6 -1.4 -4.6 -3.4 -4.6 Z','fill':oscuro,'stroke':'none'});   // panza
+      add('circle',{cx:'10.4',cy:'7.2',r:'.95','fill':oscuro,'stroke':'none'});
+      add('circle',{cx:'13.6',cy:'7.2',r:'.95','fill':oscuro,'stroke':'none'});
+      add('path',{d:'M10.6 8.7 L13.4 8.7 L12 10.7 Z','fill':'#f4a52b','stroke':'none'});   // pico
+    }
+    return svg;
+  }
+  function nodoTipoServidor(tipo: any){
+    var mikrotik = tipo === 'mikrotik';
+    var sp = nodo('span','srv-tipo '+(mikrotik?'mikrotik':'linux'),'');
+    sp.title = mikrotik ? 'MikroTik (RouterOS)' : 'Linux';
+    sp.appendChild(svgTipoServidor(tipo));
+    return sp;
+  }
   function mensajeEn(cont: any, clase?: any, texto?: any){
     vaciar(cont);
     cont.appendChild(nodo('div', clase, texto));
@@ -251,7 +282,11 @@ var TOKEN = '';
       var fila = nodo('div', 'fila1');
       fila.appendChild(nodo('span', 'led'));
       var txt = nodo('div', 'txt');
-      txt.appendChild(nodo('b', '', c.servidor));
+      var cabecera = nodo('b','');
+      var perfilCnx = (servidoresCache||[]).find(function(x){ return x.nombre === c.servidor; });
+      cabecera.appendChild(nodoTipoServidor(perfilCnx && perfilCnx.tipo));
+      cabecera.appendChild(document.createTextNode(c.servidor));
+      txt.appendChild(cabecera);
       txt.appendChild(document.createTextNode((c.host||'servidor') + ' · ' + (c.usuario||'usuario')));
       fila.appendChild(txt);
 
@@ -364,6 +399,7 @@ var TOKEN = '';
     }
     vaciar(cont);
     mostrar.forEach(function(s){
+      var esMikrotik = s.tipo === 'mikrotik';
       var div = nodo('div', 'srv');
       div.draggable = true; div.dataset.nombre = s.nombre;
       var metodo = s.key ? 'key' : (s.tienePassword ? 'contraseña guardada' : 'contraseña al conectar');
@@ -376,18 +412,27 @@ var TOKEN = '';
         ev.stopPropagation();
         api('/api/servidores', {method:'POST', body: JSON.stringify({
           nombre: s.nombre, host: s.host, puerto: s.puerto, usuario: s.usuario,
-          key: s.key, favorito: !s.favorito, tuneles: s.tuneles || []
+          key: s.key, tipo: s.tipo || 'linux', apiPuerto: s.apiPuerto || 0,
+          apiInseguro: !!s.apiInseguro, apiInterfaz: s.apiInterfaz || '',
+          guardarPassword: !!s.tienePassword,
+          favorito: !s.favorito, tuneles: s.tuneles || []
         })}).then(refrescarLista);
       };
       div.appendChild(fav);
+      div.appendChild(nodoTipoServidor(s.tipo));
       var info = nodo('div', 'info');
       info.appendChild(nodo('div', 'nombre', s.nombre));
       info.appendChild(nodo('div', 'detalle', s.host + ' · ' + s.usuario));
       div.appendChild(info);
-      div.appendChild(nodo('span', 'metodo', 'SSH :' + s.puerto));
+      div.appendChild(nodo('span', 'metodo', esMikrotik ? ('REST :' + (s.apiPuerto || 443)) : ('SSH :' + s.puerto)));
       var tags = nodo('div','srv-tags');
-      tags.appendChild(nodo('span','tag ' + (s.key ? 'key':'pass'), s.key ? 'Key SSH' : (s.tienePassword ? 'Contraseña guardada' : 'Password al conectar')));
-      if (s.confiado) tags.appendChild(nodo('span','tag fingerprint','Huella verificada'));
+      if (esMikrotik) {
+        tags.appendChild(nodo('span','tag mikrotik','MikroTik'));
+        tags.appendChild(nodo('span','tag '+(s.tienePassword?'key':'pass'),s.tienePassword?'API lista':'Falta guardar contraseña'));
+      } else {
+        tags.appendChild(nodo('span','tag ' + (s.key ? 'key':'pass'), s.key ? 'Key SSH' : (s.tienePassword ? 'Contraseña guardada' : 'Password al conectar')));
+        if (s.confiado) tags.appendChild(nodo('span','tag fingerprint','Huella verificada'));
+      }
       div.appendChild(tags);
 
       var acciones = nodo('div', 'acciones');
@@ -401,7 +446,8 @@ var TOKEN = '';
         if (confirm('¿Borrar "' + s.nombre + '"?'))
           api('/api/servidores?nombre=' + encodeURIComponent(s.nombre), {method:'DELETE'}).then(refrescarLista);
       };
-      acciones.appendChild(bC); acciones.appendChild(bE); acciones.appendChild(bB);
+      if (!esMikrotik) acciones.appendChild(bC);
+      acciones.appendChild(bE); acciones.appendChild(bB);
       div.appendChild(acciones);
       cont.appendChild(div);
     });
@@ -444,16 +490,29 @@ var TOKEN = '';
   }
 
   // ── Formulario ────────────────────────────────────────────────
+  function actualizarCamposTipo(){
+    var mikrotik=$('f-tipo').value==='mikrotik';
+    $('f-api-puerto-campo').hidden=!mikrotik;
+    $('f-api-inseguro-campo').hidden=!mikrotik;
+    $('f-api-interfaz-campo').hidden=!mikrotik;
+    $('lbl-pass').textContent=mikrotik?'Contraseña de la API':'Contraseña';
+  }
+  $('f-tipo').onchange=actualizarCamposTipo;
   function cargarEnForm(s){
     $('f-nombre').value = s.nombre; $('f-host').value = s.host;
     $('f-puerto').value = s.puerto; $('f-usuario').value = s.usuario;
+    $('f-tipo').value = s.tipo === 'mikrotik' ? 'mikrotik' : 'linux';
+    $('f-api-puerto').value = s.apiPuerto || 443; $('f-api-inseguro').checked = !!s.apiInseguro;
+    $('f-api-interfaz').value = s.apiInterfaz || '';
     $('f-key').value = s.key || ''; $('f-pass').value = '';
     $('f-guardar').checked = !!s.tienePassword;
+    actualizarCamposTipo();
     pintarTunelesForm(s.tuneles || tunelesDefecto);
   }
   $('btn-limpiar').onclick = function(){
-    ['f-nombre','f-host','f-usuario','f-key','f-pass'].forEach(function(i){ $(i).value=''; });
-    $('f-puerto').value = 22; $('f-guardar').checked = false; pintarTunelesForm(tunelesDefecto);
+    ['f-nombre','f-host','f-usuario','f-key','f-pass','f-api-interfaz'].forEach(function(i){ $(i).value=''; });
+    $('f-puerto').value = 22; $('f-tipo').value='linux'; $('f-api-puerto').value=443; $('f-api-inseguro').checked=false;
+    $('f-guardar').checked = false; actualizarCamposTipo(); pintarTunelesForm(tunelesDefecto);
   };
   function guardarServidorDesdeForm(){
     var nombre = $('f-nombre').value.trim();
@@ -461,6 +520,9 @@ var TOKEN = '';
     api('/api/servidores', {method:'POST', body: JSON.stringify({
       nombre: nombre, host: $('f-host').value.trim(),
       puerto: parseInt($('f-puerto').value)||22, usuario: $('f-usuario').value.trim(),
+      tipo: $('f-tipo').value, apiPuerto: $('f-tipo').value==='mikrotik'?(parseInt($('f-api-puerto').value)||443):0,
+      apiInseguro: $('f-tipo').value==='mikrotik'&&$('f-api-inseguro').checked,
+      apiInterfaz: $('f-tipo').value==='mikrotik'?$('f-api-interfaz').value.trim():'',
       key: $('f-key').value.trim(), password: $('f-pass').value,
       guardarPassword: $('f-guardar').checked,
       favorito: existente ? existente.favorito : false,
@@ -473,6 +535,7 @@ var TOKEN = '';
     });
   }
   $('btn-guardar').onclick = guardarServidorDesdeForm;
+  actualizarCamposTipo();
 
   // ── Asistente de clave SSH ─────────────────────────────────
   var seguridadPendiente = null;
@@ -880,17 +943,17 @@ var TOKEN = '';
   function renderMonitoring(data){
     monCache=data; var cfg=data.config||{}; var servers=data.servidores||[];
     var sel=$('mon-server'); var previo=sel.value; vaciar(sel); var vac=nodo('option','','Selecciona servidor…');vac.value='';sel.appendChild(vac);
-    servers.forEach(function(s){var o=nodo('option','',s.nombre+' · '+s.host);o.value=s.nombre;sel.appendChild(o);});
+    servers.forEach(function(s){if(s.tipo==='mikrotik')return;var o=nodo('option','',s.nombre+' · '+s.host);o.value=s.nombre;sel.appendChild(o);});
     sel.value=cfg.monitorServer||previo||''; $('mon-port-start').value=cfg.portStart||19100; $('mon-port-end').value=cfg.portEnd||19999;
     var list=$('mon-server-list');vaciar(list); var targets=cfg.targets||[]; var targetNames={};targets.forEach(function(t){targetNames[t.servidor]=t;});
     servers.forEach(function(s){
       var row=nodo('label','mon-server-row'); var cb=document.createElement('input');cb.type='checkbox';cb.dataset.server=s.nombre;cb.checked=!!targetNames[s.nombre];row.appendChild(cb);
-      var main=nodo('span','mon-server-main');main.appendChild(nodo('b','',s.nombre));main.appendChild(nodo('small','',s.host+':'+s.puerto+' · '+s.usuario));row.appendChild(main);
-      var state=nodo('span','mon-server-state'+(s.monitorizado?' on':''),s.monitorizado?('● '+(targetNames[s.nombre].localPort||9100)):(s.conectado?'Conectado':'Conectar primero'));row.appendChild(state);if(s.monitorizado){var d=nodo('button','mon-diag-btn','Diagnosticar');d.type='button';d.dataset.server=s.nombre;d.onclick=function(ev){ev.preventDefault();ev.stopPropagation();var btn=this;btn.disabled=true;monNota('Diagnosticando '+btn.dataset.server+'…','');api('/api/monitoring/diagnostico',{method:'POST',body:JSON.stringify({servidor:btn.dataset.server})}).then(function(r){if(r.error){monNota(r.error,'err');return;}var txt=(r.pasos||[]).map(function(x){return (x.ok?'✓ ':'✗ ')+x.nombre;}).join(' · ');monNota(btn.dataset.server+': '+txt,r.saludable?'ok':'err');}).finally(function(){btn.disabled=false;});};row.appendChild(d);}list.appendChild(row);
+      var esMT=s.tipo==='mikrotik';var main=nodo('span','mon-server-main');main.appendChild(nodo('b','',s.nombre));main.appendChild(nodo('small','',s.host+':'+(esMT?(s.apiPuerto||443):s.puerto)+' · '+s.usuario));row.appendChild(main);
+      var textoEstado=esMT?'MikroTik':(s.monitorizado?('● '+(targetNames[s.nombre].localPort||9100)):(s.conectado?'Conectado':'Conectar primero'));var state=nodo('span','mon-server-state'+(s.monitorizado?' on':'')+(esMT?' mikrotik':''),textoEstado);row.appendChild(state);if(s.monitorizado){var d=nodo('button','mon-diag-btn','Diagnosticar');d.type='button';d.dataset.server=s.nombre;d.onclick=function(ev){ev.preventDefault();ev.stopPropagation();var btn=this;btn.disabled=true;monNota('Diagnosticando '+btn.dataset.server+'…','');api('/api/monitoring/diagnostico',{method:'POST',body:JSON.stringify({servidor:btn.dataset.server})}).then(function(r){if(r.error){monNota(r.error,'err');return;}var txt=(r.pasos||[]).map(function(x){return (x.ok?'✓ ':'✗ ')+x.nombre;}).join(' · ');monNota(btn.dataset.server+': '+txt,r.saludable?'ok':'err');}).finally(function(){btn.disabled=false;});};row.appendChild(d);}list.appendChild(row);
     });
     $('mon-target-count').textContent=targets.length+' target'+(targets.length===1?'':'s');
     $('mon-prom-dot').classList.toggle('ok',!!data.prometheusOnline);
-    var map=$('mon-port-map');vaciar(map); if(!targets.length)map.appendChild(nodo('div','','Sin túneles de monitoreo todavía.'));targets.forEach(function(t){map.appendChild(nodo('div','',t.servidor+' · 127.0.0.1:'+t.localPort+' → SSH → :'+t.remotePort));});
+    var map=$('mon-port-map');vaciar(map); if(!targets.length)map.appendChild(nodo('div','','Sin targets de monitoreo todavía.'));targets.forEach(function(t){map.appendChild(nodo('div','',t.tipo==='mikrotik'?(t.servidor+' · REST HTTPS directa'):(t.servidor+' · 127.0.0.1:'+t.localPort+' → SSH → :'+t.remotePort)));});
     if(monDashboard==='overview') cargarResumen(); else if(monDashboard==='wg') cargarPeers();
   }
   function cargarMonitoring(){ return api('/api/monitoring/estado').then(function(r){if(r.error){monNota(r.error,'err');return;}renderMonitoring(r);}).catch(function(){monNota('No pude cargar la configuración de monitoreo.','err');}); }
@@ -939,7 +1002,7 @@ var TOKEN = '';
   $('mon-refresh').onclick=cargarMonitoring;
   $('mon-save').onclick=function(){var b=this;b.disabled=true;monNota('Guardando configuración…','');api('/api/monitoring/config',{method:'POST',body:JSON.stringify({monitorServer:$('mon-server').value,portStart:Number($('mon-port-start').value),portEnd:Number($('mon-port-end').value)})}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota('Configuración cifrada y guardada.','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;});};
   $('mon-prepare').onclick=function(){var b=this;b.disabled=true;monNota('Preparando servidor de monitoreo…','');monPollProgress();api('/api/monitoring/preparar',{method:'POST',body:'{}'}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota(r.mensaje||'Servidor monitor preparado.','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;monStopProgress();});};
-  $('mon-apply').onclick=function(){var elegidos=[];document.querySelectorAll('#mon-server-list input[type=checkbox]:checked').forEach(function(c){elegidos.push(c.dataset.server);});var b=this;b.disabled=true;monNota('Aplicando selección…','');monPollProgress();api('/api/monitoring/targets',{method:'POST',body:JSON.stringify({servidores:elegidos})}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota('Monitoreo aplicado. Prometheus ya tiene '+(r.targets||[]).length+' target(s).','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;monStopProgress();});};
+  $('mon-apply').onclick=function(){var elegidos=[];document.querySelectorAll('#mon-server-list input[type=checkbox]:checked').forEach(function(c){elegidos.push(c.dataset.server);});var b=this;b.disabled=true;monNota('Aplicando selección…','');monPollProgress();api('/api/monitoring/targets',{method:'POST',body:JSON.stringify({servidores:elegidos})}).then(function(r){if(r.error){monNota(r.error,'err');return;}monNota('Monitoreo aplicado a '+(r.targets||[]).length+' target(s).','ok');return cargarMonitoring();}).finally(function(){b.disabled=false;monStopProgress();});};
   $('mon-peer-search').oninput=cargarPeers;$('mon-peer-sort').onchange=cargarPeers;
   $('mon-tab-overview').onclick=function(){monSetTab('overview');}; $('mon-tab-wg').onclick=function(){monSetTab('wg');}; $('mon-reload').onclick=function(){if(monDashboard==='wg')cargarPeers();else cargarResumen();}; $('mon-peer-refresh').onclick=cargarPeers;
 

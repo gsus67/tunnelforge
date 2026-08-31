@@ -59,6 +59,8 @@ En Windows **no hace falta instalar ningún cliente WireGuard aparte**: TunnelFo
 
 TunnelForge puede preparar un servidor central con **Prometheus** y monitorizar únicamente los perfiles que el usuario seleccione. Los agentes `node_exporter` quedan ligados a `127.0.0.1:9100`; Prometheus accede a ellos mediante túneles SSH persistentes administrados por la aplicación.
 
+**Servidores MikroTik (RouterOS):** no requieren agente; TunnelForge lee sus métricas y peers WireGuard por la REST API `/rest` de RouterOS 7.1 o posterior. El router necesita un usuario dedicado con policy `rest-api` y el servicio `www-ssl` habilitado. El acceso es directo por HTTPS al host y puerto API configurados, y los certificados autofirmados se pueden aceptar explícitamente con la casilla del formulario. El RX/TX del resumen sale de la interfaz de la ruta por defecto del router (misma semántica que la interfaz principal en Linux); si la autodetección no acierta, el campo **Interfaz de tráfico** del perfil permite fijarla a mano (`ether1`, `pppoe-out1`, etc.). En el Dashboard, cada servidor guardado muestra un icono de tipo (Tux para Linux, la marca hexagonal de MikroTik).
+
 - Puertos locales de túnel asignados automáticamente (rango 19100–19999 configurable).
 - Resumen nativo de CPU, RAM, disco y tráfico RX/TX en Mbit/s por servidor.
 - Vista compacta de peers WireGuard, un peer por fila, con nombre amigable, RX/TX en Mbit/s y último handshake.

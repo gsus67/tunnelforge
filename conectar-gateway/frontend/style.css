@@ -236,6 +236,16 @@
   form .ancho{grid-column:1/-1}
   label{display:block;font-size:12px;color:var(--suave);margin-bottom:6px;font-weight:600;letter-spacing:.01em}
   .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--texto-2)}
+  .mikrotik-check .check label{margin:0;font-weight:500;color:var(--texto-2)}
+  .tag.mikrotik{color:#8fc4ff;border-color:rgba(90,169,255,.3);background:rgba(90,169,255,.08)}
+  /* Icono de tipo de servidor (Tux / marca MikroTik). En las tarjetas va en la
+     columna de la estrella, pegado abajo; en Conexiones va junto al nombre. */
+  .srv-tipo{grid-area:fav;align-self:end;justify-self:center;display:inline-grid;place-items:center;line-height:0}
+  .srv-tipo svg{width:14px;height:14px;display:block}
+  .srv-tipo.linux{color:var(--suave)}
+  .srv-tipo.mikrotik{color:#8fc4ff}
+  .cnx .txt b .srv-tipo{display:inline-grid;vertical-align:-2px;margin-right:5px}
+  .cnx .txt b .srv-tipo svg{width:13px;height:13px}
   .nota{font-size:12.5px;color:var(--suave);line-height:1.65}
   .tun-desplegable{cursor:pointer;user-select:none;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:13px 14px;color:var(--texto-2)}
   .tun-desplegable .flecha{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.05);font-size:10px;color:var(--verde);transition:transform .18s}
@@ -741,7 +751,7 @@
   .monitor-separator{height:1px;background:var(--borde-frio-2);margin:1px 0}
   .monitor-list-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.monitor-list-head>div{display:flex;flex-direction:column;gap:2px}.monitor-list-head b{font-size:12px}.monitor-list-head small{font-size:10px;color:var(--suave)}.monitor-list-head button{padding:5px 8px!important}
   .monitor-server-list{flex:1;min-height:110px;overflow:auto;border:1px solid var(--borde-frio);border-radius:8px;background:rgba(4,16,27,.58)}
-  .mon-server-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:7px 8px;border-bottom:1px solid rgba(77,134,184,.10)}.mon-server-row:last-child{border-bottom:0}.mon-server-row input{width:14px;height:14px}.mon-server-main{min-width:0;display:flex;flex-direction:column}.mon-server-main b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mon-server-main small{font-size:10px;color:var(--suave)}.mon-server-state{font-size:10px;color:var(--suave);text-align:right}.mon-server-state.on{color:var(--verde)}.mon-diag-btn{padding:3px 6px!important;font-size:9px!important}
+  .mon-server-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:7px 8px;border-bottom:1px solid rgba(77,134,184,.10)}.mon-server-row:last-child{border-bottom:0}.mon-server-row input{width:14px;height:14px}.mon-server-main{min-width:0;display:flex;flex-direction:column}.mon-server-main b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mon-server-main small{font-size:10px;color:var(--suave)}.mon-server-state{font-size:10px;color:var(--suave);text-align:right}.mon-server-state.on{color:var(--verde)}.mon-server-state.mikrotik{padding:3px 6px;border:1px solid rgba(90,169,255,.3);border-radius:999px;background:rgba(90,169,255,.08);color:#8fc4ff}.mon-diag-btn{padding:3px 6px!important;font-size:9px!important}
   .monitor-note{font-size:10.5px;color:var(--suave);line-height:1.35;min-height:14px}.monitor-note.err{color:#ff9a9a}.monitor-note.ok{color:var(--verde)}
   .monitor-advanced{font-size:11px;border-top:1px solid var(--borde-frio-2);padding-top:6px}.monitor-advanced summary{cursor:pointer;color:var(--texto-2)}.monitor-port-map{padding:7px 0;font:10px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--suave)}.monitor-advanced button{padding:6px 8px!important;font-size:10.5px!important}
   .monitor-display{display:flex;flex-direction:column;padding:0!important}.monitor-toolbar{height:42px;display:flex;justify-content:space-between;align-items:center;padding:0 10px;border-bottom:1px solid var(--borde-frio-2);flex:none}.monitor-tabs{display:flex;height:100%;gap:4px}.monitor-tabs button{border:0!important;background:transparent!important;border-radius:0!important;padding:0 10px!important;font-size:12px!important;border-bottom:2px solid transparent!important}.monitor-tabs button.activo{color:var(--texto);border-bottom-color:#5aa9ff!important}.monitor-help{display:flex;gap:8px;align-items:center;color:var(--suave);font-size:10px}.monitor-help button{padding:5px 7px!important}

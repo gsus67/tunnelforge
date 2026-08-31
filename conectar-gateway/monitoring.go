@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,6 +35,7 @@ type MonitoringTarget struct {
 	LocalPort  int    `json:"localPort"`
 	RemotePort int    `json:"remotePort"`
 	PeerWG     bool   `json:"peerWireGuard"`
+	Tipo       string `json:"tipo,omitempty"`
 }
 
 type MonitoringConfig struct {
@@ -192,17 +194,13 @@ func monitoringPublica(cfg MonitoringConfig) map[string]any {
 	}
 }
 
-func monitoringDatosServidor(nombre string) (*Conexion, Servidor, string, error) {
+func monitoringPerfilServidor(nombre string) (Servidor, string, error) {
 	mu.Lock()
-	con := conexiones[nombre]
 	lista := cargar()
 	mu.Unlock()
-	if con == nil {
-		return nil, Servidor{}, "", fmt.Errorf("%s no está conectado", nombre)
-	}
 	s := buscar(lista, nombre)
 	if s == nil {
-		return nil, Servidor{}, "", fmt.Errorf("no existe el perfil %s", nombre)
+		return Servidor{}, "", fmt.Errorf("no existe el perfil %s", nombre)
 	}
 	copia := *s
 	pass := ""
@@ -211,7 +209,21 @@ func monitoringDatosServidor(nombre string) (*Conexion, Servidor, string, error)
 			pass = p
 		}
 	}
-	return con, copia, pass, nil
+	return copia, pass, nil
+}
+
+func monitoringDatosServidor(nombre string) (*Conexion, Servidor, string, error) {
+	s, pass, err := monitoringPerfilServidor(nombre)
+	if err != nil {
+		return nil, Servidor{}, "", err
+	}
+	mu.Lock()
+	con := conexiones[nombre]
+	mu.Unlock()
+	if con == nil {
+		return nil, Servidor{}, "", fmt.Errorf("%s no está conectado", nombre)
+	}
+	return con, s, pass, nil
 }
 
 func monitoringRoot(nombre, script string) (string, error) {
@@ -592,7 +604,12 @@ func monitoringPuertoLibre(cfg MonitoringConfig) (int, error) {
 func monitoringRegenerarPrometheus(cfg MonitoringConfig) error {
 	var b strings.Builder
 	b.WriteString("global:\n  scrape_interval: 5s\n  evaluation_interval: 5s\nscrape_configs:\n  - job_name: 'gateway-wisp'\n")
-	targets := append([]MonitoringTarget(nil), cfg.Targets...)
+	targets := make([]MonitoringTarget, 0, len(cfg.Targets))
+	for _, target := range cfg.Targets {
+		if target.Tipo != "mikrotik" {
+			targets = append(targets, target)
+		}
+	}
 	if len(targets) == 0 {
 		b.WriteString("    static_configs: []\n")
 	} else {
@@ -638,13 +655,32 @@ func monitoringQuitarTunel(cfg MonitoringConfig, target string) error {
 }
 
 func monitoringAplicarTarget(cfg *MonitoringConfig, nombre string) error {
+	target, _, err := monitoringPerfilServidor(nombre)
+	if err != nil {
+		return err
+	}
+	indiceExistente := -1
+	for i := range cfg.Targets {
+		if cfg.Targets[i].Servidor == nombre {
+			indiceExistente = i
+			break
+		}
+	}
+	if target.esMikrotik() {
+		if indiceExistente >= 0 {
+			cfg.Targets[indiceExistente].Tipo = "mikrotik"
+		} else {
+			cfg.Targets = append(cfg.Targets, MonitoringTarget{Servidor: nombre, PeerWG: true, Tipo: "mikrotik"})
+		}
+		return guardarMonitoring(*cfg)
+	}
 	if cfg.MonitorServer == "" {
 		return fmt.Errorf("primero selecciona el servidor de monitoreo")
 	}
 	if !cfg.Preparado {
 		return fmt.Errorf("primero prepara el servidor de monitoreo")
 	}
-	_, target, _, err := monitoringDatosServidor(nombre)
+	_, target, _, err = monitoringDatosServidor(nombre)
 	if err != nil {
 		return err
 	}
@@ -654,21 +690,18 @@ func monitoringAplicarTarget(cfg *MonitoringConfig, nombre string) error {
 	if target.Huella == "" {
 		return fmt.Errorf("%s no tiene huella SSH verificada", nombre)
 	}
-	var yaExiste bool
-	for _, t := range cfg.Targets {
-		if t.Servidor == nombre {
-			yaExiste = true
-			break
-		}
+	yaExiste := indiceExistente >= 0
+	if yaExiste {
+		cfg.Targets[indiceExistente].Tipo = target.Tipo
 	}
 	if err := monitoringInstalarAgente(nombre); err != nil {
 		return fmt.Errorf("instalando agente en %s: %w", nombre, err)
 	}
 	if yaExiste {
-		return nil
+		return guardarMonitoring(*cfg)
 	}
 	if nombre == cfg.MonitorServer {
-		cfg.Targets = append(cfg.Targets, MonitoringTarget{Servidor: nombre, LocalPort: 9100, RemotePort: 9100, PeerWG: true})
+		cfg.Targets = append(cfg.Targets, MonitoringTarget{Servidor: nombre, LocalPort: 9100, RemotePort: 9100, PeerWG: true, Tipo: target.Tipo})
 		if err := guardarMonitoring(*cfg); err != nil {
 			return err
 		}
@@ -691,7 +724,7 @@ func monitoringAplicarTarget(cfg *MonitoringConfig, nombre string) error {
 	if err := monitoringCrearTunel(*cfg, target, port); err != nil {
 		return err
 	}
-	cfg.Targets = append(cfg.Targets, MonitoringTarget{Servidor: nombre, LocalPort: port, RemotePort: 9100, PeerWG: true})
+	cfg.Targets = append(cfg.Targets, MonitoringTarget{Servidor: nombre, LocalPort: port, RemotePort: 9100, PeerWG: true, Tipo: target.Tipo})
 	if err := guardarMonitoring(*cfg); err != nil {
 		return err
 	}
@@ -713,7 +746,7 @@ func manejarMonitoringEstado(w http.ResponseWriter, r *http.Request) {
 		monitorizados[t.Servidor] = t
 	}
 	for _, s := range lista {
-		item := map[string]any{"nombre": s.Nombre, "host": s.Host, "puerto": s.Puerto, "usuario": s.Usuario, "conectado": conectados[s.Nombre]}
+		item := map[string]any{"nombre": s.Nombre, "host": s.Host, "puerto": s.Puerto, "usuario": s.Usuario, "tipo": s.Tipo, "apiPuerto": s.APIPuerto, "conectado": conectados[s.Nombre]}
 		if t, ok := monitorizados[s.Nombre]; ok {
 			item["monitorizado"] = true
 			item["localPort"] = t.LocalPort
@@ -837,10 +870,14 @@ func manejarMonitoringTargets(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	actuales := append([]MonitoringTarget(nil), cfg.Targets...)
+	necesitaPrometheus := false
 	for _, t := range actuales {
 		if !deseados[t.Servidor] {
 			monitoringProgreso("Quitando monitoreo de "+t.Servidor+"…", 12)
-			if t.Servidor != cfg.MonitorServer {
+			if t.Tipo != "mikrotik" {
+				necesitaPrometheus = true
+			}
+			if t.Tipo != "mikrotik" && t.Servidor != cfg.MonitorServer {
 				_ = monitoringQuitarTunel(cfg, t.Servidor)
 			}
 			nueva := cfg.Targets[:0]
@@ -863,18 +900,31 @@ func manejarMonitoringTargets(w http.ResponseWriter, r *http.Request) {
 		if len(nombres) > 0 {
 			pct = 20 + ((i+1)*65)/len(nombres)
 		}
-		monitoringProgreso("Preparando agente y túnel SSH para "+n+"…", pct)
+		perfil, _, perfilErr := monitoringPerfilServidor(n)
+		if perfilErr != nil {
+			monitoringProgresoFin("Falló al configurar "+n+".", false)
+			responderError(w, perfilErr)
+			return
+		}
+		if perfil.esMikrotik() {
+			monitoringProgreso("Registrando acceso REST directo para "+n+"…", pct)
+		} else {
+			necesitaPrometheus = true
+			monitoringProgreso("Preparando agente y túnel SSH para "+n+"…", pct)
+		}
 		if err := monitoringAplicarTarget(&cfg, n); err != nil {
 			monitoringProgresoFin("Falló al configurar "+n+".", false)
 			responderError(w, err)
 			return
 		}
 	}
-	monitoringProgreso("Regenerando y validando configuración de Prometheus…", 92)
-	if err := monitoringRegenerarPrometheus(cfg); err != nil {
-		monitoringProgresoFin("Prometheus rechazó la nueva configuración.", false)
-		responderError(w, err)
-		return
+	if necesitaPrometheus {
+		monitoringProgreso("Regenerando y validando configuración de Prometheus…", 92)
+		if err := monitoringRegenerarPrometheus(cfg); err != nil {
+			monitoringProgresoFin("Prometheus rechazó la nueva configuración.", false)
+			responderError(w, err)
+			return
+		}
 	}
 	monitoringProgresoFin("Selección aplicada y verificada.", true)
 	responder(w, map[string]any{"ok": true, "targets": cfg.Targets})
@@ -942,19 +992,17 @@ func monitoringPromQuery(cfg MonitoringConfig, query string) ([]struct {
 
 func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 	cfg := cargarMonitoring()
-	if cfg.MonitorServer == "" || !cfg.Preparado {
+	hayMikrotik := false
+	for _, target := range cfg.Targets {
+		if target.Tipo == "mikrotik" {
+			hayMikrotik = true
+			break
+		}
+	}
+	prometheusConfigurado := cfg.MonitorServer != "" && cfg.Preparado
+	if !prometheusConfigurado && !hayMikrotik {
 		responderError(w, fmt.Errorf("prepara primero el monitoreo"))
 		return
-	}
-	type srv struct {
-		Nombre string  `json:"nombre"`
-		Online bool    `json:"online"`
-		CPU    float64 `json:"cpu"`
-		RAM    float64 `json:"ram"`
-		Disco  float64 `json:"disco"`
-		RX     float64 `json:"rx"`
-		TX     float64 `json:"tx"`
-		Uptime float64 `json:"uptime"`
 	}
 	// Mapas por servidor. Las consultas son instantáneas y pequeñas.
 	queries := map[string]string{
@@ -966,11 +1014,13 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 	}
 	vals := map[string]map[string]float64{}
 	for key, q := range queries {
-		rows, _ := monitoringPromQuery(cfg, q)
 		m := map[string]float64{}
-		for _, v := range rows {
-			if n := v.Metric["server"]; n != "" {
-				m[n] = v.Value
+		if prometheusConfigurado {
+			rows, _ := monitoringPromQuery(cfg, q)
+			for _, v := range rows {
+				if n := v.Metric["server"]; n != "" {
+					m[n] = v.Value
+				}
 			}
 		}
 		vals[key] = m
@@ -986,10 +1036,12 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 		"rx": `irate(gateway_wisp_main_interface_receive_bytes_total{job="gateway-wisp"}[30s]) * 8 / 1000000`,
 		"tx": `irate(gateway_wisp_main_interface_transmit_bytes_total{job="gateway-wisp"}[30s]) * 8 / 1000000`,
 	} {
-		rows, _ := monitoringPromQuery(cfg, q)
-		for _, v := range rows {
-			if n := v.Metric["server"]; n != "" {
-				vals[key][n] = v.Value
+		if prometheusConfigurado {
+			rows, _ := monitoringPromQuery(cfg, q)
+			for _, v := range rows {
+				if n := v.Metric["server"]; n != "" {
+					vals[key][n] = v.Value
+				}
 			}
 		}
 	}
@@ -1001,14 +1053,16 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 		"rx": `sum by (server) (irate(node_network_receive_bytes_total{job="gateway-wisp",device!~"lo|docker.*|veth.*|br-.*|virbr.*|wg.*|tun.*|tap.*|tailscale.*"}[30s])) * 8 / 1000000`,
 		"tx": `sum by (server) (irate(node_network_transmit_bytes_total{job="gateway-wisp",device!~"lo|docker.*|veth.*|br-.*|virbr.*|wg.*|tun.*|tap.*|tailscale.*"}[30s])) * 8 / 1000000`,
 	} {
-		rows, _ := monitoringPromQuery(cfg, q)
-		for _, v := range rows {
-			n := v.Metric["server"]
-			if n == "" {
-				continue
-			}
-			if _, precise := vals[key][n]; !precise {
-				vals[key][n] = v.Value
+		if prometheusConfigurado {
+			rows, _ := monitoringPromQuery(cfg, q)
+			for _, v := range rows {
+				n := v.Metric["server"]
+				if n == "" {
+					continue
+				}
+				if _, precise := vals[key][n]; !precise {
+					vals[key][n] = v.Value
+				}
 			}
 		}
 	}
@@ -1017,6 +1071,9 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 	var cpuSum, ramSum, rxSum, txSum float64
 	samples := 0
 	for _, t := range cfg.Targets {
+		if t.Tipo == "mikrotik" {
+			continue
+		}
 		n := t.Servidor
 		up := vals["up"][n] > 0
 		if up {
@@ -1035,6 +1092,35 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 		txSum += tx
 		servers = append(servers, map[string]any{"nombre": n, "online": up, "cpu": cpu, "ram": ram, "disco": vals["disk"][n], "rxMbit": rx, "txMbit": tx, "uptime": vals["uptime"][n]})
 	}
+	for _, target := range cfg.Targets {
+		if target.Tipo != "mikrotik" {
+			continue
+		}
+		perfil, pass, err := monitoringPerfilServidor(target.Servidor)
+		if err != nil {
+			log.Printf("monitoreo MikroTik %s: %v", target.Servidor, err)
+			servers = append(servers, map[string]any{"nombre": target.Servidor, "online": false, "cpu": 0, "ram": 0, "disco": 0, "rxMbit": 0, "txMbit": 0, "uptime": 0, "tipo": "mikrotik"})
+			continue
+		}
+		resumen, _, err := mikrotikConsultar(perfil, pass)
+		if err != nil {
+			log.Printf("monitoreo MikroTik %s: %v", target.Servidor, err)
+			servers = append(servers, map[string]any{"nombre": target.Servidor, "online": false, "cpu": 0, "ram": 0, "disco": 0, "rxMbit": 0, "txMbit": 0, "uptime": 0, "tipo": "mikrotik"})
+			continue
+		}
+		online++
+		samples++
+		cpuSum += resumen.CPU
+		ramSum += resumen.RAM
+		rxSum += resumen.RXMbit
+		txSum += resumen.TXMbit
+		servers = append(servers, map[string]any{
+			"nombre": target.Servidor, "online": true, "cpu": resumen.CPU, "ram": resumen.RAM,
+			"disco": resumen.Disco, "rxMbit": resumen.RXMbit, "txMbit": resumen.TXMbit,
+			"uptime": resumen.UptimeSeg, "tipo": "mikrotik", "version": resumen.Version, "board": resumen.Board,
+			"ifaceTrafico": resumen.IfaceTrafico,
+		})
+	}
 	sort.Slice(servers, func(i, j int) bool {
 		return strings.ToLower(fmt.Sprint(servers[i]["nombre"])) < strings.ToLower(fmt.Sprint(servers[j]["nombre"]))
 	})
@@ -1048,17 +1134,32 @@ func manejarMonitoringResumen(w http.ResponseWriter, r *http.Request) {
 
 func manejarMonitoringPeers(w http.ResponseWriter, r *http.Request) {
 	cfg := cargarMonitoring()
-	if cfg.MonitorServer == "" || !cfg.Preparado {
+	hayMikrotik := false
+	for _, target := range cfg.Targets {
+		if target.Tipo == "mikrotik" {
+			hayMikrotik = true
+			break
+		}
+	}
+	prometheusConfigurado := cfg.MonitorServer != "" && cfg.Preparado
+	if !prometheusConfigurado && !hayMikrotik {
 		responderError(w, fmt.Errorf("prepara primero el monitoreo"))
 		return
 	}
-	rx, err := monitoringPromQuery(cfg, `irate(gateway_wisp_wireguard_peer_receive_bytes_total[30s]) * 8 / 1000000`)
-	if err != nil {
-		responderError(w, err)
-		return
+	var rx, tx, hs []struct {
+		Metric map[string]string
+		Value  float64
 	}
-	tx, _ := monitoringPromQuery(cfg, `irate(gateway_wisp_wireguard_peer_transmit_bytes_total[30s]) * 8 / 1000000`)
-	hs, _ := monitoringPromQuery(cfg, `time() - gateway_wisp_wireguard_peer_latest_handshake_seconds`)
+	if prometheusConfigurado {
+		var err error
+		rx, err = monitoringPromQuery(cfg, `irate(gateway_wisp_wireguard_peer_receive_bytes_total[30s]) * 8 / 1000000`)
+		if err != nil && !hayMikrotik {
+			responderError(w, err)
+			return
+		}
+		tx, _ = monitoringPromQuery(cfg, `irate(gateway_wisp_wireguard_peer_transmit_bytes_total[30s]) * 8 / 1000000`)
+		hs, _ = monitoringPromQuery(cfg, `time() - gateway_wisp_wireguard_peer_latest_handshake_seconds`)
+	}
 	type peer struct {
 		Nombre       string  `json:"nombre"`
 		Servidor     string  `json:"servidor"`
@@ -1106,6 +1207,28 @@ func manejarMonitoringPeers(w http.ResponseWriter, r *http.Request) {
 	for _, p := range m {
 		peers = append(peers, *p)
 	}
+	for _, target := range cfg.Targets {
+		if target.Tipo != "mikrotik" {
+			continue
+		}
+		perfil, pass, err := monitoringPerfilServidor(target.Servidor)
+		if err != nil {
+			log.Printf("peers MikroTik %s: %v", target.Servidor, err)
+			continue
+		}
+		_, mtPeers, err := mikrotikConsultar(perfil, pass)
+		if err != nil {
+			log.Printf("peers MikroTik %s: %v", target.Servidor, err)
+			continue
+		}
+		for _, mtPeer := range mtPeers {
+			peers = append(peers, peer{
+				Nombre: mtPeer.Nombre, Servidor: target.Servidor, Interfaz: mtPeer.Interfaz,
+				AllowedIPs: mtPeer.AllowedIPs, Key: mtPeer.Key, RxMbit: mtPeer.RXMbit,
+				TxMbit: mtPeer.TXMbit, HandshakeAge: mtPeer.HandshakeAgeSeg,
+			})
+		}
+	}
 	sort.Slice(peers, func(i, j int) bool {
 		if peers[i].Servidor == peers[j].Servidor {
 			return strings.ToLower(peers[i].Nombre) < strings.ToLower(peers[j].Nombre)
@@ -1138,8 +1261,9 @@ func monitoringServicioOnline(cfg MonitoringConfig, puerto int) bool {
 	return n > 0 && strings.Contains(string(buf[:n]), "HTTP/")
 }
 
-// manejarMonitoringDiagnostico comprueba la cadena de monitoreo sin modificarla:
-// sesión SSH, node_exporter, túnel persistente y visibilidad desde Prometheus.
+// manejarMonitoringDiagnostico comprueba la cadena de monitoreo sin modificarla.
+// En RouterOS valida la REST API directa; en Linux conserva la cadena SSH,
+// node_exporter, túnel persistente y visibilidad desde Prometheus.
 func manejarMonitoringDiagnostico(w http.ResponseWriter, r *http.Request) {
 	cfg := cargarMonitoring()
 	var pet struct {
@@ -1161,6 +1285,25 @@ func manejarMonitoringDiagnostico(w http.ResponseWriter, r *http.Request) {
 	}
 	if target == nil {
 		responderError(w, fmt.Errorf("%s no está monitorizado", pet.Servidor))
+		return
+	}
+	if target.Tipo == "mikrotik" {
+		perfil, pass, err := monitoringPerfilServidor(pet.Servidor)
+		if err != nil {
+			responderError(w, err)
+			return
+		}
+		alcanzable, autenticado, encontrados, consultaErr := mikrotikDiagnosticar(perfil, pass)
+		if consultaErr != nil {
+			log.Printf("diagnóstico MikroTik %s: %v", pet.Servidor, consultaErr)
+		}
+		peersOK := consultaErr == nil && encontrados > 0
+		pasos := []map[string]any{
+			{"nombre": "REST API alcanzable", "ok": alcanzable},
+			{"nombre": "Autenticación OK", "ok": autenticado},
+			{"nombre": "Peers WireGuard detectados", "ok": peersOK, "cantidad": encontrados},
+		}
+		responder(w, map[string]any{"ok": true, "servidor": pet.Servidor, "saludable": alcanzable && autenticado && peersOK, "pasos": pasos})
 		return
 	}
 	pasos := []map[string]any{}
